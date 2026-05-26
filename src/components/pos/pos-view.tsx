@@ -24,12 +24,14 @@ export function PosView() {
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [quickProducts, setQuickProducts] = useState<QuickProduct[]>([])
   const addItem = usePosStore((s) => s.addItem)
-  const { currentBranchId } = useAppStore()
+  const { currentBranchId, currentUser } = useAppStore()
+  const companyId = currentUser?.companyId
 
   useEffect(() => {
     const fetchQuickProducts = async () => {
       try {
         const params = new URLSearchParams({ period: 'daily', sortBy: 'quantity' })
+        if (companyId) params.set('companyId', companyId)
         if (currentBranchId) params.set('branchId', currentBranchId)
         const res = await fetch(`/api/analytics/best-sellers?${params.toString()}`)
         const json = await res.json()
@@ -48,6 +50,7 @@ export function PosView() {
         // fallback: load all products
         try {
           const params = new URLSearchParams()
+          if (companyId) params.set('companyId', companyId)
           if (currentBranchId) params.set('branchId', currentBranchId)
           const res = await fetch(`/api/products?${params.toString()}`)
           const json = await res.json()
@@ -68,7 +71,7 @@ export function PosView() {
       }
     }
     fetchQuickProducts()
-  }, [currentBranchId])
+  }, [currentBranchId, companyId])
 
   const handleQuickAdd = (product: QuickProduct) => {
     addItem({
@@ -83,7 +86,7 @@ export function PosView() {
   if (isMobile) {
     return (
       <div className="flex flex-col gap-4 p-4 pb-24">
-        <ProductSearch branchId={currentBranchId} />
+        <ProductSearch branchId={currentBranchId} companyId={companyId} />
         <div>
           <h3 className="text-sm font-medium mb-2">Quick Add</h3>
           <div className="grid grid-cols-2 gap-2">
@@ -114,7 +117,7 @@ export function PosView() {
     <div className="flex h-full gap-4 p-4">
       {/* Left: Product Search + Quick Add */}
       <div className="flex-1 flex flex-col gap-4 min-w-0">
-        <ProductSearch branchId={currentBranchId} />
+        <ProductSearch branchId={currentBranchId} companyId={companyId} />
         <Card className="flex-1">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">Quick Add</CardTitle>

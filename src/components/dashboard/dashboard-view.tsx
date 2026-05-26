@@ -47,6 +47,8 @@ interface DashboardData {
 export function DashboardView() {
   const isMobile = useIsMobile()
   const { currentBranchId, currentUser } = useAppStore()
+  const companyId = currentUser?.companyId
+  const isEmployee = currentUser?.role === 'Employee'
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -54,6 +56,7 @@ export function DashboardView() {
     setLoading(true)
     try {
       const params = new URLSearchParams()
+      if (companyId) params.set('companyId', companyId)
       if (currentBranchId) params.set('branchId', currentBranchId)
       const res = await fetch(`/api/analytics/dashboard?${params.toString()}`)
       const json = await res.json()
@@ -65,7 +68,7 @@ export function DashboardView() {
     } finally {
       setLoading(false)
     }
-  }, [currentBranchId])
+  }, [currentBranchId, companyId])
 
   useEffect(() => {
     fetchDashboard()
@@ -126,7 +129,7 @@ export function DashboardView() {
       </div>
 
       {/* Per-Branch Summary (shown when all branches selected and user is admin) */}
-      {!currentBranchId && currentUser?.role === 'admin' && data.branchSummary && data.branchSummary.length > 0 && (
+      {!currentBranchId && currentUser?.role === 'CompanyAdmin' && data.branchSummary && data.branchSummary.length > 0 && (
         <Card className="mb-6">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">

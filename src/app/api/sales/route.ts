@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     const to = searchParams.get('to')
     const userId = searchParams.get('userId')
     const branchId = searchParams.get('branchId')
+    const companyId = searchParams.get('companyId')
 
     const where: Prisma.SaleWhereInput = {}
 
@@ -28,6 +29,10 @@ export async function GET(request: Request) {
 
     if (branchId) {
       where.branchId = branchId
+    }
+
+    if (companyId) {
+      where.companyId = companyId
     }
 
     const sales = await db.sale.findMany({
@@ -53,6 +58,12 @@ export async function GET(request: Request) {
             code: true,
           },
         },
+        company: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
       orderBy: { saleDate: 'desc' },
     })
@@ -70,7 +81,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { userId, items, discount, branchId } = body
+    const { userId, items, discount, branchId, companyId } = body
 
     if (!userId || !items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -80,10 +91,10 @@ export async function POST(request: Request) {
     }
 
     const result = await db.$transaction(async (tx) => {
-      // Verify user exists and get their branch
+      // Verify user exists and get their branch and company
       const user = await tx.user.findUnique({
         where: { id: userId },
-        include: { branch: true },
+        include: { branch: true, company: true },
       })
       if (!user) {
         throw new Error('User not found')
@@ -91,6 +102,8 @@ export async function POST(request: Request) {
 
       // Use provided branchId or fall back to user's branch
       const saleBranchId = branchId || user.branchId
+      // Use provided companyId or fall back to user's company
+      const saleCompanyId = companyId || user.companyId
 
       let totalAmount = 0
       const saleItemsData: {
@@ -114,6 +127,11 @@ export async function POST(request: Request) {
 
         if (!product) {
           throw new Error(`Product not found: ${productId}`)
+        }
+
+        // Validate product belongs to the same company
+        if (product.companyId !== saleCompanyId) {
+          throw new Error(`Product ${product.name} does not belong to the same company`)
         }
 
         if (product.currentStockLevel < Number(quantity)) {
@@ -150,6 +168,7 @@ export async function POST(request: Request) {
           totalAmount,
           discount: discountAmount,
           branchId: saleBranchId,
+          companyId: saleCompanyId,
           saleItems: {
             create: saleItemsData,
           },
@@ -173,6 +192,12 @@ export async function POST(request: Request) {
               id: true,
               name: true,
               code: true,
+            },
+          },
+          company: {
+            select: {
+              id: true,
+              name: true,
             },
           },
         },
@@ -216,6 +241,12 @@ export async function POST(request: Request) {
         )
       }
       if (error.message.includes('must have productId')) {
+        return NextResponse.json(
+          { success: false, error: error.message },
+          { status: 400 }
+        )
+      }
+      if (error.message.includes('does not belong to the same company')) {
         return NextResponse.json(
           { success: false, error: error.message },
           { status: 400 }

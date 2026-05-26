@@ -27,7 +27,8 @@ interface LossData {
 
 export function AnalyticsView() {
   const isMobile = useIsMobile()
-  const { currentBranchId } = useAppStore()
+  const { currentBranchId, currentUser } = useAppStore()
+  const companyId = currentUser?.companyId
   const [lossData, setLossData] = useState<LossData | null>(null)
   const [lossLoading, setLossLoading] = useState(true)
 
@@ -35,6 +36,7 @@ export function AnalyticsView() {
     setLossLoading(true)
     try {
       const params = new URLSearchParams()
+      if (companyId) params.set('companyId', companyId)
       if (currentBranchId) params.set('branchId', currentBranchId)
       const res = await fetch(`/api/analytics/loss-report?${params.toString()}`)
       const json = await res.json()
@@ -46,7 +48,7 @@ export function AnalyticsView() {
     } finally {
       setLossLoading(false)
     }
-  }, [currentBranchId])
+  }, [currentBranchId, companyId])
 
   useEffect(() => {
     fetchLossReport()
@@ -61,13 +63,13 @@ export function AnalyticsView() {
     <div className={isMobile ? 'p-4 pb-24' : 'p-4'}>
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <BestSellersChart branchId={currentBranchId} />
-        <SalesTrendChart branchId={currentBranchId} />
+        <BestSellersChart branchId={currentBranchId} companyId={companyId} />
+        <SalesTrendChart branchId={currentBranchId} companyId={companyId} />
       </div>
 
       {/* Dead Stock + Loss Report */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <DeadStockList branchId={currentBranchId} />
+        <DeadStockList branchId={currentBranchId} companyId={companyId} />
 
         {/* Loss Report */}
         <Card>

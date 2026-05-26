@@ -7,6 +7,25 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  industry    String?   // e.g. "Retail", "Wholesale", "Restaurant"
+  email       String?
+  phone       String?
+  address     String?
+  logoUrl     String?
+  plan        String    @default("free")  // free, starter, pro
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  branches    Branch[]
+  users       User[]
+  products    Product[]
+  sales       Sale[]
+}
+
 model Branch {
   id          String   @id @default(cuid())
   name        String
@@ -15,9 +34,11 @@ model Branch {
   phone       String?
   isHeadOffice Boolean @default(false)
   isActive    Boolean  @default(true)
+  companyId   String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  company         Company         @relation(fields: [companyId], references: [id])
   users           User[]
   products        Product[]
   inventoryBatches InventoryBatch[]
@@ -30,14 +51,16 @@ model User {
   email        String   @unique
   name         String
   passwordHash String
-  role         String   @default("Cashier") // Admin or Cashier
+  role         String   @default("Employee") // CompanyAdmin, Manager, Employee
   branchId     String
+  companyId    String
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  branch Branch @relation(fields: [branchId], references: [id])
-  sales  Sale[]
+  branch  Branch @relation(fields: [branchId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+  sales   Sale[]
 }
 
 model Product {
@@ -50,11 +73,13 @@ model Product {
   reorderThreshold   Int      @default(10)
   defaultSalePrice   Float    @default(0)
   branchId           String
+  companyId          String
   isActive           Boolean  @default(true)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   branch          Branch          @relation(fields: [branchId], references: [id])
+  company         Company         @relation(fields: [companyId], references: [id])
   inventoryBatches InventoryBatch[]
   saleItems       SaleItem[]
   shrinkages      Shrinkage[]
@@ -83,10 +108,12 @@ model Sale {
   saleDate   DateTime @default(now())
   userId     String
   branchId   String
+  companyId  String
   createdAt  DateTime @default(now())
 
   user      User       @relation(fields: [userId], references: [id])
   branch    Branch     @relation(fields: [branchId], references: [id])
+  company   Company    @relation(fields: [companyId], references: [id])
   saleItems SaleItem[]
 }
 

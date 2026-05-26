@@ -5,9 +5,12 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const branchId = searchParams.get('branchId')
+    const companyId = searchParams.get('companyId')
 
     // Build branch filter for all queries
     const branchFilter = branchId ? { branchId } : {}
+    const companyFilter = companyId ? { companyId } : {}
+    const combinedFilter = { ...branchFilter, ...companyFilter }
 
     // Get today's date range
     const now = new Date()
@@ -21,7 +24,7 @@ export async function GET(request: Request) {
           gte: todayStart,
           lt: todayEnd,
         },
-        ...branchFilter,
+        ...combinedFilter,
       },
       include: {
         saleItems: {
@@ -71,6 +74,7 @@ export async function GET(request: Request) {
     const allProducts = await db.product.findMany({
       where: {
         ...branchFilter,
+        ...companyFilter,
         isActive: true,
       },
     })
@@ -82,6 +86,7 @@ export async function GET(request: Request) {
     const productsWithBatches = await db.product.findMany({
       where: {
         ...branchFilter,
+        ...companyFilter,
         isActive: true,
       },
       include: {
@@ -108,8 +113,11 @@ export async function GET(request: Request) {
     // Branch summary when no branch filter is applied
     let branchSummary: { id: string; name: string; code: string; todayRevenue: number; todaySalesCount: number }[] | undefined
     if (!branchId) {
+      const branchWhere: { isActive: boolean; companyId?: string } = { isActive: true }
+      if (companyId) branchWhere.companyId = companyId
+
       const branches = await db.branch.findMany({
-        where: { isActive: true },
+        where: branchWhere,
       })
       branchSummary = await Promise.all(
         branches.map(async (branch) => {
@@ -120,6 +128,7 @@ export async function GET(request: Request) {
                 lt: todayEnd,
               },
               branchId: branch.id,
+              ...(companyId ? { companyId } : {}),
             },
           })
           return {

@@ -36,7 +36,8 @@ interface ShrinkageRecord {
 
 export function ShrinkageView() {
   const isMobile = useIsMobile()
-  const { currentBranchId } = useAppStore()
+  const { currentBranchId, currentUser } = useAppStore()
+  const companyId = currentUser?.companyId
   const [products, setProducts] = useState<Product[]>([])
   const [selectedProductId, setSelectedProductId] = useState('')
   const [quantityLost, setQuantityLost] = useState('')
@@ -51,6 +52,7 @@ export function ShrinkageView() {
   const fetchProducts = useCallback(async () => {
     try {
       const params = new URLSearchParams()
+      if (companyId) params.set('companyId', companyId)
       if (currentBranchId) params.set('branchId', currentBranchId)
       const res = await fetch(`/api/products?${params.toString()}`)
       const json = await res.json()
@@ -58,12 +60,13 @@ export function ShrinkageView() {
     } catch {
       // ignore
     }
-  }, [currentBranchId])
+  }, [currentBranchId, companyId])
 
   const fetchRecords = useCallback(async () => {
     setRecordsLoading(true)
     try {
       const params = new URLSearchParams()
+      if (companyId) params.set('companyId', companyId)
       if (currentBranchId) params.set('branchId', currentBranchId)
       if (dateFrom) params.set('from', new Date(dateFrom).toISOString())
       if (dateTo) params.set('to', new Date(dateTo).toISOString())
@@ -83,7 +86,7 @@ export function ShrinkageView() {
     } finally {
       setRecordsLoading(false)
     }
-  }, [dateFrom, dateTo, currentBranchId])
+  }, [dateFrom, dateTo, currentBranchId, companyId])
 
   useEffect(() => {
     fetchProducts()
@@ -107,6 +110,7 @@ export function ShrinkageView() {
           quantityLost: parseInt(quantityLost),
           reason,
           branchId: currentBranchId ?? undefined,
+          companyId: companyId ?? undefined,
         }),
       })
 

@@ -29,9 +29,10 @@ interface BestSellerData {
 
 interface BestSellersChartProps {
   branchId?: string | null
+  companyId?: string | null
 }
 
-export function BestSellersChart({ branchId }: BestSellersChartProps) {
+export function BestSellersChart({ branchId, companyId }: BestSellersChartProps) {
   const [data, setData] = useState<BestSellerData[]>([])
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState('daily')
@@ -41,6 +42,7 @@ export function BestSellersChart({ branchId }: BestSellersChartProps) {
     setLoading(true)
     try {
       const params = new URLSearchParams({ period, sortBy })
+      if (companyId) params.set('companyId', companyId)
       if (branchId) params.set('branchId', branchId)
       const res = await fetch(
         `/api/analytics/best-sellers?${params.toString()}`
@@ -54,7 +56,7 @@ export function BestSellersChart({ branchId }: BestSellersChartProps) {
     } finally {
       setLoading(false)
     }
-  }, [period, sortBy, branchId])
+  }, [period, sortBy, branchId, companyId])
 
   useEffect(() => {
     fetchData()

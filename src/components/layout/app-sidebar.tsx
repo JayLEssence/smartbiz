@@ -10,28 +10,44 @@ import {
   BarChart3,
   Lightbulb,
   Building2,
+  Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 
-const allNavItems: { view: ViewType; label: string; icon: React.ElementType; adminOnly?: boolean }[] = [
+interface NavItem {
+  view: ViewType
+  label: string
+  icon: React.ElementType
+  adminOnly?: boolean
+  managerOnly?: boolean
+}
+
+const allNavItems: NavItem[] = [
   { view: 'pos', label: 'POS', icon: ShoppingCart },
-  { view: 'inventory', label: 'Inventory', icon: Package },
-  { view: 'shrinkage', label: 'Loss Track', icon: AlertTriangle },
   { view: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { view: 'analytics', label: 'Analytics', icon: BarChart3 },
-  { view: 'advisor', label: 'Advisor', icon: Lightbulb },
+  { view: 'inventory', label: 'Inventory', icon: Package, managerOnly: true },
+  { view: 'shrinkage', label: 'Loss Track', icon: AlertTriangle, managerOnly: true },
+  { view: 'analytics', label: 'Analytics', icon: BarChart3, managerOnly: true },
+  { view: 'advisor', label: 'Advisor', icon: Lightbulb, adminOnly: true },
   { view: 'branches', label: 'Branches', icon: Building2, adminOnly: true },
+  { view: 'admin', label: 'Admin', icon: Settings, adminOnly: true },
 ]
 
 export function AppSidebar() {
   const isMobile = useIsMobile()
   const { currentView, setView, currentUser } = useAppStore()
 
-  const navItems = allNavItems.filter(
-    (item) => !item.adminOnly || currentUser?.role === 'Admin'
-  )
+  const role = currentUser?.role
+
+  const navItems = allNavItems.filter((item) => {
+    // Admin-only items: only CompanyAdmin sees them
+    if (item.adminOnly && role !== 'CompanyAdmin') return false
+    // Manager-only items: CompanyAdmin and Manager see them, Employee does not
+    if (item.managerOnly && role === 'Employee') return false
+    return true
+  })
 
   if (isMobile) {
     return (

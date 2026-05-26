@@ -6,16 +6,27 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const includeInactive = searchParams.get('includeInactive') === 'true'
+    const companyId = searchParams.get('companyId')
 
     const where: Prisma.BranchWhereInput = {}
     if (!includeInactive) {
       where.isActive = true
+    }
+    if (companyId) {
+      where.companyId = companyId
     }
 
     const branches = await db.branch.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       include: {
+        company: {
+          select: {
+            id: true,
+            name: true,
+            plan: true,
+          },
+        },
         _count: {
           select: {
             users: true,
@@ -39,7 +50,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { name, code, address, phone, isHeadOffice } = body
+    const { name, code, address, phone, isHeadOffice, companyId } = body
 
     if (!name || !code) {
       return NextResponse.json(
@@ -48,13 +59,44 @@ export async function POST(request: Request) {
       )
     }
 
+    if (!companyId) {
+      return NextResponse.json(
+        { success: false, error: 'Missing required field: companyId' },
+        { status: 400 }
+      )
+    }
+
+    // Verify company exists
+    const company = await db.company.findUnique({ where: { id: companyId } })
+    if (!company) {
+      return NextResponse.json(
+        { success: false, error: 'Company not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check if this is the first branch for the company - auto set as head office
+    const existingBranchCount = await db.branch.count({
+      where: { companyId },
+    })
+    const shouldBeHeadOffice = existingBranchCount === 0 ? true : (isHeadOffice || false)
+
     const branch = await db.branch.create({
       data: {
         name,
         code: code.toUpperCase(),
         address: address || null,
         phone: phone || null,
-        isHeadOffice: isHeadOffice || false,
+        isHeadOffice: shouldBeHeadOffice,
+        companyId,
+      },
+      include: {
+        company: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     })
 

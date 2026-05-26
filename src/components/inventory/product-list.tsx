@@ -50,6 +50,7 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAppStore } from '@/stores/app-store'
 
 type TrendingType = 'up' | 'down' | 'stable' | 'new' | 'no-sales'
 
@@ -74,6 +75,7 @@ interface InventoryBatch {
 
 interface ProductListProps {
   branchId?: string | null
+  companyId?: string | null
   onRefresh?: () => void
 }
 
@@ -194,7 +196,7 @@ function TrendingBadge({ trending }: { trending: TrendingType }) {
   }
 }
 
-export function ProductList({ branchId, onRefresh }: ProductListProps) {
+export function ProductList({ branchId, companyId, onRefresh }: ProductListProps) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -208,12 +210,16 @@ export function ProductList({ branchId, onRefresh }: ProductListProps) {
   const [deleteProduct, setDeleteProduct] = useState<Product | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  const { currentUser } = useAppStore()
+  const canDelete = currentUser?.role === 'CompanyAdmin' || currentUser?.role === 'Manager'
+
   const fetchProducts = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
       if (category && category !== 'all') params.set('category', category)
+      if (companyId) params.set('companyId', companyId)
       if (branchId) params.set('branchId', branchId)
 
       const res = await fetch(`/api/products?${params.toString()}`)
@@ -229,7 +235,7 @@ export function ProductList({ branchId, onRefresh }: ProductListProps) {
     } finally {
       setLoading(false)
     }
-  }, [search, category, branchId])
+  }, [search, category, branchId, companyId])
 
   useEffect(() => {
     fetchProducts()
@@ -354,7 +360,7 @@ export function ProductList({ branchId, onRefresh }: ProductListProps) {
                 <TableHead className="text-right hidden sm:table-cell">Price</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-center">Trend</TableHead>
-                <TableHead className="w-10"></TableHead>
+                {canDelete && <TableHead className="w-10"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -384,16 +390,18 @@ export function ProductList({ branchId, onRefresh }: ProductListProps) {
                   <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                     <TrendingIndicator trending={product.trending} />
                   </TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
-                      onClick={() => setDeleteProduct(product)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+                  {canDelete && (
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                        onClick={() => setDeleteProduct(product)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -479,73 +487,75 @@ export function ProductList({ branchId, onRefresh }: ProductListProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirmation dialog */}
-      <AlertDialog
-        open={!!deleteProduct}
-        onOpenChange={(open) => !open && setDeleteProduct(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
-              Deactivate Product
-            </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-3 pt-1">
-                <p>
-                  Are you sure you want to deactivate this product? This action can be reversed by an administrator.
-                </p>
-                {deleteProduct && (
-                  <div className="rounded-md border bg-muted/50 p-3 space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Product</span>
-                      <span className="font-medium">{deleteProduct.name}</span>
+      {/* Delete confirmation dialog - only rendered for Manager+ */}
+      {canDelete && (
+        <AlertDialog
+          open={!!deleteProduct}
+          onOpenChange={(open) => !open && setDeleteProduct(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                Deactivate Product
+              </AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-3 pt-1">
+                  <p>
+                    Are you sure you want to deactivate this product? This action can be reversed by an administrator.
+                  </p>
+                  {deleteProduct && (
+                    <div className="rounded-md border bg-muted/50 p-3 space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Product</span>
+                        <span className="font-medium">{deleteProduct.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">SKU</span>
+                        <span className="font-medium font-mono">{deleteProduct.sku}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Current Stock</span>
+                        <span className="font-medium">{deleteProduct.currentStockLevel} units</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Trending</span>
+                        <TrendingBadge trending={deleteProduct.trending} />
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">SKU</span>
-                      <span className="font-medium font-mono">{deleteProduct.sku}</span>
+                  )}
+                  {deleteProduct?.trending === 'down' && (
+                    <div className="flex items-start gap-2 rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                      <TrendingDown className="h-4 w-4 mt-0.5 shrink-0" />
+                      <span>This product has declining sales. Consider adjusting pricing or promotions before deactivating.</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Current Stock</span>
-                      <span className="font-medium">{deleteProduct.currentStockLevel} units</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Trending</span>
-                      <TrendingBadge trending={deleteProduct.trending} />
-                    </div>
-                  </div>
+                  )}
+                  <p className="text-muted-foreground text-xs">
+                    This will deactivate the product. It will no longer appear in the product list or POS system.
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                disabled={deleting}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Deactivating...
+                  </>
+                ) : (
+                  'Deactivate Product'
                 )}
-                {deleteProduct?.trending === 'down' && (
-                  <div className="flex items-start gap-2 rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
-                    <TrendingDown className="h-4 w-4 mt-0.5 shrink-0" />
-                    <span>This product has declining sales. Consider adjusting pricing or promotions before deactivating.</span>
-                  </div>
-                )}
-                <p className="text-muted-foreground text-xs">
-                  This will deactivate the product. It will no longer appear in the product list or POS system.
-                </p>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={deleting}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              {deleting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deactivating...
-                </>
-              ) : (
-                'Deactivate Product'
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   )
 }

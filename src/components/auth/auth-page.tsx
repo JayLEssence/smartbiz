@@ -1,0 +1,536 @@
+'use client'
+
+import { useState } from 'react'
+import { useAppStore, type CompanyInfo } from '@/stores/app-store'
+import { Store, Building2, User, Mail, Lock, Phone, MapPin, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { toast } from 'sonner'
+
+interface SessionData {
+  user: {
+    id: string
+    email: string
+    name: string
+    role: string
+    branchId: string
+    companyId: string
+    branch: {
+      id: string
+      name: string
+      code: string
+      isHeadOffice: boolean
+    }
+    company: {
+      id: string
+      name: string
+      industry: string | null
+      plan: string
+      email: string | null
+      phone: string | null
+      address: string | null
+      logoUrl: string | null
+      isActive: boolean
+    }
+  }
+  token: string
+}
+
+const industries = [
+  { value: 'Retail', label: 'Retail' },
+  { value: 'Wholesale', label: 'Wholesale' },
+  { value: 'Restaurant', label: 'Restaurant' },
+  { value: 'Services', label: 'Services' },
+  { value: 'Other', label: 'Other' },
+]
+
+export function AuthPage() {
+  const { setUser, setCurrentBranchId, setCompany, setAuthenticated, setBranches } = useAppStore()
+
+  // Login state
+  const [loginEmail, setLoginEmail] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+  const [loginLoading, setLoginLoading] = useState(false)
+
+  // Register state
+  const [regCompanyName, setRegCompanyName] = useState('')
+  const [regIndustry, setRegIndustry] = useState('')
+  const [regCompanyEmail, setRegCompanyEmail] = useState('')
+  const [regCompanyPhone, setRegCompanyPhone] = useState('')
+  const [regCompanyAddress, setRegCompanyAddress] = useState('')
+  const [regAdminName, setRegAdminName] = useState('')
+  const [regAdminEmail, setRegAdminEmail] = useState('')
+  const [regPassword, setRegPassword] = useState('')
+  const [regConfirmPassword, setRegConfirmPassword] = useState('')
+  const [regLoading, setRegLoading] = useState(false)
+
+  const [activeTab, setActiveTab] = useState('login')
+
+  const saveSessionAndLogin = (data: SessionData) => {
+    const user = data.user
+    const companyInfo: CompanyInfo = {
+      id: user.company.id,
+      name: user.company.name,
+      industry: user.company.industry,
+      email: user.company.email,
+      phone: user.company.phone,
+      plan: user.company.plan,
+      isActive: user.company.isActive,
+    }
+
+    setUser({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      branchId: user.branchId,
+      companyId: user.companyId,
+      branch: {
+        id: user.branch.id,
+        name: user.branch.name,
+        code: user.branch.code,
+        isHeadOffice: user.branch.isHeadOffice,
+        isActive: true,
+      },
+      company: companyInfo,
+    })
+    setCurrentBranchId(user.branchId)
+    setCompany(companyInfo)
+    setAuthenticated(true)
+
+    // Save to localStorage for session persistence
+    localStorage.setItem('smartbiz_session', JSON.stringify(data))
+  }
+
+  const fetchBranches = async (companyId: string) => {
+    try {
+      const res = await fetch(`/api/branches?companyId=${companyId}`)
+      const json = await res.json()
+      if (json.success && json.data) {
+        const branches = json.data.map((b: { id: string; name: string; code: string; isHeadOffice: boolean; isActive: boolean }) => ({
+          id: b.id,
+          name: b.name,
+          code: b.code,
+          isHeadOffice: b.isHeadOffice,
+          isActive: b.isActive,
+        }))
+        setBranches(branches)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!loginEmail || !loginPassword) {
+      toast.error('Please enter your email and password')
+      return
+    }
+
+    setLoginLoading(true)
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+      })
+      const json = await res.json()
+
+      if (!json.success) {
+        toast.error(json.error || 'Login failed')
+        return
+      }
+
+      saveSessionAndLogin(json.data)
+      await fetchBranches(json.data.user.companyId)
+      toast.success(`Welcome back, ${json.data.user.name}!`)
+    } catch {
+      toast.error('Network error. Please try again.')
+    } finally {
+      setLoginLoading(false)
+    }
+  }
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!regCompanyName || !regAdminName || !regAdminEmail || !regPassword) {
+      toast.error('Please fill in all required fields')
+      return
+    }
+
+    if (regPassword !== regConfirmPassword) {
+      toast.error('Passwords do not match')
+      return
+    }
+
+    if (regPassword.length < 6) {
+      toast.error('Password must be at least 6 characters')
+      return
+    }
+
+    setRegLoading(true)
+    try {
+      const res = await fetch('/api/companies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: regCompanyName,
+          industry: regIndustry || undefined,
+          email: regCompanyEmail || undefined,
+          phone: regCompanyPhone || undefined,
+          address: regCompanyAddress || undefined,
+          adminName: regAdminName,
+          adminEmail: regAdminEmail,
+          adminPassword: regPassword,
+        }),
+      })
+      const json = await res.json()
+
+      if (!json.success) {
+        toast.error(json.error || 'Registration failed')
+        return
+      }
+
+      // After registration, auto-login using the new admin account
+      const loginRes = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: regAdminEmail, password: regPassword }),
+      })
+      const loginJson = await loginRes.json()
+
+      if (loginJson.success) {
+        saveSessionAndLogin(loginJson.data)
+        await fetchBranches(loginJson.data.user.companyId)
+        toast.success('Company registered successfully! Welcome to SmartBiz!')
+      } else {
+        toast.success('Company registered! Please log in with your credentials.')
+        setActiveTab('login')
+        setLoginEmail(regAdminEmail)
+      }
+    } catch {
+      toast.error('Network error. Please try again.')
+    } finally {
+      setRegLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:from-emerald-950/20 dark:via-background dark:to-teal-950/20 p-4">
+      <div className="w-full max-w-md">
+        {/* Logo & Branding */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/25 mb-4">
+            <Store className="h-7 w-7" />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight">SmartBiz</h1>
+          <p className="text-sm text-muted-foreground mt-1">Retail Management System</p>
+        </div>
+
+        <Card className="border-0 shadow-xl shadow-black/5">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <CardHeader className="pb-0">
+              <TabsList className="w-full">
+                <TabsTrigger value="login" className="flex-1">Sign In</TabsTrigger>
+                <TabsTrigger value="register" className="flex-1">Register</TabsTrigger>
+              </TabsList>
+            </CardHeader>
+
+            <CardContent className="pt-4">
+              {/* Login Tab */}
+              <TabsContent value="login">
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="login-email"
+                        type="email"
+                        placeholder="you@company.com"
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        className="pl-9"
+                        disabled={loginLoading}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="login-password"
+                        type="password"
+                        placeholder="Enter your password"
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        className="pl-9"
+                        disabled={loginLoading}
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                    disabled={loginLoading}
+                  >
+                    {loginLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
+                      <>
+                        Sign In
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
+
+                  <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-3 mt-4">
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium mb-1.5">Demo Accounts</p>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="font-mono bg-white dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border">admin@smartbiz.com</span>
+                        <span>Multi-branch corp</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="font-mono bg-white dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border">mamajane@gmail.com</span>
+                        <span>Single shop</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Password for demo: <span className="font-mono font-medium">demo</span></p>
+                    </div>
+                  </div>
+                </form>
+              </TabsContent>
+
+              {/* Register Tab */}
+              <TabsContent value="register">
+                <form onSubmit={handleRegister} className="space-y-4">
+                  {/* Explanation */}
+                  <div className="flex items-start gap-2 rounded-lg bg-muted/50 p-3">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                    <p className="text-xs text-muted-foreground">
+                      Register your company to get started. We&apos;ll create your head office branch and admin account automatically.
+                    </p>
+                  </div>
+
+                  {/* Company Info Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                      <Building2 className="h-4 w-4" />
+                      Company Details
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="reg-company-name">
+                        Company Name <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="reg-company-name"
+                        placeholder="Acme Retail Ltd"
+                        value={regCompanyName}
+                        onChange={(e) => setRegCompanyName(e.target.value)}
+                        disabled={regLoading}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="reg-industry">Industry</Label>
+                        <Select value={regIndustry} onValueChange={setRegIndustry}>
+                          <SelectTrigger id="reg-industry">
+                            <SelectValue placeholder="Select..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {industries.map((ind) => (
+                              <SelectItem key={ind.value} value={ind.value}>
+                                {ind.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="reg-company-phone">Phone</Label>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="reg-company-phone"
+                            placeholder="+254 700..."
+                            value={regCompanyPhone}
+                            onChange={(e) => setRegCompanyPhone(e.target.value)}
+                            className="pl-9"
+                            disabled={regLoading}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="reg-company-email">Company Email</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="reg-company-email"
+                          type="email"
+                          placeholder="info@company.com"
+                          value={regCompanyEmail}
+                          onChange={(e) => setRegCompanyEmail(e.target.value)}
+                          className="pl-9"
+                          disabled={regLoading}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="reg-company-address">Address</Label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="reg-company-address"
+                          placeholder="123 Business Street"
+                          value={regCompanyAddress}
+                          onChange={(e) => setRegCompanyAddress(e.target.value)}
+                          className="pl-9"
+                          disabled={regLoading}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Separator */}
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-card px-2 text-muted-foreground">Admin Account</span>
+                    </div>
+                  </div>
+
+                  {/* Admin Info Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                      <User className="h-4 w-4" />
+                      Admin Details
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="reg-admin-name">
+                        Full Name <span className="text-destructive">*</span>
+                      </Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="reg-admin-name"
+                          placeholder="John Doe"
+                          value={regAdminName}
+                          onChange={(e) => setRegAdminName(e.target.value)}
+                          className="pl-9"
+                          disabled={regLoading}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="reg-admin-email">
+                        Email (Login) <span className="text-destructive">*</span>
+                      </Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="reg-admin-email"
+                          type="email"
+                          placeholder="admin@company.com"
+                          value={regAdminEmail}
+                          onChange={(e) => setRegAdminEmail(e.target.value)}
+                          className="pl-9"
+                          disabled={regLoading}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="reg-password">
+                          Password <span className="text-destructive">*</span>
+                        </Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="reg-password"
+                            type="password"
+                            placeholder="Min 6 chars"
+                            value={regPassword}
+                            onChange={(e) => setRegPassword(e.target.value)}
+                            className="pl-9"
+                            disabled={regLoading}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="reg-confirm-password">
+                          Confirm <span className="text-destructive">*</span>
+                        </Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="reg-confirm-password"
+                            type="password"
+                            placeholder="Re-enter"
+                            value={regConfirmPassword}
+                            onChange={(e) => setRegConfirmPassword(e.target.value)}
+                            className="pl-9"
+                            disabled={regLoading}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                    disabled={regLoading}
+                  >
+                    {regLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating company...
+                      </>
+                    ) : (
+                      <>
+                        Register Company
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+            </CardContent>
+          </Tabs>
+        </Card>
+
+        {/* Footer */}
+        <p className="text-center text-xs text-muted-foreground mt-6">
+          By continuing, you agree to SmartBiz&apos;s Terms of Service
+        </p>
+      </div>
+    </div>
+  )
+}

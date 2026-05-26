@@ -21,7 +21,14 @@ interface InventoryBatch {
 
 export function InventoryView() {
   const isMobile = useIsMobile()
-  const { currentBranchId } = useAppStore()
+  const { currentBranchId, currentUser } = useAppStore()
+  const companyId = currentUser?.companyId
+  const isEmployee = currentUser?.role === 'Employee'
+  // Add Product tab: only CompanyAdmin and Manager
+  const canAddProduct = currentUser?.role === 'CompanyAdmin' || currentUser?.role === 'Manager'
+  // Stock In tab: only CompanyAdmin and Manager (employees just sell, they don't stock)
+  const canStockIn = currentUser?.role === 'CompanyAdmin' || currentUser?.role === 'Manager'
+
   const [refreshKey, setRefreshKey] = useState(0)
   const [batches, setBatches] = useState<InventoryBatch[]>([])
   const [batchesLoading, setBatchesLoading] = useState(false)
@@ -34,6 +41,7 @@ export function InventoryView() {
     setBatchesLoading(true)
     try {
       const params = new URLSearchParams()
+      if (companyId) params.set('companyId', companyId)
       if (currentBranchId) params.set('branchId', currentBranchId)
       const res = await fetch(`/api/inventory?${params.toString()}`)
       const json = await res.json()
@@ -45,7 +53,7 @@ export function InventoryView() {
     } finally {
       setBatchesLoading(false)
     }
-  }, [currentBranchId])
+  }, [currentBranchId, companyId])
 
   return (
     <div className={isMobile ? 'p-4 pb-24' : 'p-4'}>
@@ -55,14 +63,18 @@ export function InventoryView() {
             <Package className="h-3.5 w-3.5" />
             Products
           </TabsTrigger>
-          <TabsTrigger value="stockin" className="gap-1.5">
-            <PackagePlus className="h-3.5 w-3.5" />
-            Stock In
-          </TabsTrigger>
-          <TabsTrigger value="addproduct" className="gap-1.5">
-            <PlusCircle className="h-3.5 w-3.5" />
-            Add Product
-          </TabsTrigger>
+          {canStockIn && (
+            <TabsTrigger value="stockin" className="gap-1.5">
+              <PackagePlus className="h-3.5 w-3.5" />
+              Stock In
+            </TabsTrigger>
+          )}
+          {canAddProduct && (
+            <TabsTrigger value="addproduct" className="gap-1.5">
+              <PlusCircle className="h-3.5 w-3.5" />
+              Add Product
+            </TabsTrigger>
+          )}
           <TabsTrigger value="history" className="gap-1.5" onClick={fetchBatches}>
             <History className="h-3.5 w-3.5" />
             History
@@ -70,20 +82,24 @@ export function InventoryView() {
         </TabsList>
 
         <TabsContent value="products">
-          <ProductList key={refreshKey} branchId={currentBranchId} onRefresh={handleRefresh} />
+          <ProductList key={refreshKey} branchId={currentBranchId} companyId={companyId} onRefresh={handleRefresh} />
         </TabsContent>
 
-        <TabsContent value="stockin">
-          <div className="max-w-md">
-            <StockInForm onStockIn={handleRefresh} branchId={currentBranchId} />
-          </div>
-        </TabsContent>
+        {canStockIn && (
+          <TabsContent value="stockin">
+            <div className="max-w-md">
+              <StockInForm onStockIn={handleRefresh} branchId={currentBranchId} companyId={companyId} />
+            </div>
+          </TabsContent>
+        )}
 
-        <TabsContent value="addproduct">
-          <div className="max-w-lg">
-            <AddProductForm onProductAdded={handleRefresh} />
-          </div>
-        </TabsContent>
+        {canAddProduct && (
+          <TabsContent value="addproduct">
+            <div className="max-w-lg">
+              <AddProductForm onProductAdded={handleRefresh} />
+            </div>
+          </TabsContent>
+        )}
 
         <TabsContent value="history">
           {batchesLoading ? (

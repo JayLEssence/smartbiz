@@ -1,22 +1,27 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const days = parseInt(searchParams.get('days') || '45', 10)
     const branchId = searchParams.get('branchId')
+    const companyId = searchParams.get('companyId')
 
     const cutoffDate = new Date()
     cutoffDate.setDate(cutoffDate.getDate() - days)
 
     // Get all products with stock > 0
-    const productWhere: { currentStockLevel: { gt: number }; isActive: boolean; branchId?: string } = {
+    const productWhere: Prisma.ProductWhereInput = {
       currentStockLevel: { gt: 0 },
       isActive: true,
     }
     if (branchId) {
       productWhere.branchId = branchId
+    }
+    if (companyId) {
+      productWhere.companyId = companyId
     }
 
     const productsWithStock = await db.product.findMany({
@@ -27,11 +32,14 @@ export async function GET(request: Request) {
     const result = []
 
     for (const product of productsWithStock) {
-      const saleItemWhere: { productId: string; sale?: { branchId?: string } } = {
+      const saleItemWhere: Prisma.SaleItemWhereInput = {
         productId: product.id,
       }
       if (branchId) {
         saleItemWhere.sale = { branchId }
+      }
+      if (companyId) {
+        saleItemWhere.sale = { ...((saleItemWhere.sale as Prisma.SaleWhereInput) || {}), companyId }
       }
 
       const lastSaleItem = await db.saleItem.findFirst({

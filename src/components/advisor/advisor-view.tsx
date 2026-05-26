@@ -19,7 +19,8 @@ interface Recommendation {
 
 export function AdvisorView() {
   const isMobile = useIsMobile()
-  const { currentBranchId } = useAppStore()
+  const { currentBranchId, currentUser } = useAppStore()
+  const companyId = currentUser?.companyId
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -29,6 +30,7 @@ export function AdvisorView() {
     setError(null)
     try {
       const params = new URLSearchParams()
+      if (companyId) params.set('companyId', companyId)
       if (currentBranchId) params.set('branchId', currentBranchId)
       const res = await fetch(`/api/advisor/recommendations?${params.toString()}`)
       const json = await res.json()
@@ -42,7 +44,7 @@ export function AdvisorView() {
     } finally {
       setLoading(false)
     }
-  }, [currentBranchId])
+  }, [currentBranchId, companyId])
 
   useEffect(() => {
     fetchRecommendations()

@@ -16,9 +16,10 @@ interface DeadStockItem {
 
 interface DeadStockListProps {
   branchId?: string | null
+  companyId?: string | null
 }
 
-export function DeadStockList({ branchId }: DeadStockListProps) {
+export function DeadStockList({ branchId, companyId }: DeadStockListProps) {
   const [data, setData] = useState<DeadStockItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -26,6 +27,7 @@ export function DeadStockList({ branchId }: DeadStockListProps) {
     setLoading(true)
     try {
       const params = new URLSearchParams({ days: '45' })
+      if (companyId) params.set('companyId', companyId)
       if (branchId) params.set('branchId', branchId)
       const res = await fetch(`/api/analytics/dead-stock?${params.toString()}`)
       const json = await res.json()
@@ -37,7 +39,7 @@ export function DeadStockList({ branchId }: DeadStockListProps) {
     } finally {
       setLoading(false)
     }
-  }, [branchId])
+  }, [branchId, companyId])
 
   useEffect(() => {
     fetchData()

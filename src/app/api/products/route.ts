@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     const category = searchParams.get('category')
     const lowStock = searchParams.get('lowStock') === 'true'
     const branchId = searchParams.get('branchId')
+    const companyId = searchParams.get('companyId')
     const includeInactive = searchParams.get('includeInactive') === 'true'
 
     const where: Prisma.ProductWhereInput = {}
@@ -27,6 +28,10 @@ export async function GET(request: Request) {
 
     if (branchId) {
       where.branchId = branchId
+    }
+
+    if (companyId) {
+      where.companyId = companyId
     }
 
     if (!includeInactive) {
@@ -54,13 +59,18 @@ export async function GET(request: Request) {
 
     const productIds = result.map((p) => p.id)
 
+    // Build sale filter with companyId support
+    const saleFilterBase: Prisma.SaleWhereInput = {}
+    if (branchId) saleFilterBase.branchId = branchId
+    if (companyId) saleFilterBase.companyId = companyId
+
     // Get sale items for last 7 days
     const recentSaleItems = await db.saleItem.findMany({
       where: {
         productId: { in: productIds },
         sale: {
           saleDate: { gte: sevenDaysAgo },
-          ...(branchId ? { branchId } : {}),
+          ...saleFilterBase,
         },
       },
     })
@@ -71,7 +81,7 @@ export async function GET(request: Request) {
         productId: { in: productIds },
         sale: {
           saleDate: { gte: fourteenDaysAgo, lt: sevenDaysAgo },
-          ...(branchId ? { branchId } : {}),
+          ...saleFilterBase,
         },
       },
     })
@@ -124,7 +134,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { name, sku, barcode, category, currentStockLevel, reorderThreshold, defaultSalePrice, branchId } = body
+    const { name, sku, barcode, category, currentStockLevel, reorderThreshold, defaultSalePrice, branchId, companyId } = body
 
     if (!name || !sku || !category || currentStockLevel === undefined || reorderThreshold === undefined || defaultSalePrice === undefined) {
       return NextResponse.json(
@@ -140,6 +150,28 @@ export async function POST(request: Request) {
       )
     }
 
+    if (!companyId) {
+      return NextResponse.json(
+        { success: false, error: 'Missing required field: companyId' },
+        { status: 400 }
+      )
+    }
+
+    // Validate branch belongs to the same company
+    const branch = await db.branch.findUnique({ where: { id: branchId } })
+    if (!branch) {
+      return NextResponse.json(
+        { success: false, error: 'Branch not found' },
+        { status: 404 }
+      )
+    }
+    if (branch.companyId !== companyId) {
+      return NextResponse.json(
+        { success: false, error: 'Branch does not belong to the specified company' },
+        { status: 400 }
+      )
+    }
+
     const product = await db.product.create({
       data: {
         name,
@@ -150,6 +182,7 @@ export async function POST(request: Request) {
         reorderThreshold: Number(reorderThreshold),
         defaultSalePrice: Number(defaultSalePrice),
         branchId,
+        companyId,
       },
     })
 

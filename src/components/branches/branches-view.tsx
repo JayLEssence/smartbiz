@@ -95,12 +95,16 @@ export function BranchesView() {
   const [editForm, setEditForm] = useState<BranchForm>(emptyForm)
   const [submitting, setSubmitting] = useState(false)
 
-  const isAdmin = currentUser?.role === 'Admin'
+  const isAdmin = currentUser?.role === 'CompanyAdmin'
+
+  const companyId = currentUser?.companyId
 
   const fetchBranches = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/branches?includeInactive=${showInactive}`)
+      const params = new URLSearchParams({ includeInactive: String(showInactive) })
+      if (companyId) params.set('companyId', companyId)
+      const res = await fetch(`/api/branches?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         setBranches(json.data)
@@ -110,7 +114,7 @@ export function BranchesView() {
     } finally {
       setLoading(false)
     }
-  }, [showInactive])
+  }, [showInactive, companyId])
 
   useEffect(() => {
     if (isAdmin) {

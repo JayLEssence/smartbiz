@@ -8,6 +8,7 @@ export async function GET(request: Request) {
     const period = searchParams.get('period') || 'monthly'
     const sortBy = searchParams.get('sortBy') || 'revenue'
     const branchId = searchParams.get('branchId')
+    const companyId = searchParams.get('companyId')
 
     // Calculate date range based on period
     const now = new Date()
@@ -33,6 +34,9 @@ export async function GET(request: Request) {
     }
     if (branchId) {
       saleWhere.branchId = branchId
+    }
+    if (companyId) {
+      saleWhere.companyId = companyId
     }
 
     const saleItems = await db.saleItem.findMany({

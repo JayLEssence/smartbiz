@@ -24,9 +24,10 @@ interface Product {
 interface StockInFormProps {
   onStockIn?: () => void
   branchId?: string | null
+  companyId?: string | null
 }
 
-export function StockInForm({ onStockIn, branchId }: StockInFormProps) {
+export function StockInForm({ onStockIn, branchId, companyId }: StockInFormProps) {
   const [products, setProducts] = useState<Product[]>([])
   const [selectedProductId, setSelectedProductId] = useState('')
   const [quantity, setQuantity] = useState('')
@@ -38,6 +39,7 @@ export function StockInForm({ onStockIn, branchId }: StockInFormProps) {
   const fetchProducts = useCallback(async () => {
     try {
       const params = new URLSearchParams()
+      if (companyId) params.set('companyId', companyId)
       if (branchId) params.set('branchId', branchId)
       const res = await fetch(`/api/products?${params.toString()}`)
       const json = await res.json()
@@ -47,7 +49,7 @@ export function StockInForm({ onStockIn, branchId }: StockInFormProps) {
     } catch {
       // ignore
     }
-  }, [branchId])
+  }, [branchId, companyId])
 
   useEffect(() => {
     fetchProducts()
@@ -79,6 +81,7 @@ export function StockInForm({ onStockIn, branchId }: StockInFormProps) {
           purchasePricePerUnit: parseFloat(purchasePrice),
           supplier: supplier || undefined,
           branchId: branchId || undefined,
+          companyId: companyId || undefined,
         }),
       })
 

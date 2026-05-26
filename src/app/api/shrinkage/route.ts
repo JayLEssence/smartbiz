@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     const to = searchParams.get('to')
     const reason = searchParams.get('reason')
     const branchId = searchParams.get('branchId')
+    const companyId = searchParams.get('companyId')
 
     const where: Prisma.ShrinkageWhereInput = {}
 
@@ -28,6 +29,10 @@ export async function GET(request: Request) {
 
     if (branchId) {
       where.branchId = branchId
+    }
+
+    if (companyId) {
+      where.branch = { companyId }
     }
 
     const shrinkages = await db.shrinkage.findMany({
@@ -110,6 +115,14 @@ export async function POST(request: Request) {
       // Use provided branchId or fall back to product's branchId
       const shrinkageBranchId = branchId || product.branchId
 
+      // Validate branch belongs to same company as product
+      if (branchId && branchId !== product.branchId) {
+        const branch = await tx.branch.findUnique({ where: { id: branchId } })
+        if (branch && branch.companyId !== product.companyId) {
+          throw new Error('Branch does not belong to the same company as the product')
+        }
+      }
+
       // Get cost price from most recent inventory batch for financial loss calculation
       const latestBatch = await tx.inventoryBatch.findFirst({
         where: { productId },
@@ -166,6 +179,12 @@ export async function POST(request: Request) {
         )
       }
       if (error.message.startsWith('Insufficient stock')) {
+        return NextResponse.json(
+          { success: false, error: error.message },
+          { status: 400 }
+        )
+      }
+      if (error.message.includes('does not belong to the same company')) {
         return NextResponse.json(
           { success: false, error: error.message },
           { status: 400 }

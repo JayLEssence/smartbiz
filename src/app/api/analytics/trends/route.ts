@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     const category = searchParams.get('category')
     const days = parseInt(searchParams.get('days') || '30', 10)
     const branchId = searchParams.get('branchId')
+    const companyId = searchParams.get('companyId')
 
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days)
@@ -23,15 +24,24 @@ export async function GET(request: Request) {
     if (branchId) {
       saleWhere.branchId = branchId
     }
+    if (companyId) {
+      saleWhere.companyId = companyId
+    }
 
     // Get product IDs for category filter
     let categoryProductIds: string[] | null = null
     if (category) {
+      const productWhere: Prisma.ProductWhereInput = {
+        category,
+      }
+      if (branchId) {
+        productWhere.branchId = branchId
+      }
+      if (companyId) {
+        productWhere.companyId = companyId
+      }
       const productsInCategory = await db.product.findMany({
-        where: {
-          category,
-          ...(branchId ? { branchId } : {}),
-        },
+        where: productWhere,
         select: { id: true },
       })
       categoryProductIds = productsInCategory.map((p) => p.id)

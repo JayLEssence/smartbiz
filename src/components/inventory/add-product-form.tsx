@@ -40,7 +40,7 @@ const CATEGORIES = [
 
 export function AddProductForm({ onProductAdded }: AddProductFormProps) {
   const { currentUser, branches } = useAppStore()
-  const isAdmin = currentUser?.role === 'Admin'
+  const isAdmin = currentUser?.role === 'CompanyAdmin'
 
   const [name, setName] = useState('')
   const [sku, setSku] = useState('')
@@ -114,6 +114,7 @@ export function AddProductForm({ onProductAdded }: AddProductFormProps) {
           reorderThreshold: parseInt(reorderThreshold),
           defaultSalePrice: parseFloat(salePrice),
           branchId,
+          companyId: currentUser?.companyId,
         }),
       })
 

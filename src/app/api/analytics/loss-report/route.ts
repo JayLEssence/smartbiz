@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     const to = searchParams.get('to')
     const reason = searchParams.get('reason')
     const branchId = searchParams.get('branchId')
+    const companyId = searchParams.get('companyId')
 
     const where: Prisma.ShrinkageWhereInput = {}
 
@@ -28,6 +29,10 @@ export async function GET(request: Request) {
 
     if (branchId) {
       where.branchId = branchId
+    }
+
+    if (companyId) {
+      where.branch = { companyId }
     }
 
     const shrinkages = await db.shrinkage.findMany({

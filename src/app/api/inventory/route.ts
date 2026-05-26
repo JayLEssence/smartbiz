@@ -7,6 +7,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const productId = searchParams.get('productId')
     const branchId = searchParams.get('branchId')
+    const companyId = searchParams.get('companyId')
 
     const where: Prisma.InventoryBatchWhereInput = {}
     if (productId) {
@@ -14,6 +15,9 @@ export async function GET(request: Request) {
     }
     if (branchId) {
       where.branchId = branchId
+    }
+    if (companyId) {
+      where.branch = { companyId }
     }
 
     const batches = await db.inventoryBatch.findMany({
@@ -25,6 +29,13 @@ export async function GET(request: Request) {
             id: true,
             name: true,
             code: true,
+            companyId: true,
+            company: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
       },
@@ -66,6 +77,14 @@ export async function POST(request: Request) {
       // Use the product's branchId if branchId not provided
       const batchBranchId = branchId || product.branchId
 
+      // Validate product belongs to the same branch's company
+      const batchBranch = await tx.branch.findUnique({
+        where: { id: batchBranchId },
+      })
+      if (batchBranch && batchBranch.companyId !== product.companyId) {
+        throw new Error('Product does not belong to the same company as the branch')
+      }
+
       // Create the inventory batch
       const batch = await tx.inventoryBatch.create({
         data: {
@@ -82,6 +101,12 @@ export async function POST(request: Request) {
               id: true,
               name: true,
               code: true,
+              company: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
             },
           },
         },
@@ -103,11 +128,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, data: result }, { status: 201 })
   } catch (error) {
     console.error('Inventory POST error:', error)
-    if (error instanceof Error && error.message === 'Product not found') {
-      return NextResponse.json(
-        { success: false, error: 'Product not found' },
-        { status: 404 }
-      )
+    if (error instanceof Error) {
+      if (error.message === 'Product not found') {
+        return NextResponse.json(
+          { success: false, error: 'Product not found' },
+          { status: 404 }
+        )
+      }
+      if (error.message.includes('does not belong to the same company')) {
+        return NextResponse.json(
+          { success: false, error: error.message },
+          { status: 400 }
+        )
+      }
     }
     return NextResponse.json(
       { success: false, error: 'Internal server error' },

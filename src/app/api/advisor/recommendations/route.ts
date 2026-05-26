@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import ZAI from 'z-ai-web-dev-sdk'
 
 interface Recommendation {
@@ -70,14 +71,17 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const branchId = searchParams.get('branchId')
+    const companyId = searchParams.get('companyId')
 
-    // Build branch filter
+    // Build filters
     const branchFilter = branchId ? { branchId } : {}
+    const companyFilter = companyId ? { companyId } : {}
+    const combinedFilter = { ...branchFilter, ...companyFilter }
 
     // Gather business data
     const lowStockProducts = await db.product.findMany({
       where: {
-        ...branchFilter,
+        ...combinedFilter,
         isActive: true,
       },
     })
@@ -89,11 +93,14 @@ export async function GET(request: Request) {
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-    const saleWhere: { saleDate: { gte: Date }; branchId?: string } = {
+    const saleWhere: Prisma.SaleWhereInput = {
       saleDate: { gte: thirtyDaysAgo },
     }
     if (branchId) {
       saleWhere.branchId = branchId
+    }
+    if (companyId) {
+      saleWhere.companyId = companyId
     }
 
     const recentSaleItems = await db.saleItem.findMany({
@@ -127,11 +134,18 @@ export async function GET(request: Request) {
     const deadStockItems: { productId: string; productName: string; currentStockLevel: number; daysSinceLastSale: number | null }[] = []
 
     for (const product of productsWithStock) {
-      const saleItemWhere: { productId: string; sale?: { branchId?: string } } = {
+      const saleItemWhere: Prisma.SaleItemWhereInput = {
         productId: product.id,
       }
+      const saleSubWhere: Prisma.SaleWhereInput = {}
       if (branchId) {
-        saleItemWhere.sale = { branchId }
+        saleSubWhere.branchId = branchId
+      }
+      if (companyId) {
+        saleSubWhere.companyId = companyId
+      }
+      if (Object.keys(saleSubWhere).length > 0) {
+        saleItemWhere.sale = saleSubWhere
       }
 
       const lastSale = await db.saleItem.findFirst({
@@ -173,6 +187,7 @@ export async function GET(request: Request) {
         daysSinceLastSale: d.daysSinceLastSale,
       })),
       branchId: branchId || 'all',
+      companyId: companyId || 'all',
     }
 
     // Try LLM-powered recommendations

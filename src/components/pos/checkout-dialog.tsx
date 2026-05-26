@@ -50,6 +50,7 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
           items: saleItems,
           discount: discount,
           branchId: currentBranchId ?? currentUser.branchId,
+          companyId: currentUser.companyId,
         }),
       })
 
