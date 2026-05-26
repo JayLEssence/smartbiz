@@ -8,6 +8,7 @@ export async function GET(request: Request) {
     const from = searchParams.get('from')
     const to = searchParams.get('to')
     const reason = searchParams.get('reason')
+    const branchId = searchParams.get('branchId')
 
     const where: Prisma.ShrinkageWhereInput = {}
 
@@ -23,6 +24,10 @@ export async function GET(request: Request) {
 
     if (reason) {
       where.reason = reason
+    }
+
+    if (branchId) {
+      where.branchId = branchId
     }
 
     const shrinkages = await db.shrinkage.findMany({
@@ -85,6 +90,43 @@ export async function GET(request: Request) {
       count: val.count,
     }))
 
+    // Branch breakdown when no specific branch filter
+    let lossByBranch: { branchId: string; branchName: string; totalLoss: number; count: number }[] | undefined
+    if (!branchId) {
+      const branchLossMap: Record<string, { branchName: string; totalLoss: number; count: number }> = {}
+
+      for (const shrinkage of shrinkages) {
+        const batch = await db.inventoryBatch.findFirst({
+          where: {
+            productId: shrinkage.productId,
+            dateReceived: { lte: shrinkage.dateRecorded },
+          },
+          orderBy: { dateReceived: 'desc' },
+        })
+
+        const costPrice = batch ? batch.purchasePricePerUnit : 0
+        const financialLoss = costPrice * shrinkage.quantityLost
+
+        if (!branchLossMap[shrinkage.branchId]) {
+          const branch = await db.branch.findUnique({ where: { id: shrinkage.branchId } })
+          branchLossMap[shrinkage.branchId] = {
+            branchName: branch?.name || 'Unknown',
+            totalLoss: 0,
+            count: 0,
+          }
+        }
+        branchLossMap[shrinkage.branchId].totalLoss += financialLoss
+        branchLossMap[shrinkage.branchId].count += 1
+      }
+
+      lossByBranch = Object.entries(branchLossMap).map(([bid, val]) => ({
+        branchId: bid,
+        branchName: val.branchName,
+        totalLoss: Math.round(val.totalLoss * 100) / 100,
+        count: val.count,
+      }))
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -92,6 +134,7 @@ export async function GET(request: Request) {
         totalItems: shrinkages.length,
         lossByReason,
         lossByProduct,
+        lossByBranch,
       },
     })
   } catch (error) {

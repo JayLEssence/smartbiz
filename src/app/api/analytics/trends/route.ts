@@ -8,6 +8,7 @@ export async function GET(request: Request) {
     const productId = searchParams.get('productId')
     const category = searchParams.get('category')
     const days = parseInt(searchParams.get('days') || '30', 10)
+    const branchId = searchParams.get('branchId')
 
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days)
@@ -19,12 +20,18 @@ export async function GET(request: Request) {
         gte: startDate,
       },
     }
+    if (branchId) {
+      saleWhere.branchId = branchId
+    }
 
     // Get product IDs for category filter
     let categoryProductIds: string[] | null = null
     if (category) {
       const productsInCategory = await db.product.findMany({
-        where: { category },
+        where: {
+          category,
+          ...(branchId ? { branchId } : {}),
+        },
         select: { id: true },
       })
       categoryProductIds = productsInCategory.map((p) => p.id)

@@ -8,6 +8,7 @@ export async function GET(request: Request) {
     const from = searchParams.get('from')
     const to = searchParams.get('to')
     const reason = searchParams.get('reason')
+    const branchId = searchParams.get('branchId')
 
     const where: Prisma.ShrinkageWhereInput = {}
 
@@ -25,10 +26,21 @@ export async function GET(request: Request) {
       where.reason = reason
     }
 
+    if (branchId) {
+      where.branchId = branchId
+    }
+
     const shrinkages = await db.shrinkage.findMany({
       where,
       include: {
         product: true,
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
       },
       orderBy: { dateRecorded: 'desc' },
     })
@@ -65,7 +77,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { productId, quantityLost, reason } = body
+    const { productId, quantityLost, reason, branchId } = body
 
     if (!productId || !quantityLost || !reason) {
       return NextResponse.json(
@@ -95,6 +107,9 @@ export async function POST(request: Request) {
         throw new Error(`Insufficient stock. Available: ${product.currentStockLevel}, Lost: ${quantityLost}`)
       }
 
+      // Use provided branchId or fall back to product's branchId
+      const shrinkageBranchId = branchId || product.branchId
+
       // Get cost price from most recent inventory batch for financial loss calculation
       const latestBatch = await tx.inventoryBatch.findFirst({
         where: { productId },
@@ -110,9 +125,17 @@ export async function POST(request: Request) {
           productId,
           quantityLost: Number(quantityLost),
           reason,
+          branchId: shrinkageBranchId,
         },
         include: {
           product: true,
+          branch: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            },
+          },
         },
       })
 

@@ -15,6 +15,9 @@ export async function POST(request: Request) {
 
     const user = await db.user.findUnique({
       where: { email },
+      include: {
+        branch: true,
+      },
     })
 
     if (!user) {
@@ -36,6 +39,13 @@ export async function POST(request: Request) {
           email: user.email,
           name: user.name,
           role: user.role,
+          branchId: user.branchId,
+          branch: {
+            id: user.branch.id,
+            name: user.branch.name,
+            code: user.branch.code,
+            isHeadOffice: user.branch.isHeadOffice,
+          },
         },
         token,
       },

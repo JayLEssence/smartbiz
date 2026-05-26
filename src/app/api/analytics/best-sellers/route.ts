@@ -7,6 +7,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || 'monthly'
     const sortBy = searchParams.get('sortBy') || 'revenue'
+    const branchId = searchParams.get('branchId')
 
     // Calculate date range based on period
     const now = new Date()
@@ -25,13 +26,18 @@ export async function GET(request: Request) {
         break
     }
 
+    const saleWhere: Prisma.SaleWhereInput = {
+      saleDate: {
+        gte: startDate,
+      },
+    }
+    if (branchId) {
+      saleWhere.branchId = branchId
+    }
+
     const saleItems = await db.saleItem.findMany({
       where: {
-        sale: {
-          saleDate: {
-            gte: startDate,
-          },
-        },
+        sale: saleWhere,
       },
       include: {
         product: true,

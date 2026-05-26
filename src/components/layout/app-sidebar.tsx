@@ -9,23 +9,29 @@ import {
   LayoutDashboard,
   BarChart3,
   Lightbulb,
+  Building2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 
-const navItems: { view: ViewType; label: string; icon: React.ElementType }[] = [
+const allNavItems: { view: ViewType; label: string; icon: React.ElementType; adminOnly?: boolean }[] = [
   { view: 'pos', label: 'POS', icon: ShoppingCart },
   { view: 'inventory', label: 'Inventory', icon: Package },
   { view: 'shrinkage', label: 'Loss Track', icon: AlertTriangle },
   { view: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { view: 'analytics', label: 'Analytics', icon: BarChart3 },
   { view: 'advisor', label: 'Advisor', icon: Lightbulb },
+  { view: 'branches', label: 'Branches', icon: Building2, adminOnly: true },
 ]
 
 export function AppSidebar() {
   const isMobile = useIsMobile()
-  const { currentView, setView } = useAppStore()
+  const { currentView, setView, currentUser } = useAppStore()
+
+  const navItems = allNavItems.filter(
+    (item) => !item.adminOnly || currentUser?.role === 'Admin'
+  )
 
   if (isMobile) {
     return (
@@ -41,7 +47,7 @@ export function AppSidebar() {
                 size="sm"
                 onClick={() => setView(item.view)}
                 className={cn(
-                  'flex flex-col items-center gap-0.5 h-auto py-2 px-2 min-w-[56px]',
+                  'flex flex-col items-center gap-0.5 h-auto py-2 px-2 min-w-[48px]',
                   isActive
                     ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30'
                     : 'text-muted-foreground hover:text-foreground'

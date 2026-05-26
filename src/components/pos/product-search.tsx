@@ -16,7 +16,11 @@ interface Product {
   defaultSalePrice: number
 }
 
-export function ProductSearch() {
+interface ProductSearchProps {
+  branchId?: string | null
+}
+
+export function ProductSearch({ branchId }: ProductSearchProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Product[]>([])
   const [showDropdown, setShowDropdown] = useState(false)
@@ -33,7 +37,9 @@ export function ProductSearch() {
     }
     setLoading(true)
     try {
-      const res = await fetch(`/api/products?search=${encodeURIComponent(search)}`)
+      const params = new URLSearchParams({ search })
+      if (branchId) params.set('branchId', branchId)
+      const res = await fetch(`/api/products?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         setResults(json.data)
@@ -44,7 +50,7 @@ export function ProductSearch() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [branchId])
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -87,7 +93,9 @@ export function ProductSearch() {
 
       // Try barcode exact match first
       try {
-        const res = await fetch(`/api/products?search=${encodeURIComponent(trimmed)}`)
+        const params = new URLSearchParams({ search: trimmed })
+        if (branchId) params.set('branchId', branchId)
+        const res = await fetch(`/api/products?${params.toString()}`)
         const json = await res.json()
         if (json.success && json.data.length === 1) {
           handleSelect(json.data[0])

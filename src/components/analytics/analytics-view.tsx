@@ -16,6 +16,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useAppStore } from '@/stores/app-store'
 
 interface LossData {
   totalFinancialLoss: number
@@ -26,13 +27,16 @@ interface LossData {
 
 export function AnalyticsView() {
   const isMobile = useIsMobile()
+  const { currentBranchId } = useAppStore()
   const [lossData, setLossData] = useState<LossData | null>(null)
   const [lossLoading, setLossLoading] = useState(true)
 
   const fetchLossReport = useCallback(async () => {
     setLossLoading(true)
     try {
-      const res = await fetch('/api/analytics/loss-report')
+      const params = new URLSearchParams()
+      if (currentBranchId) params.set('branchId', currentBranchId)
+      const res = await fetch(`/api/analytics/loss-report?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         setLossData(json.data)
@@ -42,7 +46,7 @@ export function AnalyticsView() {
     } finally {
       setLossLoading(false)
     }
-  }, [])
+  }, [currentBranchId])
 
   useEffect(() => {
     fetchLossReport()
@@ -57,13 +61,13 @@ export function AnalyticsView() {
     <div className={isMobile ? 'p-4 pb-24' : 'p-4'}>
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <BestSellersChart />
-        <SalesTrendChart />
+        <BestSellersChart branchId={currentBranchId} />
+        <SalesTrendChart branchId={currentBranchId} />
       </div>
 
       {/* Dead Stock + Loss Report */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <DeadStockList />
+        <DeadStockList branchId={currentBranchId} />
 
         {/* Loss Report */}
         <Card>

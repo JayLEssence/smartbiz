@@ -6,6 +6,7 @@ import { Cart } from './cart'
 import { CheckoutDialog } from './checkout-dialog'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { usePosStore } from '@/stores/pos-store'
+import { useAppStore } from '@/stores/app-store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
@@ -23,11 +24,14 @@ export function PosView() {
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [quickProducts, setQuickProducts] = useState<QuickProduct[]>([])
   const addItem = usePosStore((s) => s.addItem)
+  const { currentBranchId } = useAppStore()
 
   useEffect(() => {
     const fetchQuickProducts = async () => {
       try {
-        const res = await fetch('/api/analytics/best-sellers?period=daily&sortBy=quantity')
+        const params = new URLSearchParams({ period: 'daily', sortBy: 'quantity' })
+        if (currentBranchId) params.set('branchId', currentBranchId)
+        const res = await fetch(`/api/analytics/best-sellers?${params.toString()}`)
         const json = await res.json()
         if (json.success && json.data?.length > 0) {
           setQuickProducts(
@@ -43,7 +47,9 @@ export function PosView() {
       } catch {
         // fallback: load all products
         try {
-          const res = await fetch('/api/products')
+          const params = new URLSearchParams()
+          if (currentBranchId) params.set('branchId', currentBranchId)
+          const res = await fetch(`/api/products?${params.toString()}`)
           const json = await res.json()
           if (json.success) {
             setQuickProducts(
@@ -62,7 +68,7 @@ export function PosView() {
       }
     }
     fetchQuickProducts()
-  }, [])
+  }, [currentBranchId])
 
   const handleQuickAdd = (product: QuickProduct) => {
     addItem({
@@ -77,7 +83,7 @@ export function PosView() {
   if (isMobile) {
     return (
       <div className="flex flex-col gap-4 p-4 pb-24">
-        <ProductSearch />
+        <ProductSearch branchId={currentBranchId} />
         <div>
           <h3 className="text-sm font-medium mb-2">Quick Add</h3>
           <div className="grid grid-cols-2 gap-2">
@@ -108,7 +114,7 @@ export function PosView() {
     <div className="flex h-full gap-4 p-4">
       {/* Left: Product Search + Quick Add */}
       <div className="flex-1 flex flex-col gap-4 min-w-0">
-        <ProductSearch />
+        <ProductSearch branchId={currentBranchId} />
         <Card className="flex-1">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">Quick Add</CardTitle>

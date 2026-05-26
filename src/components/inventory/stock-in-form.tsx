@@ -23,9 +23,10 @@ interface Product {
 
 interface StockInFormProps {
   onStockIn?: () => void
+  branchId?: string | null
 }
 
-export function StockInForm({ onStockIn }: StockInFormProps) {
+export function StockInForm({ onStockIn, branchId }: StockInFormProps) {
   const [products, setProducts] = useState<Product[]>([])
   const [selectedProductId, setSelectedProductId] = useState('')
   const [quantity, setQuantity] = useState('')
@@ -36,7 +37,9 @@ export function StockInForm({ onStockIn }: StockInFormProps) {
 
   const fetchProducts = useCallback(async () => {
     try {
-      const res = await fetch('/api/products')
+      const params = new URLSearchParams()
+      if (branchId) params.set('branchId', branchId)
+      const res = await fetch(`/api/products?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         setProducts(json.data)
@@ -44,7 +47,7 @@ export function StockInForm({ onStockIn }: StockInFormProps) {
     } catch {
       // ignore
     }
-  }, [])
+  }, [branchId])
 
   useEffect(() => {
     fetchProducts()
@@ -75,6 +78,7 @@ export function StockInForm({ onStockIn }: StockInFormProps) {
           quantityAdded: parseInt(quantity),
           purchasePricePerUnit: parseFloat(purchasePrice),
           supplier: supplier || undefined,
+          branchId: branchId || undefined,
         }),
       })
 

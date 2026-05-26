@@ -11,10 +11,11 @@ import { ShrinkageView } from '@/components/inventory/shrinkage-view'
 import { DashboardView } from '@/components/dashboard/dashboard-view'
 import { AnalyticsView } from '@/components/analytics/analytics-view'
 import { AdvisorView } from '@/components/advisor/advisor-view'
+import { BranchesView } from '@/components/branches/branches-view'
 
 export default function Home() {
   const isMobile = useIsMobile()
-  const { currentView, setView, setUser } = useAppStore()
+  const { currentView, setView, setUser, setCurrentBranchId, setBranches } = useAppStore()
 
   // Set default view based on device and initialize user
   useEffect(() => {
@@ -34,7 +35,9 @@ export default function Home() {
         })
         const json = await res.json()
         if (json.success && json.data?.user) {
-          setUser(json.data.user)
+          const user = json.data.user
+          setUser(user)
+          setCurrentBranchId(user.branchId)
         }
       } catch {
         // Fallback to a default user
@@ -43,11 +46,23 @@ export default function Home() {
           email: 'admin@smartbiz.com',
           name: 'Admin',
           role: 'Admin',
+          branchId: 'demo',
         })
+      }
+
+      // Fetch branches
+      try {
+        const res = await fetch('/api/branches')
+        const json = await res.json()
+        if (json.success && json.data) {
+          setBranches(json.data)
+        }
+      } catch {
+        // ignore
       }
     }
     initUser()
-  }, [isMobile, setView, setUser])
+  }, [isMobile, setView, setUser, setCurrentBranchId, setBranches])
 
   const renderView = () => {
     switch (currentView) {
@@ -63,6 +78,8 @@ export default function Home() {
         return <AnalyticsView />
       case 'advisor':
         return <AdvisorView />
+      case 'branches':
+        return <BranchesView />
       default:
         return <DashboardView />
     }

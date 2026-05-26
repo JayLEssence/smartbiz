@@ -7,33 +7,59 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Branch {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  address     String?
+  phone       String?
+  isHeadOffice Boolean @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users           User[]
+  products        Product[]
+  inventoryBatches InventoryBatch[]
+  sales           Sale[]
+  shrinkages      Shrinkage[]
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
   name         String
   passwordHash String
   role         String   @default("Cashier") // Admin or Cashier
+  branchId     String
+  isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  sales Sale[]
+  branch Branch @relation(fields: [branchId], references: [id])
+  sales  Sale[]
 }
 
 model Product {
   id                 String   @id @default(cuid())
   name               String
-  sku                String   @unique
+  sku                String
   barcode            String?
   category           String
   currentStockLevel  Int      @default(0)
   reorderThreshold   Int      @default(10)
   defaultSalePrice   Float    @default(0)
+  branchId           String
+  isActive           Boolean  @default(true)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
+  branch          Branch          @relation(fields: [branchId], references: [id])
   inventoryBatches InventoryBatch[]
-  saleItems        SaleItem[]
-  shrinkages       Shrinkage[]
+  saleItems       SaleItem[]
+  shrinkages      Shrinkage[]
+
+  @@unique([sku, branchId])
 }
 
 model InventoryBatch {
@@ -43,9 +69,11 @@ model InventoryBatch {
   purchasePricePerUnit Float
   supplier          String?
   dateReceived      DateTime @default(now())
+  branchId          String
   createdAt         DateTime @default(now())
 
   product Product @relation(fields: [productId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
 }
 
 model Sale {
@@ -54,10 +82,12 @@ model Sale {
   discount   Float    @default(0)
   saleDate   DateTime @default(now())
   userId     String
+  branchId   String
   createdAt  DateTime @default(now())
 
-  user       User       @relation(fields: [userId], references: [id])
-  saleItems  SaleItem[]
+  user      User       @relation(fields: [userId], references: [id])
+  branch    Branch     @relation(fields: [branchId], references: [id])
+  saleItems SaleItem[]
 }
 
 model SaleItem {
@@ -79,7 +109,9 @@ model Shrinkage {
   quantityLost Int
   reason       String   // Stolen, Expired, Damaged
   dateRecorded DateTime @default(now())
+  branchId     String
   createdAt    DateTime @default(now())
 
   product Product @relation(fields: [productId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
 }

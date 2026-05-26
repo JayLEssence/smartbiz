@@ -25,7 +25,7 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
   const [processing, setProcessing] = useState(false)
   const [success, setSuccess] = useState(false)
   const { items, discount, getTotal, clearCart } = usePosStore()
-  const { currentUser } = useAppStore()
+  const { currentUser, currentBranchId } = useAppStore()
   const total = getTotal()
 
   const handleCheckout = async () => {
@@ -49,6 +49,7 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
           userId: currentUser.id,
           items: saleItems,
           discount: discount,
+          branchId: currentBranchId ?? currentUser.branchId,
         }),
       })
 

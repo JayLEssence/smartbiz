@@ -1,20 +1,32 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const productId = searchParams.get('productId')
+    const branchId = searchParams.get('branchId')
 
-    const where: Record<string, unknown> = {}
+    const where: Prisma.InventoryBatchWhereInput = {}
     if (productId) {
       where.productId = productId
+    }
+    if (branchId) {
+      where.branchId = branchId
     }
 
     const batches = await db.inventoryBatch.findMany({
       where,
       include: {
         product: true,
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
       },
       orderBy: { dateReceived: 'desc' },
     })
@@ -32,7 +44,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { productId, quantityAdded, purchasePricePerUnit, supplier } = body
+    const { productId, quantityAdded, purchasePricePerUnit, supplier, branchId } = body
 
     if (!productId || quantityAdded === undefined || purchasePricePerUnit === undefined) {
       return NextResponse.json(
@@ -51,6 +63,9 @@ export async function POST(request: Request) {
         throw new Error('Product not found')
       }
 
+      // Use the product's branchId if branchId not provided
+      const batchBranchId = branchId || product.branchId
+
       // Create the inventory batch
       const batch = await tx.inventoryBatch.create({
         data: {
@@ -58,9 +73,17 @@ export async function POST(request: Request) {
           quantityAdded: Number(quantityAdded),
           purchasePricePerUnit: Number(purchasePricePerUnit),
           supplier: supplier || null,
+          branchId: batchBranchId,
         },
         include: {
           product: true,
+          branch: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            },
+          },
         },
       })
 

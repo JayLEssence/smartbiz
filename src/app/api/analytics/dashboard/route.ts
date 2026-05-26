@@ -1,8 +1,14 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url)
+    const branchId = searchParams.get('branchId')
+
+    // Build branch filter for all queries
+    const branchFilter = branchId ? { branchId } : {}
+
     // Get today's date range
     const now = new Date()
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -15,6 +21,7 @@ export async function GET() {
           gte: todayStart,
           lt: todayEnd,
         },
+        ...branchFilter,
       },
       include: {
         saleItems: {
@@ -61,13 +68,22 @@ export async function GET() {
     }
 
     // Low stock products
-    const allProducts = await db.product.findMany()
+    const allProducts = await db.product.findMany({
+      where: {
+        ...branchFilter,
+        isActive: true,
+      },
+    })
     const lowStockProducts = allProducts.filter(
       (p) => p.currentStockLevel <= p.reorderThreshold
     )
 
     // Total inventory value - calculate average purchase price per product
     const productsWithBatches = await db.product.findMany({
+      where: {
+        ...branchFilter,
+        isActive: true,
+      },
       include: {
         inventoryBatches: true,
       },
@@ -89,6 +105,34 @@ export async function GET() {
       }
     }
 
+    // Branch summary when no branch filter is applied
+    let branchSummary: { id: string; name: string; code: string; todayRevenue: number; todaySalesCount: number }[] | undefined
+    if (!branchId) {
+      const branches = await db.branch.findMany({
+        where: { isActive: true },
+      })
+      branchSummary = await Promise.all(
+        branches.map(async (branch) => {
+          const branchSales = await db.sale.findMany({
+            where: {
+              saleDate: {
+                gte: todayStart,
+                lt: todayEnd,
+              },
+              branchId: branch.id,
+            },
+          })
+          return {
+            id: branch.id,
+            name: branch.name,
+            code: branch.code,
+            todayRevenue: Math.round(branchSales.reduce((sum, s) => sum + s.totalAmount, 0) * 100) / 100,
+            todaySalesCount: branchSales.length,
+          }
+        })
+      )
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -98,6 +142,7 @@ export async function GET() {
         topSellerToday,
         lowStockProducts,
         totalInventoryValue: Math.round(totalInventoryValue * 100) / 100,
+        branchSummary,
       },
     })
   } catch (error) {

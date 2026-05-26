@@ -66,10 +66,21 @@ function generateRuleBasedRecommendations(
   return recommendations
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url)
+    const branchId = searchParams.get('branchId')
+
+    // Build branch filter
+    const branchFilter = branchId ? { branchId } : {}
+
     // Gather business data
-    const lowStockProducts = await db.product.findMany()
+    const lowStockProducts = await db.product.findMany({
+      where: {
+        ...branchFilter,
+        isActive: true,
+      },
+    })
     const lowStock = lowStockProducts.filter(
       (p) => p.currentStockLevel <= p.reorderThreshold
     )
@@ -78,11 +89,16 @@ export async function GET() {
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
+    const saleWhere: { saleDate: { gte: Date }; branchId?: string } = {
+      saleDate: { gte: thirtyDaysAgo },
+    }
+    if (branchId) {
+      saleWhere.branchId = branchId
+    }
+
     const recentSaleItems = await db.saleItem.findMany({
       where: {
-        sale: {
-          saleDate: { gte: thirtyDaysAgo },
-        },
+        sale: saleWhere,
       },
       include: {
         product: true,
@@ -111,8 +127,15 @@ export async function GET() {
     const deadStockItems: { productId: string; productName: string; currentStockLevel: number; daysSinceLastSale: number | null }[] = []
 
     for (const product of productsWithStock) {
+      const saleItemWhere: { productId: string; sale?: { branchId?: string } } = {
+        productId: product.id,
+      }
+      if (branchId) {
+        saleItemWhere.sale = { branchId }
+      }
+
       const lastSale = await db.saleItem.findFirst({
-        where: { productId: product.id },
+        where: saleItemWhere,
         include: { sale: true },
         orderBy: { sale: { saleDate: 'desc' } },
       })
@@ -149,6 +172,7 @@ export async function GET() {
         currentStock: d.currentStockLevel,
         daysSinceLastSale: d.daysSinceLastSale,
       })),
+      branchId: branchId || 'all',
     }
 
     // Try LLM-powered recommendations

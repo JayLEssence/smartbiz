@@ -13,9 +13,11 @@ import {
   AlertTriangle,
   Star,
   RefreshCw,
+  Building2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useAppStore } from '@/stores/app-store'
 
 interface DashboardData {
   todayRevenue: number
@@ -33,17 +35,27 @@ interface DashboardData {
     currentStockLevel: number
     reorderThreshold: number
   }[]
+  branchSummary?: {
+    id: string
+    name: string
+    code: string
+    todayRevenue: number
+    todaySalesCount: number
+  }[]
 }
 
 export function DashboardView() {
   const isMobile = useIsMobile()
+  const { currentBranchId, currentUser } = useAppStore()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
 
   const fetchDashboard = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/analytics/dashboard')
+      const params = new URLSearchParams()
+      if (currentBranchId) params.set('branchId', currentBranchId)
+      const res = await fetch(`/api/analytics/dashboard?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         setData(json.data)
@@ -53,7 +65,7 @@ export function DashboardView() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentBranchId])
 
   useEffect(() => {
     fetchDashboard()
@@ -112,6 +124,41 @@ export function DashboardView() {
           className="bg-stone-100 text-stone-600"
         />
       </div>
+
+      {/* Per-Branch Summary (shown when all branches selected and user is admin) */}
+      {!currentBranchId && currentUser?.role === 'admin' && data.branchSummary && data.branchSummary.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-teal-600" />
+              Branch Performance Today
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {data.branchSummary.map((branch) => (
+                <div
+                  key={branch.id}
+                  className="flex items-center justify-between p-3 rounded-lg border"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{branch.name}</p>
+                    <p className="text-xs text-muted-foreground">{branch.code}</p>
+                  </div>
+                  <div className="flex flex-col items-end shrink-0 ml-3">
+                    <span className="text-sm font-semibold text-emerald-600">
+                      ${branch.todayRevenue.toFixed(2)}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {branch.todaySalesCount} sales
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Top Seller */}

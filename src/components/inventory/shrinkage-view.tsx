@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { AlertTriangle, Loader2, DollarSign, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useAppStore } from '@/stores/app-store'
 
 interface Product {
   id: string
@@ -35,6 +36,7 @@ interface ShrinkageRecord {
 
 export function ShrinkageView() {
   const isMobile = useIsMobile()
+  const { currentBranchId } = useAppStore()
   const [products, setProducts] = useState<Product[]>([])
   const [selectedProductId, setSelectedProductId] = useState('')
   const [quantityLost, setQuantityLost] = useState('')
@@ -48,18 +50,21 @@ export function ShrinkageView() {
 
   const fetchProducts = useCallback(async () => {
     try {
-      const res = await fetch('/api/products')
+      const params = new URLSearchParams()
+      if (currentBranchId) params.set('branchId', currentBranchId)
+      const res = await fetch(`/api/products?${params.toString()}`)
       const json = await res.json()
       if (json.success) setProducts(json.data)
     } catch {
       // ignore
     }
-  }, [])
+  }, [currentBranchId])
 
   const fetchRecords = useCallback(async () => {
     setRecordsLoading(true)
     try {
       const params = new URLSearchParams()
+      if (currentBranchId) params.set('branchId', currentBranchId)
       if (dateFrom) params.set('from', new Date(dateFrom).toISOString())
       if (dateTo) params.set('to', new Date(dateTo).toISOString())
 
@@ -78,7 +83,7 @@ export function ShrinkageView() {
     } finally {
       setRecordsLoading(false)
     }
-  }, [dateFrom, dateTo])
+  }, [dateFrom, dateTo, currentBranchId])
 
   useEffect(() => {
     fetchProducts()
@@ -101,6 +106,7 @@ export function ShrinkageView() {
           productId: selectedProductId,
           quantityLost: parseInt(quantityLost),
           reason,
+          branchId: currentBranchId ?? undefined,
         }),
       })
 

@@ -8,6 +8,7 @@ export async function GET(request: Request) {
     const from = searchParams.get('from')
     const to = searchParams.get('to')
     const userId = searchParams.get('userId')
+    const branchId = searchParams.get('branchId')
 
     const where: Prisma.SaleWhereInput = {}
 
@@ -25,6 +26,10 @@ export async function GET(request: Request) {
       where.userId = userId
     }
 
+    if (branchId) {
+      where.branchId = branchId
+    }
+
     const sales = await db.sale.findMany({
       where,
       include: {
@@ -39,6 +44,13 @@ export async function GET(request: Request) {
             name: true,
             email: true,
             role: true,
+          },
+        },
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
           },
         },
       },
@@ -58,7 +70,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { userId, items, discount } = body
+    const { userId, items, discount, branchId } = body
 
     if (!userId || !items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -68,11 +80,17 @@ export async function POST(request: Request) {
     }
 
     const result = await db.$transaction(async (tx) => {
-      // Verify user exists
-      const user = await tx.user.findUnique({ where: { id: userId } })
+      // Verify user exists and get their branch
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        include: { branch: true },
+      })
       if (!user) {
         throw new Error('User not found')
       }
+
+      // Use provided branchId or fall back to user's branch
+      const saleBranchId = branchId || user.branchId
 
       let totalAmount = 0
       const saleItemsData: {
@@ -131,6 +149,7 @@ export async function POST(request: Request) {
           userId,
           totalAmount,
           discount: discountAmount,
+          branchId: saleBranchId,
           saleItems: {
             create: saleItemsData,
           },
@@ -147,6 +166,13 @@ export async function POST(request: Request) {
               name: true,
               email: true,
               role: true,
+            },
+          },
+          branch: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
             },
           },
         },

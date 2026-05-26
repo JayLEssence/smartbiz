@@ -18,14 +18,20 @@ interface TrendData {
   quantity: number
 }
 
-export function SalesTrendChart() {
+interface SalesTrendChartProps {
+  branchId?: string | null
+}
+
+export function SalesTrendChart({ branchId }: SalesTrendChartProps) {
   const [data, setData] = useState<TrendData[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/analytics/trends?days=30')
+      const params = new URLSearchParams({ days: '30' })
+      if (branchId) params.set('branchId', branchId)
+      const res = await fetch(`/api/analytics/trends?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         setData(json.data)
@@ -35,7 +41,7 @@ export function SalesTrendChart() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [branchId])
 
   useEffect(() => {
     fetchData()

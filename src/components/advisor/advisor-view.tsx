@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { RefreshCw, Lightbulb, AlertCircle, ArrowRight } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useAppStore } from '@/stores/app-store'
 
 interface Recommendation {
   type: string
@@ -18,6 +19,7 @@ interface Recommendation {
 
 export function AdvisorView() {
   const isMobile = useIsMobile()
+  const { currentBranchId } = useAppStore()
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -26,7 +28,9 @@ export function AdvisorView() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/advisor/recommendations')
+      const params = new URLSearchParams()
+      if (currentBranchId) params.set('branchId', currentBranchId)
+      const res = await fetch(`/api/advisor/recommendations?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         setRecommendations(json.data)
@@ -38,7 +42,7 @@ export function AdvisorView() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentBranchId])
 
   useEffect(() => {
     fetchRecommendations()

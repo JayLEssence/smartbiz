@@ -5,23 +5,37 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const days = parseInt(searchParams.get('days') || '45', 10)
+    const branchId = searchParams.get('branchId')
 
     const cutoffDate = new Date()
     cutoffDate.setDate(cutoffDate.getDate() - days)
 
     // Get all products with stock > 0
+    const productWhere: { currentStockLevel: { gt: number }; isActive: boolean; branchId?: string } = {
+      currentStockLevel: { gt: 0 },
+      isActive: true,
+    }
+    if (branchId) {
+      productWhere.branchId = branchId
+    }
+
     const productsWithStock = await db.product.findMany({
-      where: {
-        currentStockLevel: { gt: 0 },
-      },
+      where: productWhere,
     })
 
     // Get the last sale for each product
     const result = []
 
     for (const product of productsWithStock) {
+      const saleItemWhere: { productId: string; sale?: { branchId?: string } } = {
+        productId: product.id,
+      }
+      if (branchId) {
+        saleItemWhere.sale = { branchId }
+      }
+
       const lastSaleItem = await db.saleItem.findFirst({
-        where: { productId: product.id },
+        where: saleItemWhere,
         include: { sale: true },
         orderBy: { sale: { saleDate: 'desc' } },
       })
@@ -42,6 +56,7 @@ export async function GET(request: Request) {
           defaultSalePrice: product.defaultSalePrice,
           lastSaleDate,
           daysSinceLastSale: lastSaleDate ? daysSinceLastSale : 999,
+          branchId: product.branchId,
         })
       }
     }
