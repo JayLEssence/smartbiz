@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("Cashier") // Admin or Cashier
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sales Sale[]
+}
+
+model Product {
+  id                 String   @id @default(cuid())
+  name               String
+  sku                String   @unique
+  barcode            String?
+  category           String
+  currentStockLevel  Int      @default(0)
+  reorderThreshold   Int      @default(10)
+  defaultSalePrice   Float    @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  inventoryBatches InventoryBatch[]
+  saleItems        SaleItem[]
+  shrinkages       Shrinkage[]
+}
+
+model InventoryBatch {
+  id                String   @id @default(cuid())
+  productId         String
+  quantityAdded     Int
+  purchasePricePerUnit Float
+  supplier          String?
+  dateReceived      DateTime @default(now())
+  createdAt         DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Sale {
+  id         String   @id @default(cuid())
+  totalAmount Float
+  discount   Float    @default(0)
+  saleDate   DateTime @default(now())
+  userId     String
+  createdAt  DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id])
+  saleItems  SaleItem[]
+}
+
+model SaleItem {
+  id              String   @id @default(cuid())
+  saleId          String
+  productId       String
+  quantitySold    Int
+  salePricePerUnit  Float
+  costPricePerUnit  Float
+  createdAt       DateTime @default(now())
+
+  sale    Sale    @relation(fields: [saleId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Shrinkage {
+  id           String   @id @default(cuid())
+  productId    String
+  quantityLost Int
+  reason       String   // Stolen, Expired, Damaged
+  dateRecorded DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+}
