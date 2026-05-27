@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAppStore } from '@/stores/app-store'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useLanguage } from '@/lib/i18n/language-context'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -144,26 +145,27 @@ interface ProductData {
 // ============ Helper Components ============
 
 function RoleBadge({ role }: { role: string }) {
+  const { t } = useLanguage()
   switch (role) {
     case 'CompanyAdmin':
       return (
         <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100 gap-1">
           <Crown className="h-3 w-3" />
-          Admin
+          {t('admin.companyAdmin')}
         </Badge>
       )
     case 'Manager':
       return (
         <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100 gap-1">
           <UserCheck className="h-3 w-3" />
-          Manager
+          {t('admin.manager')}
         </Badge>
       )
     case 'Employee':
       return (
         <Badge className="bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100 gap-1">
           <Users className="h-3 w-3" />
-          Employee
+          {t('admin.employee')}
         </Badge>
       )
     default:
@@ -172,40 +174,41 @@ function RoleBadge({ role }: { role: string }) {
 }
 
 function TrendingBadge({ trending }: { trending: string }) {
+  const { t } = useLanguage()
   switch (trending) {
     case 'up':
       return (
         <Badge className="bg-emerald-50 text-emerald-600 border-emerald-200 gap-1 text-xs">
           <TrendingUp className="h-3 w-3" />
-          Trending Up
+          {t('admin.trendingUp')}
         </Badge>
       )
     case 'down':
       return (
         <Badge className="bg-red-50 text-red-600 border-red-200 gap-1 text-xs">
           <TrendingDown className="h-3 w-3" />
-          Declining
+          {t('admin.declining')}
         </Badge>
       )
     case 'stable':
       return (
         <Badge className="bg-gray-50 text-gray-600 border-gray-200 gap-1 text-xs">
           <Minus className="h-3 w-3" />
-          Stable
+          {t('admin.stable')}
         </Badge>
       )
     case 'new':
       return (
         <Badge className="bg-teal-50 text-teal-600 border-teal-200 gap-1 text-xs">
           <Sparkles className="h-3 w-3" />
-          New
+          {t('admin.newProduct')}
         </Badge>
       )
     case 'no-sales':
       return (
         <Badge className="bg-slate-50 text-slate-500 border-slate-200 gap-1 text-xs">
           <CircleOff className="h-3 w-3" />
-          No Sales
+          {t('admin.noSales')}
         </Badge>
       )
     default:
@@ -218,6 +221,7 @@ function TrendingBadge({ trending }: { trending: string }) {
 export function AdminPanel() {
   const isMobile = useIsMobile()
   const { currentUser } = useAppStore()
+  const { t } = useLanguage()
 
   const companyId = currentUser?.companyId
   const isAdmin = currentUser?.role === 'CompanyAdmin'
@@ -288,6 +292,19 @@ export function AdminPanel() {
   })
   const [productSubmitting, setProductSubmitting] = useState(false)
 
+  // ============ Category Translation Map ============
+  const categoryKeyMap: Record<string, string> = {
+    'Beverages': 'admin.catBeverages',
+    'Snacks': 'admin.catSnacks',
+    'Dairy': 'admin.catDairy',
+    'Bakery': 'admin.catBakery',
+    'Household': 'admin.catHousehold',
+    'Personal Care': 'admin.catPersonalCare',
+    'Electronics': 'admin.catElectronics',
+    'Stationery': 'admin.catStationery',
+    'Other': 'admin.catOther',
+  }
+
   // ============ Data Fetching ============
 
   const fetchCompany = useCallback(async () => {
@@ -307,11 +324,11 @@ export function AdminPanel() {
         })
       }
     } catch {
-      toast.error('Failed to load company info')
+      toast.error(t('admin.failedToLoadCompany'))
     } finally {
       setCompanyLoading(false)
     }
-  }, [companyId])
+  }, [companyId, t])
 
   const fetchBranches = useCallback(async () => {
     if (!companyId) return
@@ -381,10 +398,9 @@ export function AdminPanel() {
       <div className={isMobile ? 'p-4 pb-24' : 'p-4'}>
         <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-3">
           <ShieldAlert className="h-16 w-16 opacity-30" />
-          <h2 className="text-xl font-semibold">Access Denied</h2>
+          <h2 className="text-xl font-semibold">{t('admin.accessDenied')}</h2>
           <p className="text-sm text-center max-w-sm">
-            Only company administrators can access the Admin Control Panel. Please contact your
-            system administrator if you need access.
+            {t('admin.accessDeniedExplanation')}
           </p>
         </div>
       </div>
@@ -411,13 +427,13 @@ export function AdminPanel() {
       })
       const json = await res.json()
       if (json.success) {
-        toast.success('Company settings saved successfully')
+        toast.success(t('admin.companySaved'))
         fetchCompany()
       } else {
-        toast.error(json.error || 'Failed to save company settings')
+        toast.error(json.error || t('admin.failedToSaveCompany'))
       }
     } catch {
-      toast.error('Failed to save company settings')
+      toast.error(t('admin.failedToSaveCompany'))
     } finally {
       setCompanySaving(false)
     }
@@ -427,7 +443,7 @@ export function AdminPanel() {
 
   const handleAddBranch = async () => {
     if (!branchForm.name.trim() || !branchForm.code.trim()) {
-      toast.error('Branch name and code are required')
+      toast.error(t('admin.branchNameCodeRequired'))
       return
     }
     setBranchSubmitting(true)
@@ -446,15 +462,15 @@ export function AdminPanel() {
       })
       const json = await res.json()
       if (json.success) {
-        toast.success(`Branch "${branchForm.name}" created successfully`)
+        toast.success(t('admin.branchCreated'))
         setAddBranchOpen(false)
         setBranchForm({ name: '', code: '', address: '', phone: '', isHeadOffice: false })
         fetchBranches()
       } else {
-        toast.error(json.error || 'Failed to create branch')
+        toast.error(json.error || t('admin.failedToCreateBranch'))
       }
     } catch {
-      toast.error('Failed to create branch')
+      toast.error(t('admin.failedToCreateBranch'))
     } finally {
       setBranchSubmitting(false)
     }
@@ -462,7 +478,7 @@ export function AdminPanel() {
 
   const handleEditBranch = async () => {
     if (!selectedBranch || !branchForm.name.trim()) {
-      toast.error('Branch name is required')
+      toast.error(t('admin.branchNameRequired'))
       return
     }
     setBranchSubmitting(true)
@@ -478,15 +494,15 @@ export function AdminPanel() {
       })
       const json = await res.json()
       if (json.success) {
-        toast.success(`Branch "${branchForm.name}" updated successfully`)
+        toast.success(t('admin.branchUpdated'))
         setEditBranchOpen(false)
         setSelectedBranch(null)
         fetchBranches()
       } else {
-        toast.error(json.error || 'Failed to update branch')
+        toast.error(json.error || t('admin.failedToUpdateBranch'))
       }
     } catch {
-      toast.error('Failed to update branch')
+      toast.error(t('admin.failedToUpdateBranch'))
     } finally {
       setBranchSubmitting(false)
     }
@@ -499,15 +515,15 @@ export function AdminPanel() {
       const res = await fetch(`/api/branches/${selectedBranch.id}`, { method: 'DELETE' })
       const json = await res.json()
       if (json.success) {
-        toast.success(`Branch "${selectedBranch.name}" deactivated`)
+        toast.success(t('admin.branchDeactivated'))
         setDeactivateBranchOpen(false)
         setSelectedBranch(null)
         fetchBranches()
       } else {
-        toast.error(json.error || 'Failed to deactivate branch')
+        toast.error(json.error || t('admin.failedToDeactivateBranch'))
       }
     } catch {
-      toast.error('Failed to deactivate branch')
+      toast.error(t('admin.failedToDeactivateBranch'))
     } finally {
       setBranchSubmitting(false)
     }
@@ -517,7 +533,7 @@ export function AdminPanel() {
 
   const handleAddUser = async () => {
     if (!userForm.name.trim() || !userForm.email.trim() || !userForm.role || !userForm.branchId) {
-      toast.error('Name, email, role, and branch assignment are required')
+      toast.error(t('admin.userDataRequired'))
       return
     }
     setUserSubmitting(true)
@@ -536,16 +552,16 @@ export function AdminPanel() {
       })
       const json = await res.json()
       if (json.success) {
-        toast.success(`User "${userForm.name}" created successfully`)
+        toast.success(t('admin.userCreated'))
         setAddUserOpen(false)
         setUserForm({ name: '', email: '', password: '', role: 'Employee', branchId: '' })
         fetchUsers()
         fetchBranches()
       } else {
-        toast.error(json.error || 'Failed to create user')
+        toast.error(json.error || t('admin.failedToCreateUser'))
       }
     } catch {
-      toast.error('Failed to create user')
+      toast.error(t('admin.failedToCreateUser'))
     } finally {
       setUserSubmitting(false)
     }
@@ -566,16 +582,16 @@ export function AdminPanel() {
       })
       const json = await res.json()
       if (json.success) {
-        toast.success(`User "${userForm.name}" updated successfully`)
+        toast.success(t('admin.userUpdated'))
         setEditUserOpen(false)
         setSelectedUser(null)
         fetchUsers()
         fetchBranches()
       } else {
-        toast.error(json.error || 'Failed to update user')
+        toast.error(json.error || t('admin.failedToUpdateUser'))
       }
     } catch {
-      toast.error('Failed to update user')
+      toast.error(t('admin.failedToUpdateUser'))
     } finally {
       setUserSubmitting(false)
     }
@@ -588,16 +604,16 @@ export function AdminPanel() {
       const res = await fetch(`/api/users/${selectedUser.id}`, { method: 'DELETE' })
       const json = await res.json()
       if (json.success) {
-        toast.success(`User "${selectedUser.name}" deactivated`)
+        toast.success(t('admin.userDeactivated'))
         setDeactivateUserOpen(false)
         setSelectedUser(null)
         fetchUsers()
         fetchBranches()
       } else {
-        toast.error(json.error || 'Failed to deactivate user')
+        toast.error(json.error || t('admin.failedToDeactivateUser'))
       }
     } catch {
-      toast.error('Failed to deactivate user')
+      toast.error(t('admin.failedToDeactivateUser'))
     } finally {
       setUserSubmitting(false)
     }
@@ -607,7 +623,7 @@ export function AdminPanel() {
 
   const handleAddProduct = async () => {
     if (!productForm.name.trim() || !productForm.sku.trim() || !productForm.category.trim() || !productForm.branchId) {
-      toast.error('Name, SKU, category, and branch are required')
+      toast.error(t('admin.productRequired'))
       return
     }
     setProductSubmitting(true)
@@ -629,7 +645,7 @@ export function AdminPanel() {
       })
       const json = await res.json()
       if (json.success) {
-        toast.success(`Product "${productForm.name}" registered successfully`)
+        toast.success(t('admin.productRegistered'))
         setAddProductOpen(false)
         setProductForm({
           name: '', sku: '', barcode: '', category: '',
@@ -638,10 +654,10 @@ export function AdminPanel() {
         fetchProducts()
         fetchBranches()
       } else {
-        toast.error(json.error || 'Failed to register product')
+        toast.error(json.error || t('admin.failedToRegisterProduct'))
       }
     } catch {
-      toast.error('Failed to register product')
+      toast.error(t('admin.failedToRegisterProduct'))
     } finally {
       setProductSubmitting(false)
     }
@@ -654,16 +670,16 @@ export function AdminPanel() {
       const res = await fetch(`/api/products/${selectedProduct.id}`, { method: 'DELETE' })
       const json = await res.json()
       if (json.success) {
-        toast.success(`Product "${selectedProduct.name}" deactivated`)
+        toast.success(t('admin.productDeactivated'))
         setDeleteProductOpen(false)
         setSelectedProduct(null)
         fetchProducts()
         fetchBranches()
       } else {
-        toast.error(json.error || 'Failed to remove product')
+        toast.error(json.error || t('admin.failedToRemoveProduct'))
       }
     } catch {
-      toast.error('Failed to remove product')
+      toast.error(t('admin.failedToRemoveProduct'))
     } finally {
       setProductSubmitting(false)
     }
@@ -702,7 +718,7 @@ export function AdminPanel() {
       {/* Header */}
       <div className="flex items-center gap-2 mb-6">
         <Settings className="h-6 w-6 text-emerald-600" />
-        <h1 className="text-xl font-bold">Admin Control Panel</h1>
+        <h1 className="text-xl font-bold">{t('admin.adminControlPanel')}</h1>
       </div>
 
       {/* Tabs */}
@@ -710,19 +726,19 @@ export function AdminPanel() {
         <TabsList className="grid w-full grid-cols-4 h-auto">
           <TabsTrigger value="company" className="text-xs sm:text-sm gap-1 py-2">
             <Settings className="h-3.5 w-3.5 hidden sm:inline" />
-            Company
+            {t('admin.company')}
           </TabsTrigger>
           <TabsTrigger value="branches" className="text-xs sm:text-sm gap-1 py-2">
             <Building2 className="h-3.5 w-3.5 hidden sm:inline" />
-            Branches
+            {t('admin.branches')}
           </TabsTrigger>
           <TabsTrigger value="users" className="text-xs sm:text-sm gap-1 py-2">
             <Users className="h-3.5 w-3.5 hidden sm:inline" />
-            Users
+            {t('admin.users')}
           </TabsTrigger>
           <TabsTrigger value="products" className="text-xs sm:text-sm gap-1 py-2">
             <Package className="h-3.5 w-3.5 hidden sm:inline" />
-            Products
+            {t('admin.products')}
           </TabsTrigger>
         </TabsList>
 
@@ -743,12 +759,12 @@ export function AdminPanel() {
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       <Building2 className="h-5 w-5 text-emerald-600" />
-                      Company Settings
+                      {t('admin.companySettings')}
                     </CardTitle>
-                    <CardDescription>Manage your company information and plan</CardDescription>
+                    <CardDescription>{t('admin.manageCompanyInfo')}</CardDescription>
                   </div>
                   <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 capitalize">
-                    {company?.plan || 'free'} Plan
+                    {company?.plan || 'free'} {t('admin.plan')}
                   </Badge>
                 </div>
               </CardHeader>
@@ -756,7 +772,7 @@ export function AdminPanel() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="company-name">
-                      Company Name <span className="text-destructive">*</span>
+                      {t('admin.companyName')} <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="company-name"
@@ -765,7 +781,7 @@ export function AdminPanel() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="company-industry">Industry</Label>
+                    <Label htmlFor="company-industry">{t('admin.industry')}</Label>
                     <Input
                       id="company-industry"
                       value={companyForm.industry}
@@ -774,7 +790,7 @@ export function AdminPanel() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="company-email">Email</Label>
+                    <Label htmlFor="company-email">{t('admin.email')}</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -788,7 +804,7 @@ export function AdminPanel() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="company-phone">Phone</Label>
+                    <Label htmlFor="company-phone">{t('admin.phone')}</Label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -802,7 +818,7 @@ export function AdminPanel() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="company-address">Address</Label>
+                  <Label htmlFor="company-address">{t('admin.address')}</Label>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -821,17 +837,17 @@ export function AdminPanel() {
                     <div className="flex flex-col items-center rounded-lg bg-muted/50 py-3 px-2">
                       <Building2 className="h-4 w-4 text-emerald-600 mb-1" />
                       <span className="text-lg font-semibold">{company._count.branches}</span>
-                      <span className="text-xs text-muted-foreground">Branches</span>
+                      <span className="text-xs text-muted-foreground">{t('admin.branches')}</span>
                     </div>
                     <div className="flex flex-col items-center rounded-lg bg-muted/50 py-3 px-2">
                       <Users className="h-4 w-4 text-teal-600 mb-1" />
                       <span className="text-lg font-semibold">{company._count.users}</span>
-                      <span className="text-xs text-muted-foreground">Users</span>
+                      <span className="text-xs text-muted-foreground">{t('admin.users')}</span>
                     </div>
                     <div className="flex flex-col items-center rounded-lg bg-muted/50 py-3 px-2">
                       <Package className="h-4 w-4 text-stone-600 mb-1" />
                       <span className="text-lg font-semibold">{company._count.products}</span>
-                      <span className="text-xs text-muted-foreground">Products</span>
+                      <span className="text-xs text-muted-foreground">{t('admin.products')}</span>
                     </div>
                   </div>
                 )}
@@ -843,7 +859,7 @@ export function AdminPanel() {
                     className="bg-emerald-600 hover:bg-emerald-700 gap-1.5"
                   >
                     <Save className="h-4 w-4" />
-                    {companySaving ? 'Saving...' : 'Save Changes'}
+                    {companySaving ? t('admin.saving') : t('admin.saveChanges')}
                   </Button>
                 </div>
               </CardContent>
@@ -858,7 +874,7 @@ export function AdminPanel() {
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search branches..."
+                placeholder={t('admin.searchBranches')}
                 value={branchSearch}
                 onChange={(e) => setBranchSearch(e.target.value)}
                 className="pl-9"
@@ -876,7 +892,7 @@ export function AdminPanel() {
                 className="bg-emerald-600 hover:bg-emerald-700 gap-1.5"
               >
                 <Plus className="h-4 w-4" />
-                Add Branch
+                {t('admin.addBranch')}
               </Button>
             </div>
           </div>
@@ -890,9 +906,9 @@ export function AdminPanel() {
           ) : filteredBranches.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-3">
               <Building2 className="h-16 w-16 opacity-30" />
-              <h3 className="text-lg font-medium">No branches found</h3>
+              <h3 className="text-lg font-medium">{t('admin.noBranches')}</h3>
               <p className="text-sm">
-                {branchSearch ? 'Try adjusting your search query' : 'Create your first branch to get started'}
+                {branchSearch ? t('admin.tryAdjustingSearch') : t('admin.createFirstBranch')}
               </p>
             </div>
           ) : (
@@ -918,10 +934,10 @@ export function AdminPanel() {
                         </div>
                         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                           {branch.isHeadOffice && (
-                            <Badge className="bg-emerald-600 text-white text-xs">Head Office</Badge>
+                            <Badge className="bg-emerald-600 text-white text-xs">{t('admin.headOffice')}</Badge>
                           )}
                           {!branch.isActive && (
-                            <Badge variant="destructive" className="text-xs">Inactive</Badge>
+                            <Badge variant="destructive" className="text-xs">{t('admin.inactive')}</Badge>
                           )}
                         </div>
                       </div>
@@ -941,7 +957,7 @@ export function AdminPanel() {
                             })
                             setEditBranchOpen(true)
                           }}
-                          title="Edit branch"
+                          title={t('admin.editBranch')}
                         >
                           <Edit className="h-3.5 w-3.5" />
                         </Button>
@@ -954,7 +970,7 @@ export function AdminPanel() {
                               setSelectedBranch(branch)
                               setDeactivateBranchOpen(true)
                             }}
-                            title="Deactivate branch"
+                            title={t('admin.deactivateBranch')}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -979,12 +995,12 @@ export function AdminPanel() {
                       <div className="flex flex-col items-center rounded-lg bg-muted/50 py-2 px-1">
                         <Users className="h-3.5 w-3.5 text-emerald-600 mb-1" />
                         <span className="text-sm font-semibold">{branch._count.users}</span>
-                        <span className="text-xs text-muted-foreground">Users</span>
+                        <span className="text-xs text-muted-foreground">{t('admin.users')}</span>
                       </div>
                       <div className="flex flex-col items-center rounded-lg bg-muted/50 py-2 px-1">
                         <Package className="h-3.5 w-3.5 text-teal-600 mb-1" />
                         <span className="text-sm font-semibold">{branch._count.products}</span>
-                        <span className="text-xs text-muted-foreground">Products</span>
+                        <span className="text-xs text-muted-foreground">{t('admin.products')}</span>
                       </div>
                       <div className="flex flex-col items-center rounded-lg bg-muted/50 py-2 px-1">
                         <Receipt className="h-3.5 w-3.5 text-stone-600 mb-1" />
@@ -1005,7 +1021,7 @@ export function AdminPanel() {
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search users..."
+                placeholder={t('admin.searchUsers')}
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
                 className="pl-9"
@@ -1023,7 +1039,7 @@ export function AdminPanel() {
                 className="bg-emerald-600 hover:bg-emerald-700 gap-1.5"
               >
                 <Plus className="h-4 w-4" />
-                Add User
+                {t('admin.addUser')}
               </Button>
             </div>
           </div>
@@ -1039,9 +1055,9 @@ export function AdminPanel() {
           ) : filteredUsers.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-3">
               <Users className="h-16 w-16 opacity-30" />
-              <h3 className="text-lg font-medium">No users found</h3>
+              <h3 className="text-lg font-medium">{t('admin.noUsers')}</h3>
               <p className="text-sm">
-                {userSearch ? 'Try adjusting your search query' : 'Add your first user to get started'}
+                {userSearch ? t('admin.tryAdjustingSearch') : t('admin.addFirstUser')}
               </p>
             </div>
           ) : isMobile ? (
@@ -1055,12 +1071,12 @@ export function AdminPanel() {
                         <div className="flex items-center gap-2 flex-wrap mb-1">
                           <span className="font-semibold truncate">{user.name}</span>
                           <RoleBadge role={user.role} />
-                          {!user.isActive && <Badge variant="destructive" className="text-xs">Inactive</Badge>}
+                          {!user.isActive && <Badge variant="destructive" className="text-xs">{t('admin.inactive')}</Badge>}
                         </div>
                         <p className="text-sm text-muted-foreground">{user.email}</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Branch: {user.branch?.name || 'N/A'}
-                          {user.branch?.isHeadOffice && ' (HQ)'}
+                          {t('admin.branches')}: {user.branch?.name || t('admin.notApplicable')}
+                          {user.branch?.isHeadOffice && ` (${t('admin.hq')})`}
                         </p>
                       </div>
                       <div className="flex gap-1 shrink-0">
@@ -1108,12 +1124,12 @@ export function AdminPanel() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Branch</TableHead>
+                      <TableHead>{t('admin.fullName')}</TableHead>
+                      <TableHead>{t('admin.email')}</TableHead>
+                      <TableHead>{t('admin.role')}</TableHead>
+                      <TableHead>{t('admin.branches')}</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead className="text-right">{t('admin.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1123,16 +1139,16 @@ export function AdminPanel() {
                         <TableCell className="text-muted-foreground">{user.email}</TableCell>
                         <TableCell><RoleBadge role={user.role} /></TableCell>
                         <TableCell>
-                          <span className="text-sm">{user.branch?.name || 'N/A'}</span>
+                          <span className="text-sm">{user.branch?.name || t('admin.notApplicable')}</span>
                           {user.branch?.isHeadOffice && (
-                            <Badge className="ml-1 bg-emerald-50 text-emerald-600 text-[10px] px-1 py-0">HQ</Badge>
+                            <Badge className="ml-1 bg-emerald-50 text-emerald-600 text-[10px] px-1 py-0">{t('admin.hq')}</Badge>
                           )}
                         </TableCell>
                         <TableCell>
                           {user.isActive ? (
-                            <Badge variant="outline" className="text-emerald-600 border-emerald-200">Active</Badge>
+                            <Badge variant="outline" className="text-emerald-600 border-emerald-200">{t('admin.active')}</Badge>
                           ) : (
-                            <Badge variant="destructive">Inactive</Badge>
+                            <Badge variant="destructive">{t('admin.inactive')}</Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
@@ -1186,7 +1202,7 @@ export function AdminPanel() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search products..."
+                  placeholder={t('admin.searchProducts')}
                   value={productSearch}
                   onChange={(e) => setProductSearch(e.target.value)}
                   className="pl-9"
@@ -1195,10 +1211,10 @@ export function AdminPanel() {
               <Select value={productBranchFilter} onValueChange={setProductBranchFilter}>
                 <SelectTrigger className="w-[160px] h-9 text-xs">
                   <Building2 className="h-3.5 w-3.5 text-emerald-600 mr-1" />
-                  <SelectValue placeholder="All Branches" />
+                  <SelectValue placeholder={t('admin.allBranches')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all" className="text-xs">All Branches</SelectItem>
+                  <SelectItem value="all" className="text-xs">{t('admin.allBranches')}</SelectItem>
                   {branches.filter(b => b.isActive).map((b) => (
                     <SelectItem key={b.id} value={b.id} className="text-xs">
                       {b.name}
@@ -1222,7 +1238,7 @@ export function AdminPanel() {
                 className="bg-emerald-600 hover:bg-emerald-700 gap-1.5"
               >
                 <Plus className="h-4 w-4" />
-                Register Product
+                {t('admin.registerProduct')}
               </Button>
             </div>
           </div>
@@ -1238,11 +1254,11 @@ export function AdminPanel() {
           ) : filteredProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-3">
               <Package className="h-16 w-16 opacity-30" />
-              <h3 className="text-lg font-medium">No products found</h3>
+              <h3 className="text-lg font-medium">{t('admin.noProducts')}</h3>
               <p className="text-sm">
                 {productSearch || productBranchFilter !== 'all'
-                  ? 'Try adjusting your search or filter'
-                  : 'Register your first product to get started'}
+                  ? t('admin.tryAdjustingFilter')
+                  : t('admin.registerFirstProduct')}
               </p>
             </div>
           ) : isMobile ? (
@@ -1256,16 +1272,16 @@ export function AdminPanel() {
                         <div className="flex items-center gap-2 flex-wrap mb-1">
                           <span className="font-semibold truncate">{product.name}</span>
                           <TrendingBadge trending={product.trending} />
-                          {!product.isActive && <Badge variant="destructive" className="text-xs">Inactive</Badge>}
+                          {!product.isActive && <Badge variant="destructive" className="text-xs">{t('admin.inactive')}</Badge>}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span>SKU: {product.sku}</span>
                           <span>•</span>
-                          <span>{product.category}</span>
+                          <span>{t(categoryKeyMap[product.category] || product.category)}</span>
                         </div>
                         <div className="flex items-center gap-3 mt-2 text-sm">
-                          <span>Stock: <strong>{product.currentStockLevel}</strong></span>
-                          <span>Price: <strong>${product.defaultSalePrice.toFixed(2)}</strong></span>
+                          <span>{t('admin.currentStock')}: <strong>{product.currentStockLevel}</strong></span>
+                          <span>{t('admin.salePrice')}: <strong>${product.defaultSalePrice.toFixed(2)}</strong></span>
                         </div>
                       </div>
                       {product.isActive && (
@@ -1294,14 +1310,14 @@ export function AdminPanel() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Product</TableHead>
+                        <TableHead>{t('admin.products')}</TableHead>
                         <TableHead>SKU</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Stock</TableHead>
-                        <TableHead>Price</TableHead>
-                        <TableHead>Trending</TableHead>
+                        <TableHead>{t('admin.category')}</TableHead>
+                        <TableHead>{t('admin.currentStock')}</TableHead>
+                        <TableHead>{t('admin.salePrice')}</TableHead>
+                        <TableHead>{t('admin.trending')}</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead className="text-right">{t('admin.actions')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1309,7 +1325,7 @@ export function AdminPanel() {
                         <TableRow key={product.id} className={!product.isActive ? 'opacity-60' : ''}>
                           <TableCell className="font-medium max-w-[200px] truncate">{product.name}</TableCell>
                           <TableCell className="font-mono text-xs">{product.sku}</TableCell>
-                          <TableCell className="text-sm">{product.category}</TableCell>
+                          <TableCell className="text-sm">{t(categoryKeyMap[product.category] || product.category)}</TableCell>
                           <TableCell>
                             <span className={`font-semibold ${product.currentStockLevel <= product.reorderThreshold ? 'text-red-600' : ''}`}>
                               {product.currentStockLevel}
@@ -1319,9 +1335,9 @@ export function AdminPanel() {
                           <TableCell><TrendingBadge trending={product.trending} /></TableCell>
                           <TableCell>
                             {product.isActive ? (
-                              <Badge variant="outline" className="text-emerald-600 border-emerald-200">Active</Badge>
+                              <Badge variant="outline" className="text-emerald-600 border-emerald-200">{t('admin.active')}</Badge>
                             ) : (
-                              <Badge variant="destructive">Inactive</Badge>
+                              <Badge variant="destructive">{t('admin.inactive')}</Badge>
                             )}
                           </TableCell>
                           <TableCell className="text-right">
@@ -1358,23 +1374,23 @@ export function AdminPanel() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-emerald-600" />
-              Add New Branch
+              {t('admin.addNewBranch')}
             </DialogTitle>
-            <DialogDescription>Create a new branch location for your company.</DialogDescription>
+            <DialogDescription>{t('admin.createBranchExplanation')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="branch-name">Name <span className="text-destructive">*</span></Label>
+                <Label htmlFor="branch-name">{t('admin.branchName')} <span className="text-destructive">*</span></Label>
                 <Input
                   id="branch-name"
-                  placeholder="Branch name"
+                  placeholder={t('admin.branchName')}
                   value={branchForm.name}
                   onChange={(e) => setBranchForm({ ...branchForm, name: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="branch-code">Code <span className="text-destructive">*</span></Label>
+                <Label htmlFor="branch-code">{t('admin.branchCode')} <span className="text-destructive">*</span></Label>
                 <Input
                   id="branch-code"
                   placeholder="e.g. NY01"
@@ -1385,19 +1401,19 @@ export function AdminPanel() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="branch-address">Address</Label>
+              <Label htmlFor="branch-address">{t('admin.branchAddress')}</Label>
               <Input
                 id="branch-address"
-                placeholder="Street address"
+                placeholder={t('admin.branchAddress')}
                 value={branchForm.address}
                 onChange={(e) => setBranchForm({ ...branchForm, address: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="branch-phone">Phone</Label>
+              <Label htmlFor="branch-phone">{t('admin.branchPhone')}</Label>
               <Input
                 id="branch-phone"
-                placeholder="Phone number"
+                placeholder={t('admin.branchPhone')}
                 value={branchForm.phone}
                 onChange={(e) => setBranchForm({ ...branchForm, phone: e.target.value })}
               />
@@ -1408,13 +1424,13 @@ export function AdminPanel() {
                 checked={branchForm.isHeadOffice}
                 onCheckedChange={(checked) => setBranchForm({ ...branchForm, isHeadOffice: checked })}
               />
-              <Label htmlFor="branch-headoffice" className="cursor-pointer">This is the head office</Label>
+              <Label htmlFor="branch-headoffice" className="cursor-pointer">{t('admin.isHeadOffice')}</Label>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddBranchOpen(false)} disabled={branchSubmitting}>Cancel</Button>
+            <Button variant="outline" onClick={() => setAddBranchOpen(false)} disabled={branchSubmitting}>{t('admin.cancel')}</Button>
             <Button onClick={handleAddBranch} disabled={branchSubmitting} className="bg-emerald-600 hover:bg-emerald-700">
-              {branchSubmitting ? 'Creating...' : 'Create Branch'}
+              {branchSubmitting ? t('admin.creating') : t('admin.createBranch')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1426,13 +1442,13 @@ export function AdminPanel() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="h-5 w-5 text-emerald-600" />
-              Edit Branch
+              {t('admin.editBranch')}
             </DialogTitle>
-            <DialogDescription>Update branch information for {selectedBranch?.name}.</DialogDescription>
+            <DialogDescription>{t('admin.editBranchInfo')} {selectedBranch?.name}.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="edit-branch-name">Name <span className="text-destructive">*</span></Label>
+              <Label htmlFor="edit-branch-name">{t('admin.branchName')} <span className="text-destructive">*</span></Label>
               <Input
                 id="edit-branch-name"
                 value={branchForm.name}
@@ -1440,12 +1456,12 @@ export function AdminPanel() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-branch-code">Code</Label>
+              <Label htmlFor="edit-branch-code">{t('admin.branchCode')}</Label>
               <Input id="edit-branch-code" value={branchForm.code} disabled className="bg-muted" />
-              <p className="text-xs text-muted-foreground">Branch code cannot be changed after creation.</p>
+              <p className="text-xs text-muted-foreground">{t('admin.codeCannotChange')}</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-branch-address">Address</Label>
+              <Label htmlFor="edit-branch-address">{t('admin.branchAddress')}</Label>
               <Input
                 id="edit-branch-address"
                 value={branchForm.address}
@@ -1453,7 +1469,7 @@ export function AdminPanel() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-branch-phone">Phone</Label>
+              <Label htmlFor="edit-branch-phone">{t('admin.branchPhone')}</Label>
               <Input
                 id="edit-branch-phone"
                 value={branchForm.phone}
@@ -1462,9 +1478,9 @@ export function AdminPanel() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditBranchOpen(false)} disabled={branchSubmitting}>Cancel</Button>
+            <Button variant="outline" onClick={() => setEditBranchOpen(false)} disabled={branchSubmitting}>{t('admin.cancel')}</Button>
             <Button onClick={handleEditBranch} disabled={branchSubmitting} className="bg-emerald-600 hover:bg-emerald-700">
-              {branchSubmitting ? 'Saving...' : 'Save Changes'}
+              {branchSubmitting ? t('admin.saving') : t('branches.saveChanges')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1476,7 +1492,7 @@ export function AdminPanel() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <Trash2 className="h-5 w-5 text-destructive" />
-              Deactivate Branch
+              {t('admin.deactivateBranch')}
             </AlertDialogTitle>
             <AlertDialogDescription>
               This will deactivate <span className="font-semibold text-foreground">{selectedBranch?.name}</span> ({selectedBranch?.code}).
@@ -1485,34 +1501,34 @@ export function AdminPanel() {
           </AlertDialogHeader>
           {selectedBranch && (
             <div className="rounded-lg border bg-muted/50 p-3 space-y-2">
-              <p className="text-sm font-medium mb-2">Branch data that will be hidden:</p>
+              <p className="text-sm font-medium mb-2">{t('admin.branchDataHidden')}</p>
               <div className="grid grid-cols-3 gap-2 text-sm">
                 <div className="flex items-center gap-1.5">
                   <Users className="h-3.5 w-3.5 text-emerald-600" />
-                  <span>{selectedBranch._count.users} users</span>
+                  <span>{selectedBranch._count.users} {t('admin.users')}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Package className="h-3.5 w-3.5 text-teal-600" />
-                  <span>{selectedBranch._count.products} products</span>
+                  <span>{selectedBranch._count.products} {t('admin.products')}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Receipt className="h-3.5 w-3.5 text-stone-600" />
-                  <span>{selectedBranch._count.sales} sales</span>
+                  <span>{selectedBranch._count.sales} Sales</span>
                 </div>
               </div>
               {selectedBranch.isHeadOffice && (
-                <p className="text-xs text-amber-600 font-medium mt-1">Warning: This is the head office branch.</p>
+                <p className="text-xs text-amber-600 font-medium mt-1">{t('admin.warningHeadOffice')}</p>
               )}
             </div>
           )}
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={branchSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={branchSubmitting}>{t('admin.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeactivateBranch}
               disabled={branchSubmitting}
               className="bg-destructive text-white hover:bg-destructive/90"
             >
-              {branchSubmitting ? 'Deactivating...' : 'Deactivate Branch'}
+              {branchSubmitting ? t('admin.deactivating') : t('admin.deactivateBranch')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1524,22 +1540,22 @@ export function AdminPanel() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Users className="h-5 w-5 text-emerald-600" />
-              Add New User
+              {t('admin.addNewUser')}
             </DialogTitle>
-            <DialogDescription>Create a new user account for your company.</DialogDescription>
+            <DialogDescription>{t('admin.createUserExplanation')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="user-name">Name <span className="text-destructive">*</span></Label>
+              <Label htmlFor="user-name">{t('admin.fullName')} <span className="text-destructive">*</span></Label>
               <Input
                 id="user-name"
-                placeholder="Full name"
+                placeholder={t('admin.fullName')}
                 value={userForm.name}
                 onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="user-email">Email <span className="text-destructive">*</span></Label>
+              <Label htmlFor="user-email">{t('admin.email')} <span className="text-destructive">*</span></Label>
               <Input
                 id="user-email"
                 type="email"
@@ -1553,36 +1569,36 @@ export function AdminPanel() {
               <Input
                 id="user-password"
                 type="password"
-                placeholder="Leave blank for demo password"
+                placeholder={t('admin.leaveBlankDemo')}
                 value={userForm.password}
                 onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
               />
-              <p className="text-xs text-muted-foreground">In demo mode, a default password is used if left blank.</p>
+              <p className="text-xs text-muted-foreground">{t('admin.leaveBlankDemo')}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="user-role">Role <span className="text-destructive">*</span></Label>
+                <Label htmlFor="user-role">{t('admin.role')} <span className="text-destructive">*</span></Label>
                 <Select value={userForm.role} onValueChange={(val) => setUserForm({ ...userForm, role: val })}>
                   <SelectTrigger id="user-role">
-                    <SelectValue placeholder="Select role" />
+                    <SelectValue placeholder={t('admin.role')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="CompanyAdmin">Company Admin</SelectItem>
-                    <SelectItem value="Manager">Manager</SelectItem>
-                    <SelectItem value="Employee">Employee</SelectItem>
+                    <SelectItem value="CompanyAdmin">{t('admin.companyAdmin')}</SelectItem>
+                    <SelectItem value="Manager">{t('admin.manager')}</SelectItem>
+                    <SelectItem value="Employee">{t('admin.employee')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="user-branch">Branch <span className="text-destructive">*</span></Label>
+                <Label htmlFor="user-branch">{t('admin.selectBranch')} <span className="text-destructive">*</span></Label>
                 <Select value={userForm.branchId} onValueChange={(val) => setUserForm({ ...userForm, branchId: val })}>
                   <SelectTrigger id="user-branch">
-                    <SelectValue placeholder="Select branch" />
+                    <SelectValue placeholder={t('admin.selectBranch')} />
                   </SelectTrigger>
                   <SelectContent>
                     {branches.filter(b => b.isActive).map((b) => (
                       <SelectItem key={b.id} value={b.id}>
-                        {b.name} {b.isHeadOffice ? '(HQ)' : ''}
+                        {b.name} {b.isHeadOffice ? `(${t('admin.hq')})` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1591,9 +1607,9 @@ export function AdminPanel() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddUserOpen(false)} disabled={userSubmitting}>Cancel</Button>
+            <Button variant="outline" onClick={() => setAddUserOpen(false)} disabled={userSubmitting}>{t('admin.cancel')}</Button>
             <Button onClick={handleAddUser} disabled={userSubmitting} className="bg-emerald-600 hover:bg-emerald-700">
-              {userSubmitting ? 'Creating...' : 'Create User'}
+              {userSubmitting ? t('admin.creating') : t('admin.createUser')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1605,13 +1621,13 @@ export function AdminPanel() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="h-5 w-5 text-emerald-600" />
-              Edit User
+              {t('admin.editUser')}
             </DialogTitle>
-            <DialogDescription>Update user information for {selectedUser?.name}.</DialogDescription>
+            <DialogDescription>{t('admin.editUserExplanation')} {selectedUser?.name}.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="edit-user-name">Name</Label>
+              <Label htmlFor="edit-user-name">{t('admin.fullName')}</Label>
               <Input
                 id="edit-user-name"
                 value={userForm.name}
@@ -1619,26 +1635,26 @@ export function AdminPanel() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-user-email">Email</Label>
+              <Label htmlFor="edit-user-email">{t('admin.email')}</Label>
               <Input id="edit-user-email" value={userForm.email} disabled className="bg-muted" />
-              <p className="text-xs text-muted-foreground">Email cannot be changed after creation.</p>
+              <p className="text-xs text-muted-foreground">{t('admin.emailCannotChange')}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="edit-user-role">Role</Label>
+                <Label htmlFor="edit-user-role">{t('admin.role')}</Label>
                 <Select value={userForm.role} onValueChange={(val) => setUserForm({ ...userForm, role: val })}>
                   <SelectTrigger id="edit-user-role">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="CompanyAdmin">Company Admin</SelectItem>
-                    <SelectItem value="Manager">Manager</SelectItem>
-                    <SelectItem value="Employee">Employee</SelectItem>
+                    <SelectItem value="CompanyAdmin">{t('admin.companyAdmin')}</SelectItem>
+                    <SelectItem value="Manager">{t('admin.manager')}</SelectItem>
+                    <SelectItem value="Employee">{t('admin.employee')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-user-branch">Branch</Label>
+                <Label htmlFor="edit-user-branch">{t('admin.selectBranch')}</Label>
                 <Select value={userForm.branchId} onValueChange={(val) => setUserForm({ ...userForm, branchId: val })}>
                   <SelectTrigger id="edit-user-branch">
                     <SelectValue />
@@ -1646,7 +1662,7 @@ export function AdminPanel() {
                   <SelectContent>
                     {branches.filter(b => b.isActive).map((b) => (
                       <SelectItem key={b.id} value={b.id}>
-                        {b.name} {b.isHeadOffice ? '(HQ)' : ''}
+                        {b.name} {b.isHeadOffice ? `(${t('admin.hq')})` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1655,9 +1671,9 @@ export function AdminPanel() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditUserOpen(false)} disabled={userSubmitting}>Cancel</Button>
+            <Button variant="outline" onClick={() => setEditUserOpen(false)} disabled={userSubmitting}>{t('admin.cancel')}</Button>
             <Button onClick={handleEditUser} disabled={userSubmitting} className="bg-emerald-600 hover:bg-emerald-700">
-              {userSubmitting ? 'Saving...' : 'Save Changes'}
+              {userSubmitting ? t('admin.saving') : t('admin.saveChanges')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1669,33 +1685,33 @@ export function AdminPanel() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <UserX className="h-5 w-5 text-destructive" />
-              Deactivate User
+              {t('admin.deactivateUser')}
             </AlertDialogTitle>
             <AlertDialogDescription>
               This will deactivate <span className="font-semibold text-foreground">{selectedUser?.name}</span> ({selectedUser?.email}).
-              They will no longer be able to log in or appear in active user lists.
+              {t('admin.deactivateUserExplanation')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {selectedUser && (
             <div className="rounded-lg border bg-muted/50 p-3 space-y-2">
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Role:</span>
+                <span className="text-muted-foreground">{t('admin.role')}:</span>
                 <RoleBadge role={selectedUser.role} />
               </div>
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Branch:</span>
-                <span>{selectedUser.branch?.name || 'N/A'}</span>
+                <span className="text-muted-foreground">{t('admin.branches')}:</span>
+                <span>{selectedUser.branch?.name || t('admin.notApplicable')}</span>
               </div>
             </div>
           )}
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={userSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={userSubmitting}>{t('admin.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeactivateUser}
               disabled={userSubmitting}
               className="bg-destructive text-white hover:bg-destructive/90"
             >
-              {userSubmitting ? 'Deactivating...' : 'Deactivate User'}
+              {userSubmitting ? t('admin.deactivating') : t('admin.deactivateUser')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1707,17 +1723,17 @@ export function AdminPanel() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="h-5 w-5 text-emerald-600" />
-              Register New Product
+              {t('admin.registerNewProduct')}
             </DialogTitle>
-            <DialogDescription>Add a new product to your company inventory.</DialogDescription>
+            <DialogDescription>{t('admin.registerProductExplanation')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="product-name">Name <span className="text-destructive">*</span></Label>
+                <Label htmlFor="product-name">{t('admin.branchName')} <span className="text-destructive">*</span></Label>
                 <Input
                   id="product-name"
-                  placeholder="Product name"
+                  placeholder={t('admin.branchName')}
                   value={productForm.name}
                   onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
                 />
@@ -1735,23 +1751,23 @@ export function AdminPanel() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="product-barcode">Barcode</Label>
+                <Label htmlFor="product-barcode">{t('admin.barcode')}</Label>
                 <Input
                   id="product-barcode"
-                  placeholder="Optional"
+                  placeholder={t('admin.optional')}
                   value={productForm.barcode}
                   onChange={(e) => setProductForm({ ...productForm, barcode: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="product-category">Category <span className="text-destructive">*</span></Label>
+                <Label htmlFor="product-category">{t('admin.category')} <span className="text-destructive">*</span></Label>
                 <Select value={productForm.category} onValueChange={(val) => setProductForm({ ...productForm, category: val })}>
                   <SelectTrigger id="product-category">
-                    <SelectValue placeholder="Select category" />
+                    <SelectValue placeholder={t('admin.selectCategory')} />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      <SelectItem key={cat} value={cat}>{t(categoryKeyMap[cat] || cat)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1759,7 +1775,7 @@ export function AdminPanel() {
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="product-stock">Initial Stock <span className="text-destructive">*</span></Label>
+                <Label htmlFor="product-stock">{t('admin.initialStock')} <span className="text-destructive">*</span></Label>
                 <Input
                   id="product-stock"
                   type="number"
@@ -1769,7 +1785,7 @@ export function AdminPanel() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="product-reorder">Reorder At</Label>
+                <Label htmlFor="product-reorder">{t('admin.reorderAt')}</Label>
                 <Input
                   id="product-reorder"
                   type="number"
@@ -1779,7 +1795,7 @@ export function AdminPanel() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="product-price">Sale Price <span className="text-destructive">*</span></Label>
+                <Label htmlFor="product-price">{t('admin.salePrice')} <span className="text-destructive">*</span></Label>
                 <Input
                   id="product-price"
                   type="number"
@@ -1791,15 +1807,15 @@ export function AdminPanel() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="product-branch">Branch <span className="text-destructive">*</span></Label>
+              <Label htmlFor="product-branch">{t('admin.selectBranch')} <span className="text-destructive">*</span></Label>
               <Select value={productForm.branchId} onValueChange={(val) => setProductForm({ ...productForm, branchId: val })}>
                 <SelectTrigger id="product-branch">
-                  <SelectValue placeholder="Select branch" />
+                  <SelectValue placeholder={t('admin.selectBranch')} />
                 </SelectTrigger>
                 <SelectContent>
                   {branches.filter(b => b.isActive).map((b) => (
                     <SelectItem key={b.id} value={b.id}>
-                      {b.name} {b.isHeadOffice ? '(HQ)' : ''}
+                      {b.name} {b.isHeadOffice ? `(${t('admin.hq')})` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1807,9 +1823,9 @@ export function AdminPanel() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddProductOpen(false)} disabled={productSubmitting}>Cancel</Button>
+            <Button variant="outline" onClick={() => setAddProductOpen(false)} disabled={productSubmitting}>{t('admin.cancel')}</Button>
             <Button onClick={handleAddProduct} disabled={productSubmitting} className="bg-emerald-600 hover:bg-emerald-700">
-              {productSubmitting ? 'Registering...' : 'Register Product'}
+              {productSubmitting ? t('admin.registering') : t('admin.registerProductBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1821,42 +1837,42 @@ export function AdminPanel() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <Trash2 className="h-5 w-5 text-destructive" />
-              Remove Product
+              {t('admin.removeProduct')}
             </AlertDialogTitle>
             <AlertDialogDescription>
               This will deactivate <span className="font-semibold text-foreground">{selectedProduct?.name}</span> (SKU: {selectedProduct?.sku}).
-              The product will no longer appear in active inventory or POS.
+              {t('admin.removeProductExplanation')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {selectedProduct && (
             <div className="rounded-lg border bg-muted/50 p-3 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Current Stock:</span>
+                <span className="text-sm text-muted-foreground">{t('admin.currentStock')}:</span>
                 <span className="text-sm font-semibold">{selectedProduct.currentStockLevel}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Sale Price:</span>
+                <span className="text-sm text-muted-foreground">{t('admin.salePrice')}:</span>
                 <span className="text-sm font-semibold">${selectedProduct.defaultSalePrice.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Trending:</span>
+                <span className="text-sm text-muted-foreground">{t('admin.trending')}:</span>
                 <TrendingBadge trending={selectedProduct.trending} />
               </div>
               {selectedProduct.trending === 'down' && (
                 <p className="text-xs text-amber-600 font-medium mt-1">
-                  Warning: This product has declining sales. Consider running a promotion before removing.
+                  {t('admin.warningDeclining')}
                 </p>
               )}
             </div>
           )}
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={productSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={productSubmitting}>{t('admin.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteProduct}
               disabled={productSubmitting}
               className="bg-destructive text-white hover:bg-destructive/90"
             >
-              {productSubmitting ? 'Removing...' : 'Remove Product'}
+              {productSubmitting ? t('admin.removing') : t('admin.removeProductBtn')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

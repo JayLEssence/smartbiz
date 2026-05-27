@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useAppStore, type CompanyInfo } from '@/stores/app-store'
+import { useLanguage } from '@/lib/i18n/language-context'
 import { Store, Building2, User, Mail, Lock, Phone, MapPin, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -46,15 +47,8 @@ interface SessionData {
   token: string
 }
 
-const industries = [
-  { value: 'Retail', label: 'Retail' },
-  { value: 'Wholesale', label: 'Wholesale' },
-  { value: 'Restaurant', label: 'Restaurant' },
-  { value: 'Services', label: 'Services' },
-  { value: 'Other', label: 'Other' },
-]
-
 export function AuthPage() {
+  const { t } = useLanguage()
   const { setUser, setCurrentBranchId, setCompany, setAuthenticated, setBranches } = useAppStore()
 
   // Login state
@@ -75,6 +69,14 @@ export function AuthPage() {
   const [regLoading, setRegLoading] = useState(false)
 
   const [activeTab, setActiveTab] = useState('login')
+
+  const industries = [
+    { value: 'Retail', label: t('auth.retail') },
+    { value: 'Wholesale', label: t('auth.wholesale') },
+    { value: 'Restaurant', label: t('auth.restaurant') },
+    { value: 'Services', label: t('auth.services') },
+    { value: 'Other', label: t('auth.other') },
+  ]
 
   const saveSessionAndLogin = (data: SessionData) => {
     const user = data.user
@@ -108,7 +110,6 @@ export function AuthPage() {
     setCompany(companyInfo)
     setAuthenticated(true)
 
-    // Save to localStorage for session persistence
     localStorage.setItem('smartbiz_session', JSON.stringify(data))
   }
 
@@ -135,7 +136,7 @@ export function AuthPage() {
     e.preventDefault()
 
     if (!loginEmail || !loginPassword) {
-      toast.error('Please enter your email and password')
+      toast.error(t('auth.enterEmailPassword'))
       return
     }
 
@@ -155,9 +156,9 @@ export function AuthPage() {
 
       saveSessionAndLogin(json.data)
       await fetchBranches(json.data.user.companyId)
-      toast.success(`Welcome back, ${json.data.user.name}!`)
+      toast.success(`${t('auth.welcomeBack')}, ${json.data.user.name}!`)
     } catch {
-      toast.error('Network error. Please try again.')
+      toast.error(t('auth.networkError'))
     } finally {
       setLoginLoading(false)
     }
@@ -167,17 +168,17 @@ export function AuthPage() {
     e.preventDefault()
 
     if (!regCompanyName || !regAdminName || !regAdminEmail || !regPassword) {
-      toast.error('Please fill in all required fields')
+      toast.error(t('auth.fillRequired'))
       return
     }
 
     if (regPassword !== regConfirmPassword) {
-      toast.error('Passwords do not match')
+      toast.error(t('auth.passwordsNoMatch'))
       return
     }
 
     if (regPassword.length < 6) {
-      toast.error('Password must be at least 6 characters')
+      toast.error(t('auth.passwordMinLength'))
       return
     }
 
@@ -204,7 +205,6 @@ export function AuthPage() {
         return
       }
 
-      // After registration, auto-login using the new admin account
       const loginRes = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -215,14 +215,14 @@ export function AuthPage() {
       if (loginJson.success) {
         saveSessionAndLogin(loginJson.data)
         await fetchBranches(loginJson.data.user.companyId)
-        toast.success('Company registered successfully! Welcome to SmartBiz!')
+        toast.success(t('auth.registrationSuccess'))
       } else {
-        toast.success('Company registered! Please log in with your credentials.')
+        toast.success(t('auth.registrationLogin'))
         setActiveTab('login')
         setLoginEmail(regAdminEmail)
       }
     } catch {
-      toast.error('Network error. Please try again.')
+      toast.error(t('auth.networkError'))
     } finally {
       setRegLoading(false)
     }
@@ -237,15 +237,15 @@ export function AuthPage() {
             <Store className="h-7 w-7" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">SmartBiz</h1>
-          <p className="text-sm text-muted-foreground mt-1">Retail Management System</p>
+          <p className="text-sm text-muted-foreground mt-1">{t('auth.tagline')}</p>
         </div>
 
         <Card className="border-0 shadow-xl shadow-black/5">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <CardHeader className="pb-0">
               <TabsList className="w-full">
-                <TabsTrigger value="login" className="flex-1">Sign In</TabsTrigger>
-                <TabsTrigger value="register" className="flex-1">Register</TabsTrigger>
+                <TabsTrigger value="login" className="flex-1">{t('auth.signIn')}</TabsTrigger>
+                <TabsTrigger value="register" className="flex-1">{t('auth.register')}</TabsTrigger>
               </TabsList>
             </CardHeader>
 
@@ -254,13 +254,13 @@ export function AuthPage() {
               <TabsContent value="login">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
+                    <Label htmlFor="login-email">{t('auth.email')}</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="login-email"
                         type="email"
-                        placeholder="you@company.com"
+                        placeholder={t('auth.emailPlaceholder')}
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
                         className="pl-9"
@@ -269,13 +269,13 @@ export function AuthPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="login-password">Password</Label>
+                    <Label htmlFor="login-password">{t('auth.password')}</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="login-password"
                         type="password"
-                        placeholder="Enter your password"
+                        placeholder={t('auth.passwordPlaceholder')}
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
                         className="pl-9"
@@ -291,28 +291,28 @@ export function AuthPage() {
                     {loginLoading ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Signing in...
+                        {t('auth.signingIn')}
                       </>
                     ) : (
                       <>
-                        Sign In
+                        {t('auth.signIn')}
                         <ArrowRight className="h-4 w-4 ml-2" />
                       </>
                     )}
                   </Button>
 
                   <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-3 mt-4">
-                    <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium mb-1.5">Demo Accounts</p>
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium mb-1.5">{t('auth.demoAccounts')}</p>
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span className="font-mono bg-white dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border">admin@smartbiz.com</span>
-                        <span>Multi-branch corp</span>
+                        <span>{t('auth.multiBranchCorp')}</span>
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span className="font-mono bg-white dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border">mamajane@gmail.com</span>
-                        <span>Single shop</span>
+                        <span>{t('auth.singleShop')}</span>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">Password for demo: <span className="font-mono font-medium">demo</span></p>
+                      <p className="text-xs text-muted-foreground mt-1">{t('auth.passwordForDemo')} <span className="font-mono font-medium">demo</span></p>
                     </div>
                   </div>
                 </form>
@@ -325,7 +325,7 @@ export function AuthPage() {
                   <div className="flex items-start gap-2 rounded-lg bg-muted/50 p-3">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
                     <p className="text-xs text-muted-foreground">
-                      Register your company to get started. We&apos;ll create your head office branch and admin account automatically.
+                      {t('auth.registerExplanation')}
                     </p>
                   </div>
 
@@ -333,16 +333,16 @@ export function AuthPage() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">
                       <Building2 className="h-4 w-4" />
-                      Company Details
+                      {t('auth.companyDetails')}
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="reg-company-name">
-                        Company Name <span className="text-destructive">*</span>
+                        {t('auth.companyName')} <span className="text-destructive">*</span>
                       </Label>
                       <Input
                         id="reg-company-name"
-                        placeholder="Acme Retail Ltd"
+                        placeholder={t('auth.companyNamePlaceholder')}
                         value={regCompanyName}
                         onChange={(e) => setRegCompanyName(e.target.value)}
                         disabled={regLoading}
@@ -351,10 +351,10 @@ export function AuthPage() {
 
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-2">
-                        <Label htmlFor="reg-industry">Industry</Label>
+                        <Label htmlFor="reg-industry">{t('auth.industry')}</Label>
                         <Select value={regIndustry} onValueChange={setRegIndustry}>
                           <SelectTrigger id="reg-industry">
-                            <SelectValue placeholder="Select..." />
+                            <SelectValue placeholder={t('auth.selectIndustry')} />
                           </SelectTrigger>
                           <SelectContent>
                             {industries.map((ind) => (
@@ -366,7 +366,7 @@ export function AuthPage() {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="reg-company-phone">Phone</Label>
+                        <Label htmlFor="reg-company-phone">{t('auth.phone')}</Label>
                         <div className="relative">
                           <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input
@@ -382,13 +382,13 @@ export function AuthPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="reg-company-email">Company Email</Label>
+                      <Label htmlFor="reg-company-email">{t('auth.companyEmail')}</Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                           id="reg-company-email"
                           type="email"
-                          placeholder="info@company.com"
+                          placeholder={t('auth.companyEmailPlaceholder')}
                           value={regCompanyEmail}
                           onChange={(e) => setRegCompanyEmail(e.target.value)}
                           className="pl-9"
@@ -398,12 +398,12 @@ export function AuthPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="reg-company-address">Address</Label>
+                      <Label htmlFor="reg-company-address">{t('auth.address')}</Label>
                       <div className="relative">
                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                           id="reg-company-address"
-                          placeholder="123 Business Street"
+                          placeholder={t('auth.addressPlaceholder')}
                           value={regCompanyAddress}
                           onChange={(e) => setRegCompanyAddress(e.target.value)}
                           className="pl-9"
@@ -419,7 +419,7 @@ export function AuthPage() {
                       <span className="w-full border-t" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-card px-2 text-muted-foreground">Admin Account</span>
+                      <span className="bg-card px-2 text-muted-foreground">{t('auth.adminAccount')}</span>
                     </div>
                   </div>
 
@@ -427,18 +427,18 @@ export function AuthPage() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">
                       <User className="h-4 w-4" />
-                      Admin Details
+                      {t('auth.adminDetails')}
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="reg-admin-name">
-                        Full Name <span className="text-destructive">*</span>
+                        {t('auth.fullName')} <span className="text-destructive">*</span>
                       </Label>
                       <div className="relative">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                           id="reg-admin-name"
-                          placeholder="John Doe"
+                          placeholder={t('auth.fullNamePlaceholder')}
                           value={regAdminName}
                           onChange={(e) => setRegAdminName(e.target.value)}
                           className="pl-9"
@@ -449,14 +449,14 @@ export function AuthPage() {
 
                     <div className="space-y-2">
                       <Label htmlFor="reg-admin-email">
-                        Email (Login) <span className="text-destructive">*</span>
+                        {t('auth.adminEmail')} <span className="text-destructive">*</span>
                       </Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                           id="reg-admin-email"
                           type="email"
-                          placeholder="admin@company.com"
+                          placeholder={t('auth.adminEmailPlaceholder')}
                           value={regAdminEmail}
                           onChange={(e) => setRegAdminEmail(e.target.value)}
                           className="pl-9"
@@ -468,14 +468,14 @@ export function AuthPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-2">
                         <Label htmlFor="reg-password">
-                          Password <span className="text-destructive">*</span>
+                          {t('auth.password')} <span className="text-destructive">*</span>
                         </Label>
                         <div className="relative">
                           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input
                             id="reg-password"
                             type="password"
-                            placeholder="Min 6 chars"
+                            placeholder={t('auth.minChars')}
                             value={regPassword}
                             onChange={(e) => setRegPassword(e.target.value)}
                             className="pl-9"
@@ -485,14 +485,14 @@ export function AuthPage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="reg-confirm-password">
-                          Confirm <span className="text-destructive">*</span>
+                          {t('auth.confirm')} <span className="text-destructive">*</span>
                         </Label>
                         <div className="relative">
                           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input
                             id="reg-confirm-password"
                             type="password"
-                            placeholder="Re-enter"
+                            placeholder={t('auth.reenter')}
                             value={regConfirmPassword}
                             onChange={(e) => setRegConfirmPassword(e.target.value)}
                             className="pl-9"
@@ -511,11 +511,11 @@ export function AuthPage() {
                     {regLoading ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Creating company...
+                        {t('auth.creatingCompany')}
                       </>
                     ) : (
                       <>
-                        Register Company
+                        {t('auth.registerCompany')}
                         <ArrowRight className="h-4 w-4 ml-2" />
                       </>
                     )}
@@ -528,7 +528,7 @@ export function AuthPage() {
 
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground mt-6">
-          By continuing, you agree to SmartBiz&apos;s Terms of Service
+          {t('auth.termsNotice')}
         </p>
       </div>
     </div>

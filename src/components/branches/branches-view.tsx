@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useLanguage } from '@/lib/i18n/language-context'
 import { useAppStore } from '@/stores/app-store'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { toast } from 'sonner'
@@ -77,6 +78,7 @@ const emptyForm: BranchForm = {
 
 export function BranchesView() {
   const isMobile = useIsMobile()
+  const { t } = useLanguage()
   const { currentUser } = useAppStore()
 
   const [branches, setBranches] = useState<BranchData[]>([])
@@ -110,11 +112,11 @@ export function BranchesView() {
         setBranches(json.data)
       }
     } catch {
-      toast.error('Failed to load branches')
+      toast.error(t('branches.failedToLoad'))
     } finally {
       setLoading(false)
     }
-  }, [showInactive, companyId])
+  }, [showInactive, companyId, t])
 
   useEffect(() => {
     if (isAdmin) {
@@ -128,10 +130,9 @@ export function BranchesView() {
       <div className={isMobile ? 'p-4 pb-24' : 'p-4'}>
         <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-3">
           <ShieldAlert className="h-16 w-16 opacity-30" />
-          <h2 className="text-xl font-semibold">Access Denied</h2>
+          <h2 className="text-xl font-semibold">{t('branches.accessDenied')}</h2>
           <p className="text-sm text-center max-w-sm">
-            Only administrators can manage branches. Please contact your system
-            administrator if you need access.
+            {t('branches.adminOnlyAccess')}
           </p>
         </div>
       </div>
@@ -140,7 +141,7 @@ export function BranchesView() {
 
   const handleAddBranch = async () => {
     if (!addForm.name.trim() || !addForm.code.trim()) {
-      toast.error('Branch name and code are required')
+      toast.error(t('branches.nameAndCodeRequired'))
       return
     }
 
@@ -161,15 +162,15 @@ export function BranchesView() {
       const json = await res.json()
 
       if (json.success) {
-        toast.success(`Branch "${addForm.name}" created successfully`)
+        toast.success(t('branches.branchCreated'))
         setAddDialogOpen(false)
         setAddForm(emptyForm)
         fetchBranches()
       } else {
-        toast.error(json.error || 'Failed to create branch')
+        toast.error(json.error || t('branches.failedToCreate'))
       }
     } catch {
-      toast.error('Failed to create branch')
+      toast.error(t('branches.failedToCreate'))
     } finally {
       setSubmitting(false)
     }
@@ -177,7 +178,7 @@ export function BranchesView() {
 
   const handleEditBranch = async () => {
     if (!selectedBranch || !editForm.name.trim()) {
-      toast.error('Branch name is required')
+      toast.error(t('branches.nameRequired'))
       return
     }
 
@@ -195,16 +196,16 @@ export function BranchesView() {
       const json = await res.json()
 
       if (json.success) {
-        toast.success(`Branch "${editForm.name}" updated successfully`)
+        toast.success(t('branches.branchUpdated'))
         setEditDialogOpen(false)
         setSelectedBranch(null)
         setEditForm(emptyForm)
         fetchBranches()
       } else {
-        toast.error(json.error || 'Failed to update branch')
+        toast.error(json.error || t('branches.failedToUpdate'))
       }
     } catch {
-      toast.error('Failed to update branch')
+      toast.error(t('branches.failedToUpdate'))
     } finally {
       setSubmitting(false)
     }
@@ -221,15 +222,15 @@ export function BranchesView() {
       const json = await res.json()
 
       if (json.success) {
-        toast.success(`Branch "${selectedBranch.name}" deactivated`)
+        toast.success(t('branches.branchDeactivated'))
         setDeleteDialogOpen(false)
         setSelectedBranch(null)
         fetchBranches()
       } else {
-        toast.error(json.error || 'Failed to deactivate branch')
+        toast.error(json.error || t('branches.failedToDeactivate'))
       }
     } catch {
-      toast.error('Failed to deactivate branch')
+      toast.error(t('branches.failedToDeactivate'))
     } finally {
       setSubmitting(false)
     }
@@ -266,7 +267,7 @@ export function BranchesView() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-2">
           <Building2 className="h-6 w-6 text-emerald-600" />
-          <h1 className="text-xl font-bold">Branch Management</h1>
+          <h1 className="text-xl font-bold">{t('branches.branchManagement')}</h1>
         </div>
         <Button
           onClick={() => {
@@ -276,7 +277,7 @@ export function BranchesView() {
           className="bg-emerald-600 hover:bg-emerald-700 gap-1.5"
         >
           <Plus className="h-4 w-4" />
-          Add Branch
+          {t('branches.addBranch')}
         </Button>
       </div>
 
@@ -285,7 +286,7 @@ export function BranchesView() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search branches by name, code, or address..."
+            placeholder={t('branches.searchBranches')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -299,7 +300,7 @@ export function BranchesView() {
               id="show-inactive"
             />
             <Label htmlFor="show-inactive" className="text-sm cursor-pointer">
-              Show inactive
+              {t('branches.showInactive')}
             </Label>
           </div>
           <Button
@@ -323,11 +324,11 @@ export function BranchesView() {
       ) : filteredBranches.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-3">
           <Building2 className="h-16 w-16 opacity-30" />
-          <h3 className="text-lg font-medium">No branches found</h3>
+          <h3 className="text-lg font-medium">{t('branches.noBranches')}</h3>
           <p className="text-sm">
             {searchQuery
-              ? 'Try adjusting your search query'
-              : 'Create your first branch to get started'}
+              ? t('branches.tryAdjusting')
+              : t('branches.createFirst')}
           </p>
         </div>
       ) : (
@@ -362,12 +363,12 @@ export function BranchesView() {
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                       {branch.isHeadOffice && (
                         <Badge className="bg-emerald-600 text-white text-xs">
-                          Head Office
+                          {t('branches.headOffice')}
                         </Badge>
                       )}
                       {!branch.isActive && (
                         <Badge variant="destructive" className="text-xs">
-                          Inactive
+                          {t('branches.inactive')}
                         </Badge>
                       )}
                     </div>
@@ -378,7 +379,7 @@ export function BranchesView() {
                       size="icon"
                       className="h-8 w-8"
                       onClick={() => openEditDialog(branch)}
-                      title="Edit branch"
+                      title={t('branches.editBranch')}
                     >
                       <Edit className="h-3.5 w-3.5" />
                     </Button>
@@ -388,7 +389,7 @@ export function BranchesView() {
                         size="icon"
                         className="h-8 w-8 text-destructive hover:text-destructive"
                         onClick={() => openDeleteDialog(branch)}
-                        title="Deactivate branch"
+                        title={t('branches.deactivateBranch')}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -419,7 +420,7 @@ export function BranchesView() {
                     <span className="text-sm font-semibold">
                       {branch._count.users}
                     </span>
-                    <span className="text-xs text-muted-foreground">Users</span>
+                    <span className="text-xs text-muted-foreground">{t('branches.users')}</span>
                   </div>
                   <div className="flex flex-col items-center rounded-lg bg-muted/50 py-2 px-1">
                     <Package className="h-3.5 w-3.5 text-teal-600 mb-1" />
@@ -427,7 +428,7 @@ export function BranchesView() {
                       {branch._count.products}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      Products
+                      {t('branches.products')}
                     </span>
                   </div>
                   <div className="flex flex-col items-center rounded-lg bg-muted/50 py-2 px-1">
@@ -435,7 +436,7 @@ export function BranchesView() {
                     <span className="text-sm font-semibold">
                       {branch._count.sales}
                     </span>
-                    <span className="text-xs text-muted-foreground">Sales</span>
+                    <span className="text-xs text-muted-foreground">{t('branches.sales')}</span>
                   </div>
                 </div>
               </CardContent>
@@ -450,10 +451,10 @@ export function BranchesView() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-emerald-600" />
-              Add New Branch
+              {t('branches.addNewBranch')}
             </DialogTitle>
             <DialogDescription>
-              Create a new branch location for your retail business.
+              {t('branches.createBranchExplanation')}
             </DialogDescription>
           </DialogHeader>
 
@@ -461,7 +462,7 @@ export function BranchesView() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="add-name">
-                  Name <span className="text-destructive">*</span>
+                  {t('branches.name')} <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="add-name"
@@ -474,7 +475,7 @@ export function BranchesView() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="add-code">
-                  Code <span className="text-destructive">*</span>
+                  {t('branches.code')} <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="add-code"
@@ -489,7 +490,7 @@ export function BranchesView() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="add-address">Address</Label>
+              <Label htmlFor="add-address">{t('branches.address')}</Label>
               <Input
                 id="add-address"
                 placeholder="Street address"
@@ -501,7 +502,7 @@ export function BranchesView() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="add-phone">Phone</Label>
+              <Label htmlFor="add-phone">{t('branches.phone')}</Label>
               <Input
                 id="add-phone"
                 placeholder="Phone number"
@@ -521,7 +522,7 @@ export function BranchesView() {
                 }
               />
               <Label htmlFor="add-headoffice" className="cursor-pointer">
-                This is the head office
+                {t('branches.isHeadOffice')}
               </Label>
             </div>
           </div>
@@ -532,14 +533,14 @@ export function BranchesView() {
               onClick={() => setAddDialogOpen(false)}
               disabled={submitting}
             >
-              Cancel
+              {t('branches.cancel')}
             </Button>
             <Button
               onClick={handleAddBranch}
               disabled={submitting}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
-              {submitting ? 'Creating...' : 'Create Branch'}
+              {submitting ? t('branches.creating') : t('branches.createBranch')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -551,17 +552,17 @@ export function BranchesView() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="h-5 w-5 text-emerald-600" />
-              Edit Branch
+              {t('branches.editBranch')}
             </DialogTitle>
             <DialogDescription>
-              Update branch information for {selectedBranch?.name}.
+              {t('branches.updateBranchInfo')} {selectedBranch?.name}.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label htmlFor="edit-name">
-                Name <span className="text-destructive">*</span>
+                {t('branches.name')} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="edit-name"
@@ -574,7 +575,7 @@ export function BranchesView() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-code">Code</Label>
+              <Label htmlFor="edit-code">{t('branches.code')}</Label>
               <Input
                 id="edit-code"
                 value={editForm.code}
@@ -582,12 +583,12 @@ export function BranchesView() {
                 className="bg-muted"
               />
               <p className="text-xs text-muted-foreground">
-                Branch code cannot be changed after creation.
+                {t('branches.codeCannotChange')}
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-address">Address</Label>
+              <Label htmlFor="edit-address">{t('branches.address')}</Label>
               <Input
                 id="edit-address"
                 placeholder="Street address"
@@ -599,7 +600,7 @@ export function BranchesView() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-phone">Phone</Label>
+              <Label htmlFor="edit-phone">{t('branches.phone')}</Label>
               <Input
                 id="edit-phone"
                 placeholder="Phone number"
@@ -617,14 +618,14 @@ export function BranchesView() {
               onClick={() => setEditDialogOpen(false)}
               disabled={submitting}
             >
-              Cancel
+              {t('branches.cancel')}
             </Button>
             <Button
               onClick={handleEditBranch}
               disabled={submitting}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
-              {submitting ? 'Saving...' : 'Save Changes'}
+              {submitting ? t('branches.saving') : t('branches.saveChanges')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -636,51 +637,50 @@ export function BranchesView() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <Trash2 className="h-5 w-5 text-destructive" />
-              Deactivate Branch
+              {t('branches.deactivateBranch')}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This will deactivate{' '}
+              {t('branches.deactivating')}{' '}
               <span className="font-semibold text-foreground">
                 {selectedBranch?.name}
               </span>{' '}
-              ({selectedBranch?.code}). Deactivating a branch will prevent its
-              data from showing in regular views.
+              ({selectedBranch?.code}). {t('branches.branchDataHidden')}
             </AlertDialogDescription>
           </AlertDialogHeader>
 
           {selectedBranch && (
             <div className="rounded-lg border bg-muted/50 p-3 space-y-2">
-              <p className="text-sm font-medium mb-2">Branch data that will be hidden:</p>
+              <p className="text-sm font-medium mb-2">{t('branches.branchDataHidden')}</p>
               <div className="grid grid-cols-3 gap-2 text-sm">
                 <div className="flex items-center gap-1.5">
                   <Users className="h-3.5 w-3.5 text-emerald-600" />
-                  <span>{selectedBranch._count.users} users</span>
+                  <span>{selectedBranch._count.users} {t('branches.users').toLowerCase()}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Package className="h-3.5 w-3.5 text-teal-600" />
-                  <span>{selectedBranch._count.products} products</span>
+                  <span>{selectedBranch._count.products} {t('branches.products').toLowerCase()}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Receipt className="h-3.5 w-3.5 text-stone-600" />
-                  <span>{selectedBranch._count.sales} sales</span>
+                  <span>{selectedBranch._count.sales} {t('branches.sales').toLowerCase()}</span>
                 </div>
               </div>
               {selectedBranch.isHeadOffice && (
                 <p className="text-xs text-amber-600 font-medium mt-1">
-                  Warning: This is the head office branch.
+                  {t('branches.warningHeadOffice')}
                 </p>
               )}
             </div>
           )}
 
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={submitting}>{t('branches.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeactivateBranch}
               disabled={submitting}
               className="bg-destructive text-white hover:bg-destructive/90"
             >
-              {submitting ? 'Deactivating...' : 'Deactivate Branch'}
+              {submitting ? t('branches.deactivating') : t('branches.deactivate')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

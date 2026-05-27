@@ -2,7 +2,9 @@
 
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore } from '@/stores/app-store'
-import { Store, Menu, Building2, LogOut, ChevronDown } from 'lucide-react'
+import { useLanguage } from '@/lib/i18n/language-context'
+import { languageNames, type Language } from '@/lib/i18n/translations'
+import { Store, Menu, Building2, LogOut, ChevronDown, Globe } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
@@ -21,26 +23,51 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-const viewTitles: Record<string, string> = {
-  pos: 'Point of Sale',
-  inventory: 'Inventory Management',
-  shrinkage: 'Loss Tracking',
-  dashboard: 'Dashboard',
-  analytics: 'Analytics',
-  advisor: 'Smart Advisor',
-  branches: 'Branch Management',
-  admin: 'Admin Control Panel',
-}
-
 export function AppHeader() {
   const isMobile = useIsMobile()
+  const { t, language, setLanguage } = useLanguage()
   const { currentView, currentUser, currentBranchId, currentCompany, branches, setCurrentBranchId, toggleSidebar, logout } = useAppStore()
 
   const isAdmin = currentUser?.role === 'CompanyAdmin'
   const isManager = currentUser?.role === 'Manager'
   const isEmployee = currentUser?.role === 'Employee'
-  // Manager can see all branches but "All Branches" aggregate only for CompanyAdmin
   const canSwitchBranch = isAdmin || isManager
+
+  const viewTitles: Record<string, string> = {
+    pos: t('header.pointOfSale'),
+    inventory: t('header.inventoryManagement'),
+    shrinkage: t('header.lossTracking'),
+    dashboard: t('header.dashboard'),
+    analytics: t('header.analytics'),
+    advisor: t('header.smartAdvisor'),
+    branches: t('header.branchManagement'),
+    admin: t('header.adminPanel'),
+  }
+
+  const languageSwitcher = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-xs">
+          <Globe className="h-3.5 w-3.5 text-emerald-600" />
+          <span className="hidden sm:inline">{languageNames[language]}</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          onClick={() => setLanguage('en')}
+          className={language === 'en' ? 'bg-emerald-50 dark:bg-emerald-950/30' : ''}
+        >
+          🇬🇧 English
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => setLanguage('sw')}
+          className={language === 'sw' ? 'bg-emerald-50 dark:bg-emerald-950/30' : ''}
+        >
+          🇹🇿 Kiswahili
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 
   const branchSelector = (
     <Select
@@ -50,18 +77,18 @@ export function AppHeader() {
     >
       <SelectTrigger className="w-auto min-w-[140px] max-w-[220px] h-8 text-xs gap-1">
         <Building2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-        <SelectValue placeholder="All Branches" />
+        <SelectValue placeholder={t('header.allBranches')} />
       </SelectTrigger>
       <SelectContent>
         {isAdmin && (
           <SelectItem value="all" className="text-xs">
-            All Branches
+            {t('header.allBranches')}
           </SelectItem>
         )}
         {branches.map((branch) => (
           <SelectItem key={branch.id} value={branch.id} className="text-xs">
             {branch.name}
-            {branch.isHeadOffice && ' (HQ)'}
+            {branch.isHeadOffice && ` (${t('admin.hq')})`}
           </SelectItem>
         ))}
       </SelectContent>
@@ -83,7 +110,8 @@ export function AppHeader() {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            {languageSwitcher}
             {!isEmployee && branchSelector}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -105,7 +133,7 @@ export function AppHeader() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
                   <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
+                  {t('header.signOut')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -132,6 +160,9 @@ export function AppHeader() {
           </h1>
         </div>
         <div className="flex items-center gap-3">
+          {/* Language Switcher */}
+          {languageSwitcher}
+
           {/* Company name badge */}
           {currentCompany && (
             <span className="hidden sm:inline-flex items-center gap-1.5 rounded-md bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
@@ -139,7 +170,7 @@ export function AppHeader() {
               {currentCompany.name}
             </span>
           )}
-          {/* Branch selector - hidden for Employee, shown for Manager+ */}
+          {/* Branch selector */}
           {canSwitchBranch && branchSelector}
           {currentUser && (
             <DropdownMenu>
@@ -154,7 +185,7 @@ export function AppHeader() {
                     <div className="hidden sm:flex flex-col items-start">
                       <span className="text-sm font-medium">{currentUser.name}</span>
                       <span className="text-xs text-muted-foreground">
-                        {currentUser.role === 'CompanyAdmin' ? 'Admin' : currentUser.role} • {currentUser.branch?.name ?? 'No Branch'}
+                        {currentUser.role === 'CompanyAdmin' ? t('header.admin') : currentUser.role} • {currentUser.branch?.name ?? t('header.noBranch')}
                       </span>
                     </div>
                     <ChevronDown className="h-3 w-3 text-muted-foreground hidden sm:block" />
@@ -167,14 +198,14 @@ export function AppHeader() {
                     <span className="text-sm font-medium">{currentUser.name}</span>
                     <span className="text-xs text-muted-foreground">{currentUser.email}</span>
                     <span className="text-xs text-emerald-600 font-medium">
-                      {currentUser.company?.name ?? 'Unknown Company'}
+                      {currentUser.company?.name ?? t('header.unknownCompany')}
                     </span>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
                   <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
+                  {t('header.signOut')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

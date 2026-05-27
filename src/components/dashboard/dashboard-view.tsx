@@ -18,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore } from '@/stores/app-store'
+import { useLanguage } from '@/lib/i18n/language-context'
 
 interface DashboardData {
   todayRevenue: number
@@ -47,6 +48,7 @@ interface DashboardData {
 export function DashboardView() {
   const isMobile = useIsMobile()
   const { currentBranchId, currentUser } = useAppStore()
+  const { t } = useLanguage()
   const companyId = currentUser?.companyId
   const isEmployee = currentUser?.role === 'Employee'
   const [data, setData] = useState<DashboardData | null>(null)
@@ -93,7 +95,7 @@ export function DashboardView() {
   if (!data) {
     return (
       <div className="flex items-center justify-center h-64 text-muted-foreground">
-        <p>Failed to load dashboard data</p>
+        <p>{t('dashboard.failedToLoad')}</p>
       </div>
     )
   }
@@ -103,25 +105,25 @@ export function DashboardView() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <SummaryCard
-          title="Today's Revenue"
+          title={t('dashboard.todayRevenue')}
           value={`$${data.todayRevenue.toFixed(2)}`}
           icon={DollarSign}
           className="bg-emerald-50 text-emerald-600"
         />
         <SummaryCard
-          title="Today's Profit"
+          title={t('dashboard.todayProfit')}
           value={`$${data.todayProfit.toFixed(2)}`}
           icon={TrendingUp}
           className="bg-emerald-50 text-emerald-600"
         />
         <SummaryCard
-          title="Sales Today"
+          title={t('dashboard.salesToday')}
           value={String(data.todaySalesCount)}
           icon={Receipt}
           className="bg-teal-50 text-teal-600"
         />
         <SummaryCard
-          title="Inventory Value"
+          title={t('dashboard.inventoryValue')}
           value={`$${data.totalInventoryValue.toFixed(2)}`}
           icon={Warehouse}
           className="bg-stone-100 text-stone-600"
@@ -134,7 +136,7 @@ export function DashboardView() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
               <Building2 className="h-4 w-4 text-teal-600" />
-              Branch Performance Today
+              {t('dashboard.branchPerformance')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -153,7 +155,7 @@ export function DashboardView() {
                       ${branch.todayRevenue.toFixed(2)}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {branch.todaySalesCount} sales
+                      {branch.todaySalesCount} {t('dashboard.sales')}
                     </span>
                   </div>
                 </div>
@@ -169,7 +171,7 @@ export function DashboardView() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
               <Star className="h-4 w-4 text-amber-500" />
-              Top Seller Today
+              {t('dashboard.topSeller')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -180,10 +182,10 @@ export function DashboardView() {
                 </p>
                 <div className="flex gap-4 text-sm">
                   <span className="text-muted-foreground">
-                    Qty: <span className="text-foreground font-medium">{data.topSellerToday.totalQuantity}</span>
+                    {t('dashboard.qty')} <span className="text-foreground font-medium">{data.topSellerToday.totalQuantity}</span>
                   </span>
                   <span className="text-muted-foreground">
-                    Revenue:{' '}
+                    {t('dashboard.revenue')}{' '}
                     <span className="text-emerald-600 font-medium">
                       ${data.topSellerToday.totalRevenue?.toFixed(2) ?? '0.00'}
                     </span>
@@ -191,7 +193,7 @@ export function DashboardView() {
                 </div>
               </div>
             ) : (
-              <p className="text-muted-foreground text-sm">No sales today yet</p>
+              <p className="text-muted-foreground text-sm">{t('dashboard.noSalesToday')}</p>
             )}
           </CardContent>
         </Card>
@@ -202,7 +204,7 @@ export function DashboardView() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
-                Low Stock Alerts
+                {t('dashboard.lowStockAlerts')}
               </CardTitle>
               <Button
                 variant="ghost"
@@ -217,7 +219,7 @@ export function DashboardView() {
           <CardContent>
             {data.lowStockProducts.length === 0 ? (
               <p className="text-muted-foreground text-sm">
-                All products are well-stocked!
+                {t('dashboard.allWellStocked')}
               </p>
             ) : (
               <div className="max-h-48 overflow-y-auto space-y-2">
@@ -244,8 +246,8 @@ export function DashboardView() {
                         }
                       >
                         {product.currentStockLevel === 0
-                          ? 'Out'
-                          : 'Low'}
+                          ? t('dashboard.out')
+                          : t('dashboard.low')}
                       </Badge>
                     </div>
                   </div>

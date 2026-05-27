@@ -14,9 +14,19 @@ import { AnalyticsView } from '@/components/analytics/analytics-view'
 import { AdvisorView } from '@/components/advisor/advisor-view'
 import { BranchesView } from '@/components/branches/branches-view'
 import { AdminPanel } from '@/components/admin/admin-panel'
+import { LanguageProvider, useLanguage } from '@/lib/i18n/language-context'
 
 export default function Home() {
+  return (
+    <LanguageProvider>
+      <HomeContent />
+    </LanguageProvider>
+  )
+}
+
+function HomeContent() {
   const isMobile = useIsMobile()
+  const { t } = useLanguage()
   const {
     currentView,
     isAuthenticated,
@@ -66,13 +76,7 @@ export default function Home() {
               company: companyInfo,
             })
 
-            // For Employee: always lock to their own branch
-            if (user.role === 'Employee') {
-              setCurrentBranchId(user.branchId)
-            } else {
-              setCurrentBranchId(user.branchId)
-            }
-
+            setCurrentBranchId(user.branchId)
             setCompany(companyInfo)
             setAuthenticated(true)
 
@@ -107,7 +111,6 @@ export default function Home() {
   // Set default view based on device and role
   useEffect(() => {
     if (isAuthenticated && currentUser) {
-      // Employee always starts at POS
       if (currentUser.role === 'Employee') {
         setView('pos')
       } else if (isMobile) {
@@ -119,46 +122,37 @@ export default function Home() {
   }, [isAuthenticated, isMobile, setView, currentUser])
 
   const isEmployee = currentUser?.role === 'Employee'
-  const isManager = currentUser?.role === 'Manager'
   const isAdmin = currentUser?.role === 'CompanyAdmin'
 
   const renderView = () => {
-    // Access control: redirect unauthorized users
     switch (currentView) {
       case 'pos':
         return <PosView />
       case 'inventory':
-        // Only Manager+ can access inventory management
-        if (isEmployee) return <AccessDenied message="Only managers and admins can access inventory management" />
+        if (isEmployee) return <AccessDenied message={t('common.onlyManagersInventory')} />
         return <InventoryView />
       case 'shrinkage':
-        // Only Manager+ can access shrinkage tracking
-        if (isEmployee) return <AccessDenied message="Only managers and admins can access loss tracking" />
+        if (isEmployee) return <AccessDenied message={t('common.onlyManagersLoss')} />
         return <ShrinkageView />
       case 'dashboard':
         return <DashboardView />
       case 'analytics':
-        // Only Manager+ can access analytics
-        if (isEmployee) return <AccessDenied message="Only managers and admins can access analytics" />
+        if (isEmployee) return <AccessDenied message={t('common.onlyManagersAnalytics')} />
         return <AnalyticsView />
       case 'advisor':
-        // Only CompanyAdmin can access advisor
-        if (!isAdmin) return <AccessDenied message="Only admins can access the Smart Advisor" />
+        if (!isAdmin) return <AccessDenied message={t('common.onlyAdminAdvisor')} />
         return <AdvisorView />
       case 'branches':
-        // Only CompanyAdmin can access branches
-        if (!isAdmin) return <AccessDenied message="Only admins can manage branches" />
+        if (!isAdmin) return <AccessDenied message={t('common.onlyAdminBranches')} />
         return <BranchesView />
       case 'admin':
-        // Only CompanyAdmin can access admin panel
-        if (!isAdmin) return <AccessDenied message="Only admins can access the admin panel" />
+        if (!isAdmin) return <AccessDenied message={t('common.onlyAdminAdmin')} />
         return <AdminPanel />
       default:
         return <DashboardView />
     }
   }
 
-  // Show auth page if not authenticated
   if (!isAuthenticated) {
     return <AuthPage />
   }
@@ -166,10 +160,7 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="flex flex-1">
-        {/* Sidebar (desktop) / Bottom nav (mobile) */}
         <AppSidebar />
-
-        {/* Main content */}
         <div className="flex flex-1 flex-col min-w-0">
           <AppHeader />
           <main className="flex-1 overflow-auto">
@@ -182,12 +173,13 @@ export default function Home() {
 }
 
 function AccessDenied({ message }: { message: string }) {
+  const { t } = useLanguage()
   return (
     <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
       <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-4 text-muted-foreground/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
       </svg>
-      <p className="text-sm font-medium">Access Denied</p>
+      <p className="text-sm font-medium">{t('common.accessDenied')}</p>
       <p className="text-xs mt-1">{message}</p>
     </div>
   )

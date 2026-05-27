@@ -2,6 +2,7 @@
 
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore, type ViewType } from '@/stores/app-store'
+import { useLanguage } from '@/lib/i18n/language-context'
 import {
   ShoppingCart,
   Package,
@@ -18,33 +19,32 @@ import { Separator } from '@/components/ui/separator'
 
 interface NavItem {
   view: ViewType
-  label: string
+  labelKey: string
   icon: React.ElementType
   adminOnly?: boolean
   managerOnly?: boolean
 }
 
 const allNavItems: NavItem[] = [
-  { view: 'pos', label: 'POS', icon: ShoppingCart },
-  { view: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { view: 'inventory', label: 'Inventory', icon: Package, managerOnly: true },
-  { view: 'shrinkage', label: 'Loss Track', icon: AlertTriangle, managerOnly: true },
-  { view: 'analytics', label: 'Analytics', icon: BarChart3, managerOnly: true },
-  { view: 'advisor', label: 'Advisor', icon: Lightbulb, adminOnly: true },
-  { view: 'branches', label: 'Branches', icon: Building2, adminOnly: true },
-  { view: 'admin', label: 'Admin', icon: Settings, adminOnly: true },
+  { view: 'pos', labelKey: 'sidebar.pos', icon: ShoppingCart },
+  { view: 'dashboard', labelKey: 'sidebar.dashboard', icon: LayoutDashboard },
+  { view: 'inventory', labelKey: 'sidebar.inventory', icon: Package, managerOnly: true },
+  { view: 'shrinkage', labelKey: 'sidebar.lossTrack', icon: AlertTriangle, managerOnly: true },
+  { view: 'analytics', labelKey: 'sidebar.analytics', icon: BarChart3, managerOnly: true },
+  { view: 'advisor', labelKey: 'sidebar.advisor', icon: Lightbulb, adminOnly: true },
+  { view: 'branches', labelKey: 'sidebar.branches', icon: Building2, adminOnly: true },
+  { view: 'admin', labelKey: 'sidebar.admin', icon: Settings, adminOnly: true },
 ]
 
 export function AppSidebar() {
   const isMobile = useIsMobile()
   const { currentView, setView, currentUser } = useAppStore()
+  const { t } = useLanguage()
 
   const role = currentUser?.role
 
   const navItems = allNavItems.filter((item) => {
-    // Admin-only items: only CompanyAdmin sees them
     if (item.adminOnly && role !== 'CompanyAdmin') return false
-    // Manager-only items: CompanyAdmin and Manager see them, Employee does not
     if (item.managerOnly && role === 'Employee') return false
     return true
   })
@@ -70,7 +70,7 @@ export function AppSidebar() {
                 )}
               >
                 <Icon className="h-5 w-5" />
-                <span className="text-[10px] font-medium">{item.label}</span>
+                <span className="text-[10px] font-medium">{t(item.labelKey)}</span>
               </Button>
             )
           })}
@@ -104,7 +104,7 @@ export function AppSidebar() {
               )}
             >
               <Icon className="h-4 w-4" />
-              <span className="text-sm">{item.label}</span>
+              <span className="text-sm">{t(item.labelKey)}</span>
             </Button>
           )
         })}

@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Package, PackagePlus, PlusCircle, History } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore } from '@/stores/app-store'
+import { useLanguage } from '@/lib/i18n/language-context'
 
 interface InventoryBatch {
   id: string
@@ -21,6 +22,7 @@ interface InventoryBatch {
 
 export function InventoryView() {
   const isMobile = useIsMobile()
+  const { t } = useLanguage()
   const { currentBranchId, currentUser } = useAppStore()
   const companyId = currentUser?.companyId
   const isEmployee = currentUser?.role === 'Employee'
@@ -61,23 +63,23 @@ export function InventoryView() {
         <TabsList className="mb-4">
           <TabsTrigger value="products" className="gap-1.5">
             <Package className="h-3.5 w-3.5" />
-            Products
+            {t('inventory.products')}
           </TabsTrigger>
           {canStockIn && (
             <TabsTrigger value="stockin" className="gap-1.5">
               <PackagePlus className="h-3.5 w-3.5" />
-              Stock In
+              {t('inventory.stockIn')}
             </TabsTrigger>
           )}
           {canAddProduct && (
             <TabsTrigger value="addproduct" className="gap-1.5">
               <PlusCircle className="h-3.5 w-3.5" />
-              Add Product
+              {t('inventory.addProduct')}
             </TabsTrigger>
           )}
           <TabsTrigger value="history" className="gap-1.5" onClick={fetchBatches}>
             <History className="h-3.5 w-3.5" />
-            History
+            {t('inventory.history')}
           </TabsTrigger>
         </TabsList>
 
@@ -114,20 +116,20 @@ export function InventoryView() {
           ) : batches.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <History className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">Click this tab to load stock history</p>
+              <p className="text-sm">{t('inventory.clickToLoadHistory')}</p>
             </div>
           ) : (
             <div className="rounded-md border max-h-[500px] overflow-y-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="px-3 py-2 text-left font-medium">Product</th>
-                    <th className="px-3 py-2 text-right font-medium">Qty</th>
-                    <th className="px-3 py-2 text-right font-medium">Cost/Unit</th>
+                    <th className="px-3 py-2 text-left font-medium">{t('inventory.product')}</th>
+                    <th className="px-3 py-2 text-right font-medium">{t('inventory.qty')}</th>
+                    <th className="px-3 py-2 text-right font-medium">{t('inventory.costPerUnit')}</th>
                     <th className="px-3 py-2 text-left font-medium hidden sm:table-cell">
-                      Supplier
+                      {t('inventory.supplier')}
                     </th>
-                    <th className="px-3 py-2 text-left font-medium">Date</th>
+                    <th className="px-3 py-2 text-left font-medium">{t('inventory.date')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -135,7 +137,7 @@ export function InventoryView() {
                     <tr key={batch.id} className="border-b">
                       <td className="px-3 py-2">
                         <span className="font-medium">
-                          {batch.product?.name ?? 'Unknown'}
+                          {batch.product?.name ?? t('inventory.unknown')}
                         </span>
                       </td>
                       <td className="px-3 py-2 text-right text-emerald-600 font-medium">

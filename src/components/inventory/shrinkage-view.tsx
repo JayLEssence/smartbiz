@@ -17,6 +17,7 @@ import { AlertTriangle, Loader2, DollarSign, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore } from '@/stores/app-store'
+import { useLanguage } from '@/lib/i18n/language-context'
 
 interface Product {
   id: string
@@ -37,6 +38,7 @@ interface ShrinkageRecord {
 export function ShrinkageView() {
   const isMobile = useIsMobile()
   const { currentBranchId, currentUser } = useAppStore()
+  const { t } = useLanguage()
   const companyId = currentUser?.companyId
   const [products, setProducts] = useState<Product[]>([])
   const [selectedProductId, setSelectedProductId] = useState('')
@@ -96,7 +98,7 @@ export function ShrinkageView() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedProductId || !quantityLost || !reason) {
-      toast.error('Please fill in all required fields')
+      toast.error(t('shrinkage.fillRequired'))
       return
     }
 
@@ -116,20 +118,20 @@ export function ShrinkageView() {
 
       const json = await res.json()
       if (json.success) {
-        toast.success('Shrinkage recorded', {
-          description: `${quantityLost} units — ${reason}`,
+        toast.success(t('shrinkage.shrinkageRecorded'), {
+          description: `${quantityLost} ${t('shrinkage.units')} — ${reason}`,
         })
         setSelectedProductId('')
         setQuantityLost('')
         setReason('')
         fetchRecords()
       } else {
-        toast.error('Failed to record shrinkage', {
-          description: json.error ?? 'Unknown error',
+        toast.error(t('shrinkage.failedToRecord'), {
+          description: json.error ?? t('shrinkage.unknown'),
         })
       }
     } catch {
-      toast.error('Network error')
+      toast.error(t('shrinkage.networkError'))
     } finally {
       setSubmitting(false)
     }
@@ -138,17 +140,17 @@ export function ShrinkageView() {
   const getReasonBadge = (r: string) => {
     switch (r) {
       case 'Stolen':
-        return <Badge variant="destructive">{r}</Badge>
+        return <Badge variant="destructive">{t('shrinkage.stolen')}</Badge>
       case 'Expired':
         return (
           <Badge className="bg-amber-100 text-amber-700 border-amber-200">
-            {r}
+            {t('shrinkage.expired')}
           </Badge>
         )
       case 'Damaged':
         return (
           <Badge className="bg-orange-100 text-orange-700 border-orange-200">
-            {r}
+            {t('shrinkage.damaged')}
           </Badge>
         )
       default:
@@ -166,7 +168,7 @@ export function ShrinkageView() {
               <DollarSign className="h-5 w-5 text-red-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Total Financial Loss</p>
+              <p className="text-sm text-muted-foreground">{t('shrinkage.totalFinancialLoss')}</p>
               <p className="text-2xl font-bold text-red-600">
                 ${totalLoss.toFixed(2)}
               </p>
@@ -187,19 +189,19 @@ export function ShrinkageView() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-600" />
-              Record Shrinkage
+              {t('shrinkage.recordShrinkage')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-xs">Product *</Label>
+                <Label className="text-xs">{t('shrinkage.product')} *</Label>
                 <Select
                   value={selectedProductId}
                   onValueChange={setSelectedProductId}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select product" />
+                    <SelectValue placeholder={t('shrinkage.selectProduct')} />
                   </SelectTrigger>
                   <SelectContent>
                     {products.map((product) => (
@@ -213,7 +215,7 @@ export function ShrinkageView() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label className="text-xs">Quantity Lost *</Label>
+                  <Label className="text-xs">{t('shrinkage.quantityLost')} *</Label>
                   <Input
                     type="number"
                     min="1"
@@ -224,15 +226,15 @@ export function ShrinkageView() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs">Reason *</Label>
+                  <Label className="text-xs">{t('shrinkage.reason')} *</Label>
                   <Select value={reason} onValueChange={setReason}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Reason" />
+                      <SelectValue placeholder={t('shrinkage.reason')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Stolen">Stolen</SelectItem>
-                      <SelectItem value="Expired">Expired</SelectItem>
-                      <SelectItem value="Damaged">Damaged</SelectItem>
+                      <SelectItem value="Stolen">{t('shrinkage.stolen')}</SelectItem>
+                      <SelectItem value="Expired">{t('shrinkage.expired')}</SelectItem>
+                      <SelectItem value="Damaged">{t('shrinkage.damaged')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -246,10 +248,10 @@ export function ShrinkageView() {
                 {submitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Recording...
+                    {t('shrinkage.recording')}
                   </>
                 ) : (
-                  'Record Shrinkage'
+                  t('shrinkage.recordShrinkage')
                 )}
               </Button>
             </form>
@@ -260,7 +262,7 @@ export function ShrinkageView() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">Recent Records</CardTitle>
+              <CardTitle className="text-sm">{t('shrinkage.recentRecords')}</CardTitle>
               <Button
                 variant="ghost"
                 size="icon"
@@ -302,7 +304,7 @@ export function ShrinkageView() {
             ) : records.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <AlertTriangle className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">No shrinkage records found</p>
+                <p className="text-sm">{t('shrinkage.noRecords')}</p>
               </div>
             ) : (
               <div className="max-h-[400px] overflow-y-auto space-y-2">
@@ -313,12 +315,12 @@ export function ShrinkageView() {
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">
-                        {record.product?.name ?? 'Unknown'}
+                        {record.product?.name ?? t('shrinkage.unknown')}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
                         {getReasonBadge(record.reason)}
                         <span className="text-xs text-muted-foreground">
-                          -{record.quantityLost} units
+                          -{record.quantityLost} {t('shrinkage.units')}
                         </span>
                       </div>
                     </div>

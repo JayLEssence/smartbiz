@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { RefreshCw, Lightbulb, AlertCircle, ArrowRight } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore } from '@/stores/app-store'
+import { useLanguage } from '@/lib/i18n/language-context'
 
 interface Recommendation {
   type: string
@@ -20,6 +21,7 @@ interface Recommendation {
 export function AdvisorView() {
   const isMobile = useIsMobile()
   const { currentBranchId, currentUser } = useAppStore()
+  const { t } = useLanguage()
   const companyId = currentUser?.companyId
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,7 +42,7 @@ export function AdvisorView() {
         setError(json.error ?? 'Failed to load recommendations')
       }
     } catch {
-      setError('Network error. Please try again.')
+      setError(t('advisor.networkError'))
     } finally {
       setLoading(false)
     }
@@ -55,19 +57,19 @@ export function AdvisorView() {
       case 'reorder':
         return (
           <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs">
-            Reorder
+            {t('advisor.reorder')}
           </Badge>
         )
       case 'pricing':
         return (
           <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">
-            Pricing
+            {t('advisor.pricing')}
           </Badge>
         )
       case 'discount':
         return (
           <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-xs">
-            Discount
+            {t('advisor.discount')}
           </Badge>
         )
       default:
@@ -93,7 +95,7 @@ export function AdvisorView() {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Lightbulb className="h-5 w-5 text-amber-500" />
-          <h2 className="font-semibold">Smart Recommendations</h2>
+          <h2 className="font-semibold">{t('advisor.smartRecommendations')}</h2>
         </div>
         <Button
           variant="outline"
@@ -103,7 +105,7 @@ export function AdvisorView() {
           className="gap-1.5"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+          {t('advisor.refresh')}
         </Button>
       </div>
 
@@ -132,7 +134,7 @@ export function AdvisorView() {
               <p className="text-sm text-muted-foreground mb-3">{error}</p>
               <Button variant="outline" size="sm" onClick={fetchRecommendations}>
                 <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                Try Again
+                {t('advisor.tryAgain')}
               </Button>
             </div>
           </CardContent>
@@ -142,8 +144,8 @@ export function AdvisorView() {
           <CardContent className="pt-6">
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <Lightbulb className="h-12 w-12 mb-3 opacity-30" />
-              <p className="text-sm">No recommendations at this time</p>
-              <p className="text-xs mt-1">Check back later for insights</p>
+              <p className="text-sm">{t('advisor.noRecommendations')}</p>
+              <p className="text-xs mt-1">{t('advisor.checkBackLater')}</p>
             </div>
           </CardContent>
         </Card>

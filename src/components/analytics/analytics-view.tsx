@@ -17,6 +17,7 @@ import {
 } from 'recharts'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore } from '@/stores/app-store'
+import { useLanguage } from '@/lib/i18n/language-context'
 
 interface LossData {
   totalFinancialLoss: number
@@ -28,6 +29,7 @@ interface LossData {
 export function AnalyticsView() {
   const isMobile = useIsMobile()
   const { currentBranchId, currentUser } = useAppStore()
+  const { t } = useLanguage()
   const companyId = currentUser?.companyId
   const [lossData, setLossData] = useState<LossData | null>(null)
   const [lossLoading, setLossLoading] = useState(true)
@@ -76,7 +78,7 @@ export function AnalyticsView() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-red-500" />
-              Loss Report
+              {t('analytics.lossReport')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -85,12 +87,12 @@ export function AnalyticsView() {
             ) : !lossData || lossData.totalFinancialLoss === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                 <PieChart className="h-10 w-10 mb-2 opacity-30" />
-                <p className="text-sm">No losses recorded</p>
+                <p className="text-sm">{t('analytics.noLosses')}</p>
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Total Financial Loss</p>
+                  <p className="text-sm text-muted-foreground">{t('analytics.totalFinancialLoss')}</p>
                   <p className="text-2xl font-bold text-red-600">
                     ${lossData.totalFinancialLoss.toFixed(2)}
                   </p>
@@ -109,7 +111,7 @@ export function AnalyticsView() {
                       <Tooltip
                         formatter={(value: number) => [
                           `$${value.toFixed(2)}`,
-                          'Loss',
+                          t('analytics.loss'),
                         ]}
                       />
                       <Bar

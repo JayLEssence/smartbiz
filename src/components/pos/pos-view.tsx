@@ -10,6 +10,7 @@ import { useAppStore } from '@/stores/app-store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
+import { useLanguage } from '@/lib/i18n/language-context'
 
 interface QuickProduct {
   id: string
@@ -21,6 +22,7 @@ interface QuickProduct {
 
 export function PosView() {
   const isMobile = useIsMobile()
+  const { t } = useLanguage()
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [quickProducts, setQuickProducts] = useState<QuickProduct[]>([])
   const addItem = usePosStore((s) => s.addItem)
@@ -88,7 +90,7 @@ export function PosView() {
       <div className="flex flex-col gap-4 p-4 pb-24">
         <ProductSearch branchId={currentBranchId} companyId={companyId} />
         <div>
-          <h3 className="text-sm font-medium mb-2">Quick Add</h3>
+          <h3 className="text-sm font-medium mb-2">{t('pos.quickAdd')}</h3>
           <div className="grid grid-cols-2 gap-2">
             {quickProducts.map((product) => (
               <Button
@@ -120,7 +122,7 @@ export function PosView() {
         <ProductSearch branchId={currentBranchId} companyId={companyId} />
         <Card className="flex-1">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Quick Add</CardTitle>
+            <CardTitle className="text-sm">{t('pos.quickAdd')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
