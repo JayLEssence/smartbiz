@@ -662,6 +662,28 @@ export function AdminPanel() {
     }
   }
 
+  const handlePromoteUser = async (user: UserData, newRole: string) => {
+    setUserSubmitting(true)
+    try {
+      const res = await fetch(`/api/users/${user.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole }),
+      })
+      const json = await res.json()
+      if (json.success) {
+        toast.success(newRole === 'Manager' ? t('admin.promotedToManager') : t('admin.demotedToEmployee'))
+        fetchUsers()
+      } else {
+        toast.error(json.error || t('admin.failedToUpdateUser'))
+      }
+    } catch {
+      toast.error(t('admin.failedToUpdateUser'))
+    } finally {
+      setUserSubmitting(false)
+    }
+  }
+
   // ============ Product Handlers ============
 
   const handleAddProduct = async () => {
@@ -1144,6 +1166,30 @@ export function AdminPanel() {
                         </p>
                       </div>
                       <div className="flex gap-1 shrink-0">
+                        {user.isActive && user.role === 'Employee' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                            onClick={() => handlePromoteUser(user, 'Manager')}
+                            disabled={userSubmitting}
+                            title={t('admin.promoteToManager')}
+                          >
+                            <Crown className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {user.isActive && user.role === 'Manager' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-slate-500 hover:text-slate-600 hover:bg-slate-50"
+                            onClick={() => handlePromoteUser(user, 'Employee')}
+                            disabled={userSubmitting}
+                            title={t('admin.demoteToEmployee')}
+                          >
+                            <UserCheck className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -1217,6 +1263,30 @@ export function AdminPanel() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
+                            {user.isActive && user.role === 'Employee' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                onClick={() => handlePromoteUser(user, 'Manager')}
+                                disabled={userSubmitting}
+                                title={t('admin.promoteToManager')}
+                              >
+                                <Crown className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            {user.isActive && user.role === 'Manager' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-slate-500 hover:text-slate-600 hover:bg-slate-50"
+                                onClick={() => handlePromoteUser(user, 'Employee')}
+                                disabled={userSubmitting}
+                                title={t('admin.demoteToEmployee')}
+                              >
+                                <UserCheck className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"

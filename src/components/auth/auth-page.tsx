@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAppStore, type CompanyInfo } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
-import { Store, Building2, User, Mail, Lock, Phone, MapPin, Loader2, ArrowRight, CheckCircle2, Users, Hash } from 'lucide-react'
+import { Store, Building2, User, Mail, Lock, Phone, MapPin, Loader2, ArrowRight, CheckCircle2, Users, Hash, ShieldCheck, FileText } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,6 +17,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 interface SessionData {
   user: {
@@ -77,6 +85,7 @@ export function AuthPage() {
   const [regLoading, setRegLoading] = useState(false)
 
   const [activeTab, setActiveTab] = useState('login')
+  const [tosOpen, setTosOpen] = useState(false)
 
   const industries = [
     { value: 'Retail', label: t('auth.retail') },
@@ -720,10 +729,65 @@ export function AuthPage() {
         </Card>
 
         {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          {t('auth.termsNotice')}
-        </p>
+        <div className="text-center mt-6 space-y-2">
+          <p className="text-xs text-muted-foreground">
+            {t('auth.termsNotice')}
+          </p>
+          <button
+            type="button"
+            onClick={() => setTosOpen(true)}
+            className="text-xs text-emerald-600 hover:text-emerald-700 underline underline-offset-2"
+          >
+            {t('auth.viewTerms')}
+          </button>
+        </div>
       </div>
+
+      {/* Terms of Service Dialog */}
+      <Dialog open={tosOpen} onOpenChange={setTosOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-emerald-600" />
+              {t('auth.termsOfService')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('auth.termsIntro')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <h4 className="text-sm font-semibold mb-1">{t('auth.termsAccount')}</h4>
+              <p className="text-xs text-muted-foreground">{t('auth.termsAccountDesc')}</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold mb-1">{t('auth.termsData')}</h4>
+              <p className="text-xs text-muted-foreground">{t('auth.termsDataDesc')}</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold mb-1">{t('auth.termsUsage')}</h4>
+              <p className="text-xs text-muted-foreground">{t('auth.termsUsageDesc')}</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold mb-1">{t('auth.termsAccess')}</h4>
+              <p className="text-xs text-muted-foreground">{t('auth.termsAccessDesc')}</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold mb-1">{t('auth.termsAvailability')}</h4>
+              <p className="text-xs text-muted-foreground">{t('auth.termsAvailabilityDesc')}</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold mb-1">{t('auth.termsChanges')}</h4>
+              <p className="text-xs text-muted-foreground">{t('auth.termsChangesDesc')}</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setTosOpen(false)} className="bg-emerald-600 hover:bg-emerald-700">
+              {t('auth.termsClose')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
