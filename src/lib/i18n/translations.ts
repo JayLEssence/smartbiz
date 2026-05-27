@@ -67,6 +67,14 @@ export const t: TranslationDict = {
   'auth.termsAvailabilityDesc': { en: 'We strive to keep SmartBiz available at all times, but occasional maintenance may be required.', sw: 'Tunajitahidi kuweka SmartBiz ipatikane wakati wote, lakini matengenezo ya mara kwa mara yanaweza kuhitajika.' },
   'auth.termsChanges': { en: '6. Changes to Terms', sw: '6. Mabadiliko ya Masharti' },
   'auth.termsChangesDesc': { en: 'We may update these terms from time to time. Continued use of SmartBiz means you accept the updated terms.', sw: 'Tunaweza kusasisha masharti hizi mara kwa mara. Kuendelea kutumia SmartBiz kunamaanisha unakubali masharti zilizosasishwa.' },
+  // Quick tips on login
+  'auth.quickTips': { en: 'What you can do with SmartBiz', sw: 'Unachoweza kufanya na SmartBiz' },
+  'auth.tipPOS': { en: 'Sell products & accept payments', sw: 'Uuza bidhaa na kupokea malipo' },
+  'auth.tipInventory': { en: 'Track stock & avoid shortages', sw: 'Fuatilia hifadhi na kuepuka upungufu' },
+  'auth.tipAnalytics': { en: 'See insights & grow profits', sw: 'Tazama mapendekezo na kuongeza faida' },
+  // Demo accounts in ToS
+  'auth.termsDemo': { en: 'Try SmartBiz with Demo Accounts', sw: 'Jaribu SmartBiz kwa Akaunti za Jaribio' },
+  'auth.termsDemoDesc': { en: 'Want to explore first? Use these demo accounts to see SmartBiz in action before creating your own company.', sw: 'Unataka kuchunguza kwanza? Tumia akaunti hizi za jaribio kuona SmartBiz kazi kabla ya kuunda kampuni yako.' },
   'auth.retail': { en: 'Retail', sw: 'Rejareja' },
   'auth.wholesale': { en: 'Wholesale', sw: 'Jumla' },
   'auth.restaurant': { en: 'Restaurant', sw: 'Mgahawa' },

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAppStore, type CompanyInfo } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
-import { Store, Building2, User, Mail, Lock, Phone, MapPin, Loader2, ArrowRight, CheckCircle2, Users, Hash, ShieldCheck, FileText } from 'lucide-react'
+import { Store, Building2, User, Mail, Lock, Phone, MapPin, Loader2, ArrowRight, CheckCircle2, Users, Hash, ShieldCheck, FileText, ShoppingCart, Package, BarChart3 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -370,18 +370,27 @@ export function AuthPage() {
                     )}
                   </Button>
 
-                  <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-3 mt-4">
-                    <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium mb-1.5">{t('auth.demoAccounts')}</p>
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="font-mono bg-white dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border">admin@smartbiz.com</span>
-                        <span>{t('auth.multiBranchCorp')}</span>
+                  <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-3 mt-4 space-y-2">
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">{t('auth.quickTips')}</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="flex flex-col items-center text-center gap-1 py-1">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
+                          <ShoppingCart className="h-3.5 w-3.5 text-emerald-600" />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground leading-tight">{t('auth.tipPOS')}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="font-mono bg-white dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border">mamajane@gmail.com</span>
-                        <span>{t('auth.singleShop')}</span>
+                      <div className="flex flex-col items-center text-center gap-1 py-1">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
+                          <Package className="h-3.5 w-3.5 text-emerald-600" />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground leading-tight">{t('auth.tipInventory')}</span>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">{t('auth.passwordForDemo')} <span className="font-mono font-medium">demo</span></p>
+                      <div className="flex flex-col items-center text-center gap-1 py-1">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
+                          <BarChart3 className="h-3.5 w-3.5 text-emerald-600" />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground leading-tight">{t('auth.tipAnalytics')}</span>
+                      </div>
                     </div>
                   </div>
                 </form>
@@ -779,6 +788,25 @@ export function AuthPage() {
             <div>
               <h4 className="text-sm font-semibold mb-1">{t('auth.termsChanges')}</h4>
               <p className="text-xs text-muted-foreground">{t('auth.termsChangesDesc')}</p>
+            </div>
+            {/* Demo Accounts Section */}
+            <div className="pt-2 border-t">
+              <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                <Store className="h-4 w-4 text-emerald-600" />
+                {t('auth.termsDemo')}
+              </h4>
+              <p className="text-xs text-muted-foreground mb-2">{t('auth.termsDemoDesc')}</p>
+              <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-2.5 space-y-1.5">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="font-mono bg-white dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border text-[11px]">admin@smartbiz.com</span>
+                  <span>{t('auth.multiBranchCorp')}</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="font-mono bg-white dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border text-[11px]">mamajane@gmail.com</span>
+                  <span>{t('auth.singleShop')}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">{t('auth.passwordForDemo')} <span className="font-mono font-medium">demo</span></p>
+              </div>
             </div>
           </div>
           <DialogFooter>
