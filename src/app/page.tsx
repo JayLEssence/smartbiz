@@ -13,6 +13,10 @@ import { DashboardView } from '@/components/dashboard/dashboard-view'
 import { AnalyticsView } from '@/components/analytics/analytics-view'
 import { AdvisorView } from '@/components/advisor/advisor-view'
 import { BranchesView } from '@/components/branches/branches-view'
+import { SuppliersView } from '@/components/suppliers/suppliers-view'
+import { CustomersView } from '@/components/customers/customers-view'
+import { ExpensesView } from '@/components/expenses/expenses-view'
+import { ReportsView } from '@/components/reports/reports-view'
 import { AdminPanel } from '@/components/admin/admin-panel'
 import { LanguageProvider, useLanguage } from '@/lib/i18n/language-context'
 
@@ -57,6 +61,10 @@ function HomeContent() {
               phone: user.company.phone ?? null,
               plan: user.company.plan,
               isActive: user.company.isActive,
+              currency: user.company.currency ?? 'TZS',
+              currencySymbol: user.company.currencySymbol ?? 'TSh',
+              country: user.company.country ?? 'Tanzania',
+              exchangeRate: user.company.exchangeRate ?? 2570,
             }
 
             setUser({
@@ -145,6 +153,18 @@ function HomeContent() {
       case 'branches':
         if (!isAdmin) return <AccessDenied message={t('common.onlyAdminBranches')} />
         return <BranchesView />
+      case 'customers':
+        if (isEmployee) return <AccessDenied message={t('customers.managerOnlyAccess')} />
+        return <CustomersView />
+      case 'expenses':
+        if (isEmployee) return <AccessDenied message="Only managers and admins can access expense tracking" />
+        return <ExpensesView />
+      case 'reports':
+        if (isEmployee) return <AccessDenied message={t('reports.accessDenied')} />
+        return <ReportsView />
+      case 'suppliers':
+        if (!isAdmin) return <AccessDenied message={t('common.onlyAdminSuppliers')} />
+        return <SuppliersView />
       case 'admin':
         if (!isAdmin) return <AccessDenied message={t('common.onlyAdminAdmin')} />
         return <AdminPanel />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { ProductSearch } from './product-search'
 import { Cart } from './cart'
 import { CheckoutDialog } from './checkout-dialog'
@@ -9,8 +9,10 @@ import { usePosStore } from '@/stores/pos-store'
 import { useAppStore } from '@/stores/app-store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Plus, ScanBarcode, ScanLine } from 'lucide-react'
 import { useLanguage } from '@/lib/i18n/language-context'
+import { toast } from 'sonner'
 
 interface QuickProduct {
   id: string
@@ -25,6 +27,9 @@ export function PosView() {
   const { t } = useLanguage()
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [quickProducts, setQuickProducts] = useState<QuickProduct[]>([])
+  const [barcodeInput, setBarcodeInput] = useState('')
+  const [barcodeSearching, setBarcodeSearching] = useState(false)
+  const barcodeRef = useRef<HTMLInputElement>(null)
   const addItem = usePosStore((s) => s.addItem)
   const { currentBranchId, currentUser } = useAppStore()
   const companyId = currentUser?.companyId
@@ -85,9 +90,81 @@ export function PosView() {
     })
   }
 
+  const handleBarcodeSearch = useCallback(async (barcode: string) => {
+    if (!barcode.trim()) return
+    setBarcodeSearching(true)
+    try {
+      const params = new URLSearchParams({ search: barcode.trim() })
+      if (companyId) params.set('companyId', companyId)
+      if (currentBranchId) params.set('branchId', currentBranchId)
+      const res = await fetch(`/api/products?${params.toString()}`)
+      const json = await res.json()
+      if (json.success && json.data.length > 0) {
+        // Try to find exact barcode match first
+        const exactMatch = json.data.find(
+          (p: { barcode: string | null; id: string; name: string; sku: string; defaultSalePrice: number; currentStockLevel: number }) =>
+            p.barcode === barcode.trim()
+        )
+        const product = exactMatch || json.data[0]
+        addItem({
+          productId: product.id,
+          name: product.name,
+          sku: product.sku,
+          salePricePerUnit: product.defaultSalePrice,
+          maxStock: product.currentStockLevel,
+        })
+        toast.success(`Added: ${product.name}`)
+        setBarcodeInput('')
+      } else {
+        toast.error('Product not found', {
+          description: `No product matching "${barcode.trim()}"`,
+        })
+      }
+    } catch {
+      toast.error('Search failed')
+    } finally {
+      setBarcodeSearching(false)
+    }
+  }, [addItem, companyId, currentBranchId])
+
+  const handleBarcodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleBarcodeSearch(barcodeInput)
+    }
+  }
+
+  const BarcodeScannerInput = () => (
+    <div className="relative">
+      <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600" />
+      <Input
+        ref={barcodeRef}
+        placeholder="Scan barcode & press Enter..."
+        value={barcodeInput}
+        onChange={(e) => setBarcodeInput(e.target.value)}
+        onKeyDown={handleBarcodeKeyDown}
+        className="pl-9 pr-10 border-emerald-200 focus:border-emerald-400 focus:ring-emerald-400"
+      />
+      {barcodeSearching && (
+        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
+        </div>
+      )}
+      {!barcodeSearching && barcodeInput && (
+        <button
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600 hover:text-emerald-700"
+          onClick={() => handleBarcodeSearch(barcodeInput)}
+        >
+          <ScanLine className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  )
+
   if (isMobile) {
     return (
       <div className="flex flex-col gap-4 p-4 pb-24">
+        <BarcodeScannerInput />
         <ProductSearch branchId={currentBranchId} companyId={companyId} />
         <div>
           <h3 className="text-sm font-medium mb-2">{t('pos.quickAdd')}</h3>
@@ -117,8 +194,9 @@ export function PosView() {
 
   return (
     <div className="flex h-full gap-4 p-4">
-      {/* Left: Product Search + Quick Add */}
+      {/* Left: Barcode + Product Search + Quick Add */}
       <div className="flex-1 flex flex-col gap-4 min-w-0">
+        <BarcodeScannerInput />
         <ProductSearch branchId={currentBranchId} companyId={companyId} />
         <Card className="flex-1">
           <CardHeader className="pb-3">

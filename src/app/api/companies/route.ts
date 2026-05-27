@@ -6,7 +6,7 @@ import { Prisma } from '@prisma/client'
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { name, industry, email, phone, address, adminName, adminEmail, adminPassword } = body
+    const { name, industry, email, phone, address, adminName, adminEmail, adminPassword, currency, currencySymbol, country, exchangeRate } = body
 
     if (!name || !adminName || !adminEmail) {
       return NextResponse.json(
@@ -26,6 +26,10 @@ export async function POST(request: Request) {
           address: address || null,
           plan: 'free',
           isActive: true,
+          currency: currency || 'TZS',
+          currencySymbol: currencySymbol || 'TSh',
+          country: country || 'Tanzania',
+          exchangeRate: exchangeRate || 2570,
         },
       })
 
@@ -194,7 +198,7 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json()
-    const { id, name, industry, email, phone, address, logoUrl, plan } = body
+    const { id, name, industry, email, phone, address, logoUrl, plan, currency, currencySymbol, country, exchangeRate } = body
 
     if (!id) {
       return NextResponse.json(
@@ -219,6 +223,10 @@ export async function PUT(request: Request) {
       address?: string | null
       logoUrl?: string | null
       plan?: string
+      currency?: string
+      currencySymbol?: string
+      country?: string
+      exchangeRate?: number
     } = {}
     if (name !== undefined) updateData.name = name
     if (industry !== undefined) updateData.industry = industry
@@ -227,6 +235,10 @@ export async function PUT(request: Request) {
     if (address !== undefined) updateData.address = address
     if (logoUrl !== undefined) updateData.logoUrl = logoUrl
     if (plan !== undefined) updateData.plan = plan
+    if (currency !== undefined) updateData.currency = currency
+    if (currencySymbol !== undefined) updateData.currencySymbol = currencySymbol
+    if (country !== undefined) updateData.country = country
+    if (exchangeRate !== undefined) updateData.exchangeRate = exchangeRate
 
     const company = await db.company.update({
       where: { id },

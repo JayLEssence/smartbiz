@@ -4,6 +4,10 @@ const prisma = new PrismaClient();
 
 async function main() {
   // Clean existing data
+  await prisma.notification.deleteMany();
+  await prisma.customer.deleteMany();
+  await prisma.expense.deleteMany();
+  await prisma.supplier.deleteMany();
   await prisma.shrinkage.deleteMany();
   await prisma.saleItem.deleteMany();
   await prisma.sale.deleteMany();
@@ -25,6 +29,10 @@ async function main() {
       address: '100 Business Avenue, Commercial District',
       plan: 'pro',
       isActive: true,
+      currency: 'TZS',
+      currencySymbol: 'TSh',
+      country: 'Tanzania',
+      exchangeRate: 2570,
     },
   });
 
@@ -236,7 +244,7 @@ async function main() {
           productId: product.id,
           quantityAdded: Math.floor(product.currentStockLevel * 0.6),
           purchasePricePerUnit: purchasePrice,
-          supplier: 'Global Supply Co.',
+          supplierName: 'Global Supply Co.',
           dateReceived: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
           branchId: branch.id,
         },
@@ -244,7 +252,7 @@ async function main() {
           productId: product.id,
           quantityAdded: Math.floor(product.currentStockLevel * 0.4),
           purchasePricePerUnit: purchasePrice * 0.95,
-          supplier: 'Metro Distributors',
+          supplierName: 'Metro Distributors',
           dateReceived: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
           branchId: branch.id,
         },
@@ -373,6 +381,10 @@ async function main() {
       address: '45 Kijiji Street, Neighborhood Market',
       plan: 'free',
       isActive: true,
+      currency: 'TZS',
+      currencySymbol: 'TSh',
+      country: 'Tanzania',
+      exchangeRate: 2570,
     },
   });
 
@@ -445,7 +457,7 @@ async function main() {
     productId: product.id,
     quantityAdded: product.currentStockLevel,
     purchasePricePerUnit: product.defaultSalePrice * 0.6,
-    supplier: 'Local Wholesale Market',
+    supplierName: 'Local Wholesale Market',
     dateReceived: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     branchId: mamaJaneBranch.id,
   }));
@@ -533,6 +545,56 @@ async function main() {
   }
 
   console.log('Created shrinkage records for Company 2');
+
+  // ==========================================
+  // Suppliers for Company 1
+  // ==========================================
+  const suppliers = [
+    { name: 'East Africa Distributors', email: 'orders@eadist.co.tz', phone: '+255 222 333 444', address: '10 Industrial Road, Dar es Salaam', companyId: company1.id },
+    { name: 'Kariakoo Wholesale', email: 'info@kariakoo.co.tz', phone: '+255 777 888 999', address: '55 Market Street, Dar es Salaam', companyId: company1.id },
+    { name: 'Nairobi Fresh Supplies', email: 'supply@nairobi-fresh.ke', phone: '+254 733 444 555', address: '20 Supply Chain Ave, Nairobi', companyId: company1.id },
+  ];
+
+  const createdSuppliers = [];
+  for (const s of suppliers) {
+    const supplier = await prisma.supplier.create({ data: s });
+    createdSuppliers.push(supplier);
+  }
+  console.log('Created Suppliers for Company 1');
+
+  // ==========================================
+  // Expenses for Company 1
+  // ==========================================
+  const expenseData = [
+    { category: 'Rent', description: 'Main branch monthly rent', amount: 2500000, branchId: mainBranch.id, companyId: company1.id },
+    { category: 'Salaries', description: 'Staff salaries - February', amount: 5000000, branchId: mainBranch.id, companyId: company1.id },
+    { category: 'Utilities', description: 'Electricity bill', amount: 350000, branchId: mainBranch.id, companyId: company1.id },
+    { category: 'Transport', description: 'Delivery truck fuel', amount: 200000, branchId: branchEast.id, companyId: company1.id },
+    { category: 'Supplies', description: 'Packaging materials', amount: 150000, branchId: branchEast.id, companyId: company1.id },
+    { category: 'Maintenance', description: 'AC repair', amount: 400000, branchId: mainBranch.id, companyId: company1.id },
+    { category: 'Rent', description: 'Eastside branch rent', amount: 1800000, branchId: branchEast.id, companyId: company1.id },
+    { category: 'Other', description: 'Office supplies', amount: 75000, branchId: branchWest.id, companyId: company1.id },
+  ];
+
+  for (const e of expenseData) {
+    await prisma.expense.create({ data: e });
+  }
+  console.log('Created Expenses for Company 1');
+
+  // ==========================================
+  // Customers for Company 1
+  // ==========================================
+  const customerData = [
+    { name: 'Grace Mwangi', phone: '+255 755 111 222', email: 'grace@email.com', loyaltyPoints: 250, creditBalance: 150000, creditLimit: 500000, branchId: mainBranch.id, companyId: company1.id },
+    { name: 'Joseph Kamau', phone: '+255 766 333 444', loyaltyPoints: 120, creditBalance: 0, creditLimit: 200000, branchId: mainBranch.id, companyId: company1.id },
+    { name: 'Fatima Hassan', phone: '+255 777 555 666', email: 'fatima@email.com', loyaltyPoints: 500, creditBalance: 350000, creditLimit: 1000000, branchId: branchEast.id, companyId: company1.id },
+    { name: 'Peter Odhiambo', phone: '+255 788 777 888', loyaltyPoints: 80, creditBalance: 0, creditLimit: 0, branchId: branchEast.id, companyId: company1.id },
+  ];
+
+  for (const c of customerData) {
+    await prisma.customer.create({ data: c });
+  }
+  console.log('Created Customers for Company 1');
 
   // ==========================================
   // Summary

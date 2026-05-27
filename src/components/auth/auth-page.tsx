@@ -88,6 +88,10 @@ export function AuthPage() {
       phone: user.company.phone,
       plan: user.company.plan,
       isActive: user.company.isActive,
+      currency: user.company.currency ?? 'TZS',
+      currencySymbol: user.company.currencySymbol ?? 'TSh',
+      country: user.company.country ?? 'Tanzania',
+      exchangeRate: user.company.exchangeRate ?? 2570,
     }
 
     setUser({

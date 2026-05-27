@@ -8,22 +8,30 @@ datasource db {
 }
 
 model Company {
-  id          String   @id @default(cuid())
-  name        String
-  industry    String?   // e.g. "Retail", "Wholesale", "Restaurant"
-  email       String?
-  phone       String?
-  address     String?
-  logoUrl     String?
-  plan        String    @default("free")  // free, starter, pro
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  industry        String?
+  email           String?
+  phone           String?
+  address         String?
+  logoUrl         String?
+  plan            String   @default("free")
+  isActive        Boolean  @default(true)
+  currency        String   @default("TZS")   // Local currency code: TZS, KES, UGX, etc.
+  currencySymbol  String   @default("TSh")   // Local currency symbol
+  country         String   @default("Tanzania")
+  exchangeRate    Float    @default(2570)     // Exchange rate: 1 USD = X local currency
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   branches    Branch[]
   users       User[]
   products    Product[]
   sales       Sale[]
+  expenses    Expense[]
+  suppliers   Supplier[]
+  customers   Customer[]
+  notifications Notification[]
 }
 
 model Branch {
@@ -44,6 +52,9 @@ model Branch {
   inventoryBatches InventoryBatch[]
   sales           Sale[]
   shrinkages      Shrinkage[]
+  expenses        Expense[]
+  customers       Customer[]
+  notifications   Notification[]
 }
 
 model User {
@@ -51,7 +62,7 @@ model User {
   email        String   @unique
   name         String
   passwordHash String
-  role         String   @default("Employee") // CompanyAdmin, Manager, Employee
+  role         String   @default("Employee")
   branchId     String
   companyId    String
   isActive     Boolean  @default(true)
@@ -92,24 +103,29 @@ model InventoryBatch {
   productId         String
   quantityAdded     Int
   purchasePricePerUnit Float
-  supplier          String?
+  supplierName       String?          // Legacy text field
   dateReceived      DateTime @default(now())
   branchId          String
+  supplierId        String?
   createdAt         DateTime @default(now())
 
-  product Product @relation(fields: [productId], references: [id])
-  branch  Branch  @relation(fields: [branchId], references: [id])
+  product  Product  @relation(fields: [productId], references: [id])
+  branch   Branch   @relation(fields: [branchId], references: [id])
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
 }
 
 model Sale {
-  id         String   @id @default(cuid())
-  totalAmount Float
-  discount   Float    @default(0)
-  saleDate   DateTime @default(now())
-  userId     String
-  branchId   String
-  companyId  String
-  createdAt  DateTime @default(now())
+  id            String   @id @default(cuid())
+  totalAmount   Float
+  discount      Float    @default(0)
+  saleDate      DateTime @default(now())
+  userId        String
+  branchId      String
+  companyId     String
+  paymentMethod String   @default("Cash")  // Cash, M-Pesa, Tigo Pesa, Airtel Money, Card, Credit
+  customerName  String?
+  receiptNumber String?
+  createdAt     DateTime @default(now())
 
   user      User       @relation(fields: [userId], references: [id])
   branch    Branch     @relation(fields: [branchId], references: [id])
@@ -134,11 +150,75 @@ model Shrinkage {
   id           String   @id @default(cuid())
   productId    String
   quantityLost Int
-  reason       String   // Stolen, Expired, Damaged
+  reason       String
   dateRecorded DateTime @default(now())
   branchId     String
   createdAt    DateTime @default(now())
 
   product Product @relation(fields: [productId], references: [id])
   branch  Branch  @relation(fields: [branchId], references: [id])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  category    String   // Rent, Utilities, Salaries, Transport, Supplies, Maintenance, Other
+  description String
+  amount      Float
+  date        DateTime @default(now())
+  branchId    String
+  companyId   String
+  receiptUrl  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  companyId String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company         Company         @relation(fields: [companyId], references: [id])
+  inventoryBatches InventoryBatch[]
+}
+
+model Customer {
+  id            String   @id @default(cuid())
+  name          String
+  email         String?
+  phone         String?
+  address       String?
+  loyaltyPoints Int      @default(0)
+  creditBalance Float    @default(0)
+  creditLimit   Float    @default(0)
+  branchId      String
+  companyId     String
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String   // LowStock, HighShrinkage, DailySummary, CreditAlert, ExpenseAlert
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  companyId String
+  branchId  String?
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+  branch  Branch? @relation(fields: [branchId], references: [id])
 }

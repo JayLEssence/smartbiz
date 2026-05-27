@@ -12,6 +12,10 @@ import {
   Lightbulb,
   Building2,
   Settings,
+  Users,
+  Receipt,
+  FileBarChart,
+  Truck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -31,8 +35,12 @@ const allNavItems: NavItem[] = [
   { view: 'inventory', labelKey: 'sidebar.inventory', icon: Package, managerOnly: true },
   { view: 'shrinkage', labelKey: 'sidebar.lossTrack', icon: AlertTriangle, managerOnly: true },
   { view: 'analytics', labelKey: 'sidebar.analytics', icon: BarChart3, managerOnly: true },
+  { view: 'reports', labelKey: 'sidebar.reports', icon: FileBarChart, managerOnly: true },
   { view: 'advisor', labelKey: 'sidebar.advisor', icon: Lightbulb, adminOnly: true },
   { view: 'branches', labelKey: 'sidebar.branches', icon: Building2, adminOnly: true },
+  { view: 'suppliers', labelKey: 'sidebar.suppliers', icon: Truck, adminOnly: true },
+  { view: 'customers', labelKey: 'sidebar.customers', icon: Users, managerOnly: true },
+  { view: 'expenses', labelKey: 'sidebar.expenses', icon: Receipt, managerOnly: true },
   { view: 'admin', labelKey: 'sidebar.admin', icon: Settings, adminOnly: true },
 ]
 

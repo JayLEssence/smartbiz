@@ -2,7 +2,7 @@
 
 import { create } from 'zustand'
 
-export type ViewType = 'pos' | 'inventory' | 'shrinkage' | 'dashboard' | 'analytics' | 'advisor' | 'branches' | 'admin'
+export type ViewType = 'pos' | 'inventory' | 'shrinkage' | 'dashboard' | 'analytics' | 'advisor' | 'branches' | 'admin' | 'expenses' | 'suppliers' | 'customers' | 'reports'
 
 export interface BranchInfo {
   id: string
@@ -20,13 +20,17 @@ export interface CompanyInfo {
   phone: string | null
   plan: string
   isActive: boolean
+  currency: string
+  currencySymbol: string
+  country: string
+  exchangeRate: number
 }
 
 export interface CurrentUser {
   id: string
   email: string
   name: string
-  role: string  // CompanyAdmin, Manager, Employee
+  role: string
   branchId: string
   companyId: string
   branch?: BranchInfo
@@ -63,14 +67,12 @@ export const useAppStore = create<AppState>((set) => ({
 
   setView: (view) => set({ currentView: view, sidebarOpen: false }),
   setUser: (user) => set((state) => {
-    // For Employee role, always lock to their own branch
     const branchId = user?.role === 'Employee' && user?.branchId
       ? user.branchId
       : state.currentBranchId ?? user?.branchId ?? null
     return { currentUser: user, currentBranchId: branchId }
   }),
   setCurrentBranchId: (branchId) => set((state) => {
-    // Prevent Employee from switching branches
     if (state.currentUser?.role === 'Employee') {
       return { currentBranchId: state.currentUser.branchId }
     }

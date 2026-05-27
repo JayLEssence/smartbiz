@@ -78,10 +78,32 @@ export async function GET(request: Request) {
   }
 }
 
+const VALID_PAYMENT_METHODS = ['Cash', 'M-Pesa', 'Tigo Pesa', 'Airtel Money', 'Card', 'Credit'] as const
+type PaymentMethod = (typeof VALID_PAYMENT_METHODS)[number]
+
+async function generateReceiptNumber(tx: Prisma.TransactionClient): Promise<string> {
+  // Get the latest sale with a receipt number to determine next sequential number
+  const latestSale = await tx.sale.findFirst({
+    where: { receiptNumber: { not: null } },
+    orderBy: { createdAt: 'desc' },
+    select: { receiptNumber: true },
+  })
+
+  let nextNumber = 1
+  if (latestSale?.receiptNumber) {
+    const match = latestSale.receiptNumber.match(/RCT-(\d+)/)
+    if (match) {
+      nextNumber = parseInt(match[1], 10) + 1
+    }
+  }
+
+  return `RCT-${String(nextNumber).padStart(5, '0')}`
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { userId, items, discount, branchId, companyId } = body
+    const { userId, items, discount, branchId, companyId, paymentMethod, customerName } = body
 
     if (!userId || !items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -89,6 +111,15 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
+
+    // Validate payment method
+    const salePaymentMethod: PaymentMethod = VALID_PAYMENT_METHODS.includes(paymentMethod)
+      ? paymentMethod
+      : 'Cash'
+
+    const saleCustomerName = typeof customerName === 'string' && customerName.trim()
+      ? customerName.trim()
+      : null
 
     const result = await db.$transaction(async (tx) => {
       // Verify user exists and get their branch and company
@@ -104,6 +135,9 @@ export async function POST(request: Request) {
       const saleBranchId = branchId || user.branchId
       // Use provided companyId or fall back to user's company
       const saleCompanyId = companyId || user.companyId
+
+      // Auto-generate receipt number
+      const receiptNumber = await generateReceiptNumber(tx)
 
       let totalAmount = 0
       const saleItemsData: {
@@ -169,6 +203,9 @@ export async function POST(request: Request) {
           discount: discountAmount,
           branchId: saleBranchId,
           companyId: saleCompanyId,
+          paymentMethod: salePaymentMethod,
+          customerName: saleCustomerName,
+          receiptNumber,
           saleItems: {
             create: saleItemsData,
           },
@@ -198,6 +235,9 @@ export async function POST(request: Request) {
             select: {
               id: true,
               name: true,
+              currency: true,
+              currencySymbol: true,
+              exchangeRate: true,
             },
           },
         },
