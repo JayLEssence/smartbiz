@@ -155,6 +155,7 @@ export function BranchesView() {
           address: addForm.address.trim() || undefined,
           phone: addForm.phone.trim() || undefined,
           isHeadOffice: addForm.isHeadOffice,
+          companyId: companyId,
         }),
       })
       const json = await res.json()
