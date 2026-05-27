@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAppStore, type CompanyInfo } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
-import { Store, Building2, User, Mail, Lock, Phone, MapPin, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react'
+import { Store, Building2, User, Mail, Lock, Phone, MapPin, Loader2, ArrowRight, CheckCircle2, Users, Hash } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -55,6 +55,14 @@ export function AuthPage() {
   const [loginEmail, setLoginEmail] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
   const [loginLoading, setLoginLoading] = useState(false)
+
+  // Join state (employee self-registration)
+  const [joinName, setJoinName] = useState('')
+  const [joinEmail, setJoinEmail] = useState('')
+  const [joinPassword, setJoinPassword] = useState('')
+  const [joinConfirmPassword, setJoinConfirmPassword] = useState('')
+  const [joinBranchCode, setJoinBranchCode] = useState('')
+  const [joinLoading, setJoinLoading] = useState(false)
 
   // Register state
   const [regCompanyName, setRegCompanyName] = useState('')
@@ -168,6 +176,53 @@ export function AuthPage() {
     }
   }
 
+  const handleJoin = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!joinName || !joinEmail || !joinPassword || !joinBranchCode) {
+      toast.error(t('auth.joinFillRequired'))
+      return
+    }
+
+    if (joinPassword !== joinConfirmPassword) {
+      toast.error(t('auth.passwordsNoMatch'))
+      return
+    }
+
+    if (joinPassword.length < 6) {
+      toast.error(t('auth.passwordMinLength'))
+      return
+    }
+
+    setJoinLoading(true)
+    try {
+      const res = await fetch('/api/auth/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: joinName.trim(),
+          email: joinEmail.trim(),
+          password: joinPassword,
+          branchCode: joinBranchCode.trim().toUpperCase(),
+        }),
+      })
+      const json = await res.json()
+
+      if (!json.success) {
+        toast.error(json.error || 'Join failed')
+        return
+      }
+
+      saveSessionAndLogin(json.data)
+      await fetchBranches(json.data.user.companyId)
+      toast.success(t('auth.joinSuccess'))
+    } catch {
+      toast.error(t('auth.networkError'))
+    } finally {
+      setJoinLoading(false)
+    }
+  }
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -249,6 +304,7 @@ export function AuthPage() {
             <CardHeader className="pb-0">
               <TabsList className="w-full">
                 <TabsTrigger value="login" className="flex-1">{t('auth.signIn')}</TabsTrigger>
+                <TabsTrigger value="join" className="flex-1">{t('auth.join')}</TabsTrigger>
                 <TabsTrigger value="register" className="flex-1">{t('auth.register')}</TabsTrigger>
               </TabsList>
             </CardHeader>
@@ -319,6 +375,139 @@ export function AuthPage() {
                       <p className="text-xs text-muted-foreground mt-1">{t('auth.passwordForDemo')} <span className="font-mono font-medium">demo</span></p>
                     </div>
                   </div>
+                </form>
+              </TabsContent>
+
+              {/* Join Tab - Employee Self-Registration */}
+              <TabsContent value="join">
+                <form onSubmit={handleJoin} className="space-y-4">
+                  {/* Explanation */}
+                  <div className="flex items-start gap-2 rounded-lg bg-teal-50 dark:bg-teal-950/30 p-3">
+                    <Users className="h-4 w-4 text-teal-600 mt-0.5 shrink-0" />
+                    <p className="text-xs text-teal-700 dark:text-teal-400">
+                      {t('auth.joinExplanation')}
+                    </p>
+                  </div>
+
+                  {/* Branch Code */}
+                  <div className="space-y-2">
+                    <Label htmlFor="join-branch-code">
+                      {t('auth.branchCode')} <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="join-branch-code"
+                        placeholder={t('auth.branchCodePlaceholder')}
+                        value={joinBranchCode}
+                        onChange={(e) => setJoinBranchCode(e.target.value.toUpperCase())}
+                        className="pl-9 font-mono uppercase"
+                        disabled={joinLoading}
+                        maxLength={20}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {t('auth.branchCodeHelp')}
+                    </p>
+                  </div>
+
+                  {/* Personal Info Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                      <User className="h-4 w-4" />
+                      {t('auth.yourDetails')}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="join-name">
+                        {t('auth.fullName')} <span className="text-destructive">*</span>
+                      </Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="join-name"
+                          placeholder={t('auth.fullNamePlaceholder')}
+                          value={joinName}
+                          onChange={(e) => setJoinName(e.target.value)}
+                          className="pl-9"
+                          disabled={joinLoading}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="join-email">
+                        {t('auth.email')} <span className="text-destructive">*</span>
+                      </Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="join-email"
+                          type="email"
+                          placeholder={t('auth.emailPlaceholder')}
+                          value={joinEmail}
+                          onChange={(e) => setJoinEmail(e.target.value)}
+                          className="pl-9"
+                          disabled={joinLoading}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="join-password">
+                          {t('auth.password')} <span className="text-destructive">*</span>
+                        </Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="join-password"
+                            type="password"
+                            placeholder={t('auth.minChars')}
+                            value={joinPassword}
+                            onChange={(e) => setJoinPassword(e.target.value)}
+                            className="pl-9"
+                            disabled={joinLoading}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="join-confirm-password">
+                          {t('auth.confirm')} <span className="text-destructive">*</span>
+                        </Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="join-confirm-password"
+                            type="password"
+                            placeholder={t('auth.reenter')}
+                            value={joinConfirmPassword}
+                            onChange={(e) => setJoinConfirmPassword(e.target.value)}
+                            className="pl-9"
+                            disabled={joinLoading}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full bg-teal-600 hover:bg-teal-700 text-white"
+                    disabled={joinLoading}
+                  >
+                    {joinLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {t('auth.joining')}
+                      </>
+                    ) : (
+                      <>
+                        {t('auth.joinTeam')}
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
                 </form>
               </TabsContent>
 

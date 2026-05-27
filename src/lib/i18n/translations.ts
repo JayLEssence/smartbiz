@@ -65,6 +65,20 @@ export const t: TranslationDict = {
   'auth.passwordMinLength': { en: 'Password must be at least 6 characters', sw: 'Nenosiri lazima liwe na angalau herufi 6' },
   'auth.registrationSuccess': { en: 'Company registered successfully! Welcome to SmartBiz!', sw: 'Kampuni imesajiliwa kwa mafanikio! Karibu SmartBiz!' },
   'auth.registrationLogin': { en: 'Company registered! Please log in with your credentials.', sw: 'Kampuni imesajiliwa! Tafadhali ingia kwa vitambulisho vyako.' },
+  // Join (employee self-registration)
+  'auth.join': { en: 'Join', sw: 'Jiunge' },
+  'auth.joinExplanation': {
+    en: "Are you an employee? Join your team by entering the branch code from your manager. You'll get access to POS and other features.",
+    sw: 'Wewe ni mfanyakazi? Jiunge na timu yako kwa kuingiza kificho cha tawi kutoka kwa meneja wako. Utapata ufikiaji wa uuzaji na vipengele vingine.',
+  },
+  'auth.branchCode': { en: 'Branch Code', sw: 'Kificho cha Tawi' },
+  'auth.branchCodePlaceholder': { en: 'e.g. SMARTBIZ-HQ', sw: 'k.m. SMARTBIZ-MKM' },
+  'auth.branchCodeHelp': { en: 'Ask your manager for the branch code', sw: 'Uliza meneja wako kwa kificho cha tawi' },
+  'auth.yourDetails': { en: 'Your Details', sw: 'Maelezo Yako' },
+  'auth.joinFillRequired': { en: 'Please fill in all required fields including the branch code', sw: 'Tafadhali jaza sehemu zote zinazohitajika ikiwa ni pamoja na kificho cha tawi' },
+  'auth.joining': { en: 'Joining...', sw: 'Inajiunga...' },
+  'auth.joinTeam': { en: 'Join Team', sw: 'Jiunge na Timu' },
+  'auth.joinSuccess': { en: 'Welcome to the team! You are now signed in.', sw: 'Karibu kwenye timu! Umeingia sasa.' },
 
   // ============ SIDEBAR ============
   'sidebar.pos': { en: 'POS', sw: 'Uuzaji' },
@@ -349,6 +363,11 @@ export const t: TranslationDict = {
   'admin.failedToRegisterProduct': { en: 'Failed to register product', sw: 'Imeshindwa kusajili bidhaa' },
   'admin.productDeactivated': { en: 'Product deactivated', sw: 'Bidhaa imezimwa' },
   'admin.failedToRemoveProduct': { en: 'Failed to remove product', sw: 'Imeshindwa kuondoa bidhaa' },
+  // Employee access
+  'admin.employeeJoinCode': { en: 'Employee Join Code', sw: 'Kificho cha Kujiunga' },
+  'admin.shareCodeWithEmployees': { en: 'Share this code with employees so they can join from the login page', sw: 'Shiriki kificho hiki na wafanyakazi ili waweze kujiunga kutoka ukurasa wa kuingia' },
+  'admin.howEmployeesJoin': { en: 'How employees join:', sw: 'Jinsi wafanyakazi wanavyojiunga:' },
+  'admin.howEmployeesJoinExplanation': { en: "Share the branch code with your employees. They go to the login page, click 'Join', enter the code and their details to create their account automatically.", sw: "Shiriki kificho cha tawi na wafanyakazi wako. Wanaenda ukurasa wa kuingia, wanabonyeza 'Jiunge', wanaingiza kificho na maelezo yao kuunda akaunti yao kiotomatiki." },
 
   // ============ REPORTS ============
   'reports.title': { en: 'Reports & Analytics', sw: 'Ripoti na Uchambuzi' },

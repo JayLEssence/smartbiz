@@ -1,25 +1,21 @@
 ---
 Task ID: 1
 Agent: Main
-Task: Implement sidebar redesign, barcode scanner, and offline mode
+Task: Implement employee self-registration (Join) feature and explain employee access flow
 
 Work Log:
-- Analyzed current sidebar with 12 flat navigation items causing clutter on mobile
-- Redesigned sidebar with 5 grouped/collapsible sections (Core, Management, Finance, Insights, System)
-- Desktop: Collapsible groups with animated chevrons, auto-expand group containing active view
-- Mobile: Shows 3 primary items (POS, Dashboard, Inventory) + "More" button opening a Sheet drawer
-- Created barcode-scanner-dialog.tsx with camera-based scanning using @ericblade/quagga2
-- Added camera toggle button next to barcode input in POS view
-- Scanner supports EAN-13, EAN-8, UPC-A, UPC-E, Code-128, Code-39 formats
-- Includes manual input fallback for when camera is unavailable
-- Created use-offline.ts hook with offline queue, auto-sync on reconnect
-- Created offline-banner.tsx with visual indicators (amber=offline, green=back online, blue=syncing)
-- Added OfflineBanner to main page layout
-- Added 25+ translation keys for barcode scanner and offline mode (English + Kiswahili)
-- All lint checks pass cleanly
+- Analyzed current authentication system: login, register (company), and user management flows
+- Created `/api/auth/join` endpoint that allows employees to register using a branch code
+- Added "Join" tab to the auth page (login screen) with branch code, name, email, password fields
+- Added BranchCodeCopyButton component to admin panel for easy code sharing
+- Added employee join code display on each branch card in admin panel
+- Added "How employees join" guide banner in the admin branches tab
+- Added 11 new translation keys (en/sw) for join feature and admin panel
+- Tested the full flow: join API → employee created → login works
 
 Stage Summary:
-- Sidebar now organized in collapsible groups, mobile shows only 4 items
-- Barcode scanner with camera support added to POS
-- Offline mode with sync queue and visual banner added
-- All features support English/Kiswahili translations
+- Employees can now self-register using branch codes shared by their admin
+- Admin panel shows branch codes with copy-to-clipboard on each branch card
+- The auth page now has 3 tabs: Sign In, Join, Register
+- Join creates Employee role users assigned to the specified branch
+- All translations added for both English and Kiswahili

@@ -70,6 +70,9 @@ import {
   Crown,
   UserCheck,
   UserX,
+  Copy,
+  Check,
+  Info,
 } from 'lucide-react'
 
 // ============ Types ============
@@ -214,6 +217,46 @@ function TrendingBadge({ trending }: { trending: string }) {
     default:
       return null
   }
+}
+
+// ============ Branch Code Copy Button ============
+
+function BranchCodeCopyButton({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Fallback for browsers without clipboard API
+      const textarea = document.createElement('textarea')
+      textarea.value = code
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="h-7 gap-1.5 font-mono text-xs"
+      onClick={handleCopy}
+    >
+      <span className="font-semibold text-emerald-700">{code}</span>
+      {copied ? (
+        <Check className="h-3 w-3 text-emerald-600" />
+      ) : (
+        <Copy className="h-3 w-3" />
+      )}
+    </Button>
+  )
 }
 
 // ============ Main Component ============
@@ -869,6 +912,14 @@ export function AdminPanel() {
 
         {/* ============ TAB 2: Branches Management ============ */}
         <TabsContent value="branches">
+          {/* Employee Access Guide */}
+          <div className="flex items-start gap-3 rounded-lg bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 p-3 mb-4">
+            <Users className="h-4 w-4 text-teal-600 mt-0.5 shrink-0" />
+            <div className="text-xs text-teal-700 dark:text-teal-400">
+              <span className="font-medium">{t('admin.howEmployeesJoin')}</span>{' '}
+              {t('admin.howEmployeesJoinExplanation')}
+            </div>
+          </div>
           {/* Header actions */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div className="relative flex-1 max-w-md">
@@ -1008,6 +1059,19 @@ export function AdminPanel() {
                         <span className="text-xs text-muted-foreground">Sales</span>
                       </div>
                     </div>
+                    {/* Employee Join Code */}
+                    {branch.isActive && (
+                      <div className="mt-3 pt-3 border-t">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs text-muted-foreground">{t('admin.employeeJoinCode')}</span>
+                          <BranchCodeCopyButton code={branch.code} />
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <Info className="h-3 w-3 text-muted-foreground shrink-0" />
+                          <span className="text-[10px] text-muted-foreground">{t('admin.shareCodeWithEmployees')}</span>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
