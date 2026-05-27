@@ -14,7 +14,8 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { Loader2, CheckCircle2, Printer, Download, Receipt } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Loader2, CheckCircle2, Printer, Download, Receipt, MessageCircle, Smartphone } from 'lucide-react'
 import { toast } from 'sonner'
 import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
 
@@ -47,6 +48,7 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
   const [success, setSuccess] = useState(false)
   const [showReceipt, setShowReceipt] = useState(false)
   const [saleResult, setSaleResult] = useState<SaleResult | null>(null)
+  const [sharePhone, setSharePhone] = useState('')
   const { items, discount, getTotal, clearCart, paymentMethod, customerName, phoneNumber } = usePosStore()
   const { currentUser, currentBranchId } = useAppStore()
   const { formatLocal, formatUSD, toUSD, currency } = useCurrency()
@@ -182,7 +184,86 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
     setShowReceipt(false)
     setSuccess(false)
     setSaleResult(null)
+    setSharePhone('')
     onOpenChange(false)
+  }
+
+  const formatReceiptForWhatsApp = () => {
+    if (!saleResult) return ''
+
+    const ccy = saleResult.company.currencySymbol || 'TSh'
+    const formatLocalAmt = (amount: number) => `${ccy} ${amount.toLocaleString()}`
+
+    const lines: string[] = []
+    lines.push(`🧾 *${saleResult.company.name}*`)
+    lines.push(`📍 Branch: ${saleResult.branch.name}`)
+    lines.push('───────────────────')
+    lines.push(`📝 Receipt: ${saleResult.receiptNumber}`)
+    lines.push(`📅 Date: ${new Date(saleResult.saleDate).toLocaleDateString()}`)
+    lines.push(`🕐 Time: ${new Date(saleResult.saleDate).toLocaleTimeString()}`)
+    lines.push(`👤 Cashier: ${saleResult.user.name}`)
+    if (saleResult.customerName) {
+      lines.push(`🛍️ Customer: ${saleResult.customerName}`)
+    }
+    lines.push(`💳 Payment: ${saleResult.paymentMethod}`)
+    lines.push('───────────────────')
+    lines.push('*Items:*')
+
+    for (const item of saleResult.saleItems) {
+      const sub = item.quantitySold * item.salePricePerUnit
+      lines.push(`• ${item.product.name} × ${item.quantitySold} = ${formatLocalAmt(sub)}`)
+    }
+
+    lines.push('───────────────────')
+
+    if (saleResult.discount > 0) {
+      lines.push(`🏷️ Discount: -${formatLocalAmt(saleResult.discount)}`)
+    }
+
+    lines.push(`\n💰 *TOTAL: ${formatLocalAmt(saleResult.totalAmount)}*`)
+    lines.push('\n🙏 Thank you for your business!')
+
+    return lines.join('\n')
+  }
+
+  const handleShareWhatsApp = () => {
+    const message = formatReceiptForWhatsApp()
+    const encodedMessage = encodeURIComponent(message)
+
+    // Use the sharePhone input if provided, otherwise use the POS store phone number
+    const phone = sharePhone.trim() || phoneNumber.trim()
+
+    if (phone) {
+      // Clean phone number: remove spaces, dashes, parentheses; ensure it starts with country code
+      let cleanPhone = phone.replace(/[\s\-()]/g, '')
+      // If it starts with 0, replace with 255 (Tanzania default)
+      if (cleanPhone.startsWith('0')) {
+        cleanPhone = '255' + cleanPhone.substring(1)
+      }
+      // If it starts with +, remove the +
+      if (cleanPhone.startsWith('+')) {
+        cleanPhone = cleanPhone.substring(1)
+      }
+      window.open(`https://wa.me/${cleanPhone}?text=${encodedMessage}`, '_blank')
+    } else {
+      // No phone number - let user pick a contact in WhatsApp
+      window.open(`https://wa.me/?text=${encodedMessage}`, '_blank')
+    }
+
+    toast.success('Opening WhatsApp...')
+  }
+
+  const handleShareSMS = () => {
+    const message = formatReceiptForWhatsApp()
+    const phone = sharePhone.trim() || phoneNumber.trim()
+
+    if (phone) {
+      window.open(`sms:${phone}?body=${encodeURIComponent(message)}`, '_blank')
+    } else {
+      window.open(`sms:?body=${encodeURIComponent(message)}`, '_blank')
+    }
+
+    toast.success('Opening SMS...')
   }
 
   // Receipt Modal
@@ -292,14 +373,44 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
             </p>
           </div>
 
+          {/* Share Phone Number Input */}
+          <div className="print:hidden mt-3">
+            <label className="text-xs text-muted-foreground mb-1 block">Phone number for sharing (optional)</label>
+            <Input
+              type="tel"
+              placeholder={phoneNumber || "e.g. 0712345678"}
+              value={sharePhone}
+              onChange={(e) => setSharePhone(e.target.value)}
+              className="h-8 text-sm"
+            />
+            {phoneNumber && !sharePhone && (
+              <p className="text-[10px] text-muted-foreground mt-0.5">Using customer phone from POS: {phoneNumber}</p>
+            )}
+          </div>
+
           {/* Action Buttons */}
-          <DialogFooter className="gap-2 sm:gap-0 print:hidden">
+          <DialogFooter className="gap-2 sm:gap-0 print:hidden flex-wrap">
             <Button variant="outline" onClick={handleCloseReceipt}>
               Close
             </Button>
             <Button variant="outline" onClick={handleDownloadReceipt}>
               <Download className="h-4 w-4 mr-2" />
               Download
+            </Button>
+            <Button
+              onClick={handleShareWhatsApp}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              <MessageCircle className="h-4 w-4 mr-2" />
+              WhatsApp
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleShareSMS}
+              className="text-blue-600 border-blue-300 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-700 dark:hover:bg-blue-950"
+            >
+              <Smartphone className="h-4 w-4 mr-2" />
+              SMS
             </Button>
             <Button onClick={handlePrintReceipt} className="bg-emerald-600 hover:bg-emerald-700 text-white">
               <Printer className="h-4 w-4 mr-2" />

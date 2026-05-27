@@ -20,6 +20,9 @@ import { ReportsView } from '@/components/reports/reports-view'
 import { AdminPanel } from '@/components/admin/admin-panel'
 import { SecurityView } from '@/components/security/security-view'
 import { OfflineBanner } from '@/components/layout/offline-banner'
+import { SessionTimeout } from '@/components/layout/session-timeout'
+import { initCsrfToken } from '@/lib/auth-fetch'
+import { CommandPalette } from '@/components/layout/command-palette'
 import { LanguageProvider, useLanguage } from '@/lib/i18n/language-context'
 
 export default function Home() {
@@ -48,14 +51,24 @@ function HomeContent() {
   } = useAppStore()
   const [initializing, setInitializing] = useState(true)
 
-  // Listen for auth expiry events
+  // Listen for auth expiry events and token refresh events
   useEffect(() => {
     const handleAuthExpired = () => {
       logout()
     }
+    const handleTokenRefreshed = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail?.token) {
+        setAuthToken(detail.token)
+      }
+    }
     window.addEventListener('auth:expired', handleAuthExpired)
-    return () => window.removeEventListener('auth:expired', handleAuthExpired)
-  }, [logout])
+    window.addEventListener('auth:token-refreshed', handleTokenRefreshed)
+    return () => {
+      window.removeEventListener('auth:expired', handleAuthExpired)
+      window.removeEventListener('auth:token-refreshed', handleTokenRefreshed)
+    }
+  }, [logout, setAuthToken])
 
   // Initialize: try to restore session from localStorage
   useEffect(() => {
@@ -103,6 +116,9 @@ function HomeContent() {
             setCompany(companyInfo)
             setAuthenticated(true)
             setAuthToken(data.token)
+
+            // Initialize CSRF token
+            initCsrfToken().catch(() => {})
 
             // Fetch branches with auth token
             fetch(`/api/branches?companyId=${user.companyId}`, {
@@ -215,7 +231,9 @@ function HomeContent() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      <SessionTimeout />
       <OfflineBanner />
+      <CommandPalette />
       <div className="flex flex-1">
         <AppSidebar />
         <div className="flex flex-1 flex-col min-w-0">

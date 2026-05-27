@@ -103,6 +103,22 @@ export const t: TranslationDict = {
   'auth.joining': { en: 'Joining...', sw: 'Inajiunga...' },
   'auth.joinTeam': { en: 'Join Team', sw: 'Jiunge na Timu' },
   'auth.joinSuccess': { en: 'Welcome to the team! You are now signed in.', sw: 'Karibu kwenye timu! Umeingia sasa.' },
+  // Forgot password
+  'auth.forgotPassword': { en: 'Forgot password?', sw: 'Umesahau nenosiri?' },
+  'auth.forgotPasswordToast': { en: 'Please contact your company administrator to reset your password.', sw: 'Tafadhali wasiliana na msimamizi wa kampuni yako kuweka nenosiri jipya.' },
+  // Competitive advantage badges
+  'auth.badgeOffline': { en: 'Offline-Ready', sw: 'Hali ya Nje ya Mtandao' },
+  'auth.badgeAI': { en: 'AI Advisor', sw: 'Mshauri wa AI' },
+  'auth.badgeMobile': { en: 'Mobile-First', sw: 'Simu Kwanza' },
+  'auth.badgeSecurity': { en: 'Bank-Grade Security', sw: 'Usalama wa Benki' },
+  // Trust indicators
+  'auth.trustedBy': { en: 'Trusted by 1,000+ businesses across East Africa', sw: 'Inaaminiwa na biashara 1,000+ Afrika Mashariki' },
+  'auth.freeForever': { en: 'Free forever for small businesses', sw: 'Bure milele kwa biashara ndogo' },
+  // Why SmartBiz section
+  'auth.whySmartBiz': { en: 'Why SmartBiz?', sw: 'Kwa nini SmartBiz?' },
+  'auth.vsSimpler': { en: 'Simpler than Odoo — No complex setup needed', sw: 'Rahisi kuliko Odoo — Hakuna usanidi mgumu' },
+  'auth.vsAffordable': { en: 'More affordable than Zoho — Free for small teams', sw: 'Nafuu kuliko Zoho — Bure kwa timu ndogo' },
+  'auth.vsAfrica': { en: 'Built for Africa — M-Pesa, Kiswahili, offline support', sw: 'Imeundwa kwa Afrika — M-Pesa, Kiswahili, usaidizi wa nje ya mtandao' },
 
   // ============ SIDEBAR ============
   'sidebar.pos': { en: 'POS', sw: 'Uuzaji' },
@@ -152,6 +168,17 @@ export const t: TranslationDict = {
   'dashboard.out': { en: 'Out', sw: 'Imeisha' },
   'dashboard.low': { en: 'Low', sw: 'Ndogo' },
   'dashboard.failedToLoad': { en: 'Failed to load dashboard data', sw: 'Imeshindwa kupakia data ya dashibodi' },
+  'dashboard.quickActions': { en: 'Quick Actions', sw: 'Vitendo Haraka' },
+  'dashboard.newSale': { en: 'New Sale', sw: 'Mauzo Mapya' },
+  'dashboard.addStock': { en: 'Add Stock', sw: 'Ongeza Hifadhi' },
+  'dashboard.recordExpense': { en: 'Record Expense', sw: 'Rekodi Matumizi' },
+  'dashboard.viewReports': { en: 'View Reports', sw: 'Tazama Ripoti' },
+  'dashboard.addCustomer': { en: 'Add Customer', sw: 'Ongeza Mteja' },
+  'dashboard.todaysSummary': { en: "Today's Summary", sw: 'Muhtasari wa Leo' },
+  'dashboard.todaysSalesCount': { en: 'Sales', sw: 'Mauzo' },
+  'dashboard.todaysRevenue': { en: 'Revenue', sw: 'Mapato' },
+  'dashboard.lowStockAlertsCount': { en: 'Low Stock', sw: 'Hifadhi Ndogo' },
+  'dashboard.pendingExpenses': { en: 'Expenses', sw: 'Matumizi' },
 
   // ============ POS ============
   'pos.quickAdd': { en: 'Quick Add', sw: 'Ongeza Haraka' },
@@ -610,4 +637,30 @@ export const t: TranslationDict = {
   'offline.syncing': { en: 'Syncing...', sw: 'Inasawazisha...' },
   'offline.synced': { en: 'synced', sw: 'imesawazishwa' },
   'offline.failed': { en: 'failed', sw: 'imeshindwa' },
+
+  // ============ COMMAND PALETTE ============
+  'command.title': { en: 'Command Palette', sw: 'Paneli ya Amri' },
+  'command.description': { en: 'Search for a command to run...', sw: 'Tafuta amri ya kuendesha...' },
+  'command.placeholder': { en: 'Search anything... (products, customers, views, actions)', sw: 'Tafuta chochote... (bidhaa, wateja, maoni, vitendo)' },
+  'command.noResults': { en: 'No results found.', sw: 'Hakuna matokeo yaliyopatikana.' },
+  'command.searching': { en: 'Searching...', sw: 'Inatafuta...' },
+  'command.recent': { en: 'Recent', sw: 'Hivi Karibu' },
+  'command.navigation': { en: 'Navigation', sw: 'Urambazaji' },
+  'command.products': { en: 'Products', sw: 'Bidhaa' },
+  'command.customers': { en: 'Customers', sw: 'Wateja' },
+  'command.actions': { en: 'Quick Actions', sw: 'Vitendo Haraka' },
+  'command.toNavigate': { en: 'to navigate', sw: 'kurambaza' },
+  'command.toSelect': { en: 'to select', sw: 'kuchagua' },
+  'command.toClose': { en: 'to close', sw: 'kufunga' },
+  'command.newSale': { en: 'New Sale', sw: 'Mauzo Mapya' },
+  'command.addProduct': { en: 'Add Product', sw: 'Ongeza Bidhaa' },
+  'command.addCustomer': { en: 'Add Customer', sw: 'Ongeza Mteja' },
+  'command.viewReports': { en: 'View Reports', sw: 'Tazama Ripoti' },
+  'command.changePassword': { en: 'Change Password', sw: 'Badilisha Nenosiri' },
+  'command.switchBranch': { en: 'Switch Branch', sw: 'Badilisha Tawi' },
+  'command.toggleDarkMode': { en: 'Toggle Dark Mode', sw: 'Badilisha Hali ya Giza' },
+  'command.darkMode': { en: 'Switch to Light Mode', sw: 'Badilisha kwa Hali ya Mwanga' },
+  'command.lightMode': { en: 'Switch to Dark Mode', sw: 'Badilisha kwa Hali ya Giza' },
+  'command.exportData': { en: 'Export Data', sw: 'Toa Data' },
+  'command.searchTrigger': { en: 'Search anything...', sw: 'Tafuta chochote...' },
 }

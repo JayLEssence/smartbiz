@@ -5,7 +5,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
 import { languageNames, type Language } from '@/lib/i18n/translations'
-import { Store, Menu, Building2, LogOut, ChevronDown, Globe, Bell } from 'lucide-react'
+import { Store, Menu, Building2, LogOut, ChevronDown, Globe, Bell, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -49,6 +49,8 @@ export function AppHeader() {
   const isManager = currentUser?.role === 'Manager'
   const isEmployee = currentUser?.role === 'Employee'
   const canSwitchBranch = isAdmin || isManager
+
+  const isMac = typeof navigator !== 'undefined' && (navigator.platform?.toUpperCase().indexOf('MAC') >= 0 || navigator.userAgent?.toUpperCase().indexOf('MAC') >= 0)
 
   const viewTitles: Record<string, string> = {
     pos: t('header.pointOfSale'),
@@ -223,6 +225,15 @@ export function AppHeader() {
           </div>
           <div className="flex items-center gap-1">
             {notificationBell}
+            {/* Mobile search trigger */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true }))}
+            >
+              <Search className="h-4 w-4 text-muted-foreground" />
+            </Button>
             {languageSwitcher}
             {!isEmployee && branchSelector}
             <DropdownMenu>
@@ -272,6 +283,17 @@ export function AppHeader() {
           </h1>
         </div>
         <div className="flex items-center gap-3">
+          {/* Command Palette search trigger */}
+          <button
+            onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true }))}
+            className="hidden sm:flex items-center gap-2 h-9 px-3 rounded-lg border border-input bg-background text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+          >
+            <Search className="h-4 w-4" />
+            <span className="text-xs">{t('command.searchTrigger')}</span>
+            <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-0.5 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground ml-2">
+              {isMac ? '⌘' : 'Ctrl'}K
+            </kbd>
+          </button>
           {notificationBell}
           {languageSwitcher}
 

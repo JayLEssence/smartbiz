@@ -7,11 +7,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Shield, ShieldCheck, ShieldAlert, Key, Eye, EyeOff, Loader2,
   Activity, Lock, AlertTriangle, CheckCircle2, Clock, MapPin,
   MonitorSmartphone, TrendingUp, ArrowRight, RefreshCw, Download,
-  UserCheck, UserX, LogIn, LogOut, FileText, Package
+  UserCheck, UserX, LogIn, FileText, Package,
+  XCircle, Fingerprint, Globe, Trash2
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -19,6 +29,12 @@ interface SecurityScore {
   score: number
   grade: string
   recommendations: string[]
+  checklist: {
+    label: string
+    points: number
+    achieved: boolean
+    description: string
+  }[]
 }
 
 interface AuditEntry {
@@ -39,6 +55,15 @@ interface SecuritySummary {
   lockedAccounts: number
   recentActions: AuditEntry[]
   suspiciousActivities: AuditEntry[]
+}
+
+interface SessionInfo {
+  id: string
+  deviceInfo: string
+  ipAddress: string
+  createdAt: string
+  expiresAt: string
+  isCurrent: boolean
 }
 
 interface SecurityData {
@@ -115,6 +140,29 @@ function formatTimeAgo(dateStr: string): string {
   return date.toLocaleDateString()
 }
 
+function parseDeviceInfo(deviceInfo: string): { browser: string; os: string; device: string } {
+  if (!deviceInfo || deviceInfo === 'Unknown device') {
+    return { browser: 'Unknown', os: 'Unknown', device: 'Unknown' }
+  }
+
+  let browser = 'Unknown'
+  let os = 'Unknown'
+  const device = 'Desktop'
+
+  if (deviceInfo.includes('Chrome') && !deviceInfo.includes('Edg')) browser = 'Chrome'
+  else if (deviceInfo.includes('Firefox')) browser = 'Firefox'
+  else if (deviceInfo.includes('Safari') && !deviceInfo.includes('Chrome')) browser = 'Safari'
+  else if (deviceInfo.includes('Edg')) browser = 'Edge'
+
+  if (deviceInfo.includes('Windows')) os = 'Windows'
+  else if (deviceInfo.includes('Mac')) os = 'macOS'
+  else if (deviceInfo.includes('Linux')) os = 'Linux'
+  else if (deviceInfo.includes('Android')) os = 'Android'
+  else if (deviceInfo.includes('iPhone') || deviceInfo.includes('iPad')) os = 'iOS'
+
+  return { browser, os, device }
+}
+
 export function SecurityView() {
   const { currentUser, authToken } = useAppStore()
   const { t } = useLanguage()
@@ -130,6 +178,17 @@ export function SecurityView() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPasswords, setShowPasswords] = useState(false)
   const [changingPassword, setChangingPassword] = useState(false)
+
+  // 2FA state
+  const [show2faDialog, setShow2faDialog] = useState(false)
+  const [twoFaPin, setTwoFaPin] = useState('')
+  const [twoFaConfirmPin, setTwoFaConfirmPin] = useState('')
+  const [toggling2fa, setToggling2fa] = useState(false)
+
+  // Sessions state
+  const [sessions, setSessions] = useState<SessionInfo[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [revokingSessions, setRevokingSessions] = useState(false)
 
   // Password strength
   const [pwStrength, setPwStrength] = useState({ score: -1, label: '', feedback: [] as string[] })
@@ -177,11 +236,27 @@ export function SecurityView() {
     }
   }
 
+  const fetchSessions = async () => {
+    setSessionsLoading(true)
+    try {
+      const res = await fetch('/api/auth/sessions', {
+        headers: { 'Authorization': `Bearer ${authToken}` },
+      })
+      const json = await res.json()
+      if (json.success) {
+        setSessions(json.data)
+      }
+    } catch {
+      // ignore
+    } finally {
+      setSessionsLoading(false)
+    }
+  }
+
   useEffect(() => {
     const init = async () => {
       setLoading(true)
-      await fetchSecurityData()
-      await fetchActivityLog()
+      await Promise.all([fetchSecurityData(), fetchActivityLog(), fetchSessions()])
       setLoading(false)
     }
     init()
@@ -228,6 +303,89 @@ export function SecurityView() {
     }
   }
 
+  const handleEnable2fa = async () => {
+    if (!twoFaPin || !/^\d{4}$/.test(twoFaPin)) {
+      toast.error('Please enter a valid 4-digit PIN')
+      return
+    }
+    if (twoFaPin !== twoFaConfirmPin) {
+      toast.error('PINs do not match')
+      return
+    }
+
+    setToggling2fa(true)
+    try {
+      const res = await fetch('/api/auth/2fa', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ enabled: true, pin: twoFaPin }),
+      })
+      const json = await res.json()
+      if (json.success) {
+        toast.success('Two-factor authentication enabled successfully!')
+        setShow2faDialog(false)
+        setTwoFaPin('')
+        setTwoFaConfirmPin('')
+        await fetchSecurityData()
+      } else {
+        toast.error(json.error || 'Failed to enable 2FA')
+      }
+    } catch {
+      toast.error('Network error')
+    } finally {
+      setToggling2fa(false)
+    }
+  }
+
+  const handleDisable2fa = async () => {
+    setToggling2fa(true)
+    try {
+      const res = await fetch('/api/auth/2fa', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ enabled: false }),
+      })
+      const json = await res.json()
+      if (json.success) {
+        toast.success('Two-factor authentication disabled')
+        await fetchSecurityData()
+      } else {
+        toast.error(json.error || 'Failed to disable 2FA')
+      }
+    } catch {
+      toast.error('Network error')
+    } finally {
+      setToggling2fa(false)
+    }
+  }
+
+  const handleRevokeAllSessions = async () => {
+    setRevokingSessions(true)
+    try {
+      const res = await fetch('/api/auth/sessions', {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${authToken}` },
+      })
+      const json = await res.json()
+      if (json.success) {
+        toast.success(`Revoked ${json.data?.revokedCount || 0} session(s)`)
+        await fetchSessions()
+      } else {
+        toast.error(json.error || 'Failed to revoke sessions')
+      }
+    } catch {
+      toast.error('Network error')
+    } finally {
+      setRevokingSessions(false)
+    }
+  }
+
   const handleExportActivity = () => {
     const csv = [
       'Timestamp,Action,User,Details,IP Address',
@@ -256,6 +414,7 @@ export function SecurityView() {
   const score = securityData?.securityScore
   const summary = securityData?.summary
   const userInfo = securityData?.userInfo
+  const twoFactorEnabled = userInfo?.twoFactorEnabled || false
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
@@ -273,7 +432,7 @@ export function SecurityView() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => { fetchSecurityData(); fetchActivityLog() }}
+          onClick={() => { fetchSecurityData(); fetchActivityLog(); fetchSessions() }}
           disabled={activityLoading}
         >
           <RefreshCw className={`h-4 w-4 mr-1.5 ${activityLoading ? 'animate-spin' : ''}`} />
@@ -309,6 +468,34 @@ export function SecurityView() {
               </div>
               <p className="text-xs text-muted-foreground mt-1">Security Score</p>
             </div>
+
+            {/* Security Checklist */}
+            {score?.checklist && score.checklist.length > 0 && (
+              <div className="mt-4 pt-4 border-t w-full">
+                <h4 className="text-xs font-medium text-muted-foreground mb-2 text-center">Score Breakdown</h4>
+                <div className="space-y-2">
+                  {score.checklist.map((item) => (
+                    <div key={item.label} className="flex items-start gap-2 text-xs">
+                      {item.achieved ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 mt-0.5 shrink-0" />
+                      ) : (
+                        <XCircle className="h-3.5 w-3.5 text-red-400 mt-0.5 shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className={item.achieved ? 'text-emerald-700 dark:text-emerald-400 font-medium' : 'text-muted-foreground'}>
+                            {item.label}
+                          </span>
+                          <span className={`font-semibold shrink-0 ml-1 ${item.achieved ? 'text-emerald-600' : 'text-red-400'}`}>
+                            +{item.points}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -465,6 +652,129 @@ export function SecurityView() {
           </CardContent>
         </Card>
 
+        {/* Two-Factor Authentication */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Fingerprint className="h-4 w-4 text-emerald-600" />
+              Two-Factor Authentication
+            </CardTitle>
+            <CardDescription>
+              Add an extra layer of security with a PIN-based second factor
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Current 2FA Status */}
+            <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+              <div className="flex items-center gap-3">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                  twoFactorEnabled
+                    ? 'bg-emerald-100 dark:bg-emerald-900/30'
+                    : 'bg-gray-100 dark:bg-gray-900/30'
+                }`}>
+                  {twoFactorEnabled ? (
+                    <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                  ) : (
+                    <ShieldAlert className="h-5 w-5 text-gray-500" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-medium">
+                    2FA is {twoFactorEnabled ? 'Enabled' : 'Disabled'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {twoFactorEnabled
+                      ? 'Your account has an extra layer of protection'
+                      : 'Enable 2FA for enhanced account security'
+                    }
+                  </p>
+                </div>
+              </div>
+              <Badge variant={twoFactorEnabled ? 'default' : 'secondary'} className={
+                twoFactorEnabled
+                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                  : ''
+              }>
+                {twoFactorEnabled ? 'Active' : 'Inactive'}
+              </Badge>
+            </div>
+
+            {/* How it works explanation */}
+            <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3">
+              <h4 className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-1.5">How PIN-based 2FA Works</h4>
+              <ul className="space-y-1 text-xs text-blue-600 dark:text-blue-400">
+                <li className="flex items-start gap-1.5">
+                  <span className="font-bold shrink-0">1.</span>
+                  Set a 4-digit PIN as your second authentication factor
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="font-bold shrink-0">2.</span>
+                  On future logins, you&apos;ll enter your PIN after your password
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="font-bold shrink-0">3.</span>
+                  Even if your password is compromised, your account stays protected
+                </li>
+              </ul>
+            </div>
+
+            {/* Enable/Disable button */}
+            {twoFactorEnabled ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-xs text-emerald-600">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span>Your account is protected with 2FA. A PIN is required after password login.</span>
+                </div>
+                <Button
+                  variant="outline"
+                  className="w-full text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950"
+                  onClick={handleDisable2fa}
+                  disabled={toggling2fa}
+                >
+                  {toggling2fa ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Disabling...</>
+                  ) : (
+                    <><ShieldAlert className="h-4 w-4 mr-2" />Disable 2FA</>
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <Button
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={() => setShow2faDialog(true)}
+              >
+                <Fingerprint className="h-4 w-4 mr-2" />
+                Enable 2FA
+              </Button>
+            )}
+
+            {/* Security Features List */}
+            <div className="pt-2 border-t">
+              <h4 className="text-xs font-medium text-muted-foreground mb-2">Active Protections</h4>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'Bcrypt Hashing', active: true },
+                  { label: 'JWT Auth (24h)', active: true },
+                  { label: 'Account Lockout', active: true },
+                  { label: 'Rate Limiting', active: true },
+                  { label: 'Audit Logging', active: true },
+                  { label: 'Tenant Isolation', active: true },
+                  { label: 'PIN-based 2FA', active: twoFactorEnabled },
+                  { label: 'CSRF Protection', active: true },
+                ].map((feature) => (
+                  <div key={feature.label} className="flex items-center gap-1.5 text-xs">
+                    <CheckCircle2 className={`h-3 w-3 ${feature.active ? 'text-emerald-600' : 'text-gray-300 dark:text-gray-600'}`} />
+                    <span className={feature.active ? '' : 'text-muted-foreground'}>{feature.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Account Info + Active Sessions Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Account Info */}
         <Card>
           <CardHeader>
@@ -520,6 +830,17 @@ export function SecurityView() {
                   {currentUser?.role}
                 </span>
               </div>
+              <div className="flex items-center justify-between py-2 border-b">
+                <div className="flex items-center gap-2 text-sm">
+                  <Fingerprint className="h-4 w-4 text-muted-foreground" />
+                  Two-Factor Auth
+                </div>
+                <span className={`text-sm font-medium ${
+                  twoFactorEnabled ? 'text-emerald-600' : 'text-orange-600'
+                }`}>
+                  {twoFactorEnabled ? 'Enabled' : 'Disabled'}
+                </span>
+              </div>
               <div className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-2 text-sm">
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -532,26 +853,97 @@ export function SecurityView() {
                 </span>
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            {/* Security Features List */}
-            <div className="pt-2 border-t">
-              <h4 className="text-xs font-medium text-muted-foreground mb-2">Active Protections</h4>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: 'Bcrypt Hashing', active: true },
-                  { label: 'JWT Auth (24h)', active: true },
-                  { label: 'Account Lockout', active: true },
-                  { label: 'Rate Limiting', active: true },
-                  { label: 'Audit Logging', active: true },
-                  { label: 'Tenant Isolation', active: true },
-                ].map((feature) => (
-                  <div key={feature.label} className="flex items-center gap-1.5 text-xs">
-                    <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                    <span>{feature.label}</span>
-                  </div>
-                ))}
+        {/* Active Sessions */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-emerald-600" />
+                  Active Sessions
+                </CardTitle>
+                <CardDescription>Devices and browsers where you&apos;re currently logged in</CardDescription>
               </div>
+              {sessions.length > 1 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRevokeAllSessions}
+                  disabled={revokingSessions}
+                  className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950"
+                >
+                  {revokingSessions ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  )}
+                  Revoke Others
+                </Button>
+              )}
             </div>
+          </CardHeader>
+          <CardContent>
+            {sessionsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+              </div>
+            ) : sessions.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Globe className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">No active sessions found</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {sessions.map((session) => {
+                  const parsed = parseDeviceInfo(session.deviceInfo)
+                  return (
+                    <div
+                      key={session.id}
+                      className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                        session.isCurrent
+                          ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/20'
+                          : 'hover:bg-muted/50'
+                      }`}
+                    >
+                      <div className={`flex h-9 w-9 items-center justify-center rounded-lg shrink-0 ${
+                        session.isCurrent
+                          ? 'bg-emerald-100 dark:bg-emerald-900/30'
+                          : 'bg-gray-100 dark:bg-gray-900/30'
+                      }`}>
+                        <MonitorSmartphone className={`h-4 w-4 ${
+                          session.isCurrent ? 'text-emerald-600' : 'text-gray-500'
+                        }`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">
+                            {parsed.browser} on {parsed.os}
+                          </span>
+                          {session.isCurrent && (
+                            <Badge className="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0 dark:bg-emerald-900/30 dark:text-emerald-400 border-0">
+                              Current
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {session.ipAddress}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {formatTimeAgo(session.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -647,6 +1039,95 @@ export function SecurityView() {
           </div>
         </CardContent>
       </Card>
+
+      {/* 2FA Setup Dialog */}
+      <Dialog open={show2faDialog} onOpenChange={setShow2faDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Fingerprint className="h-5 w-5 text-emerald-600" />
+              Enable Two-Factor Authentication
+            </DialogTitle>
+            <DialogDescription>
+              Set a 4-digit PIN as your second authentication factor
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Info banner */}
+            <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3">
+              <p className="text-xs text-blue-700 dark:text-blue-400">
+                When 2FA is enabled, you&apos;ll need to enter this PIN after your password on future logins. 
+                Make sure to remember it — you won&apos;t be able to log in without it.
+              </p>
+            </div>
+
+            {/* PIN input */}
+            <div className="space-y-2">
+              <Label htmlFor="2fa-pin">Enter 4-Digit PIN</Label>
+              <Input
+                id="2fa-pin"
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="• • • •"
+                value={twoFaPin}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 4)
+                  setTwoFaPin(val)
+                }}
+                className="text-center text-2xl tracking-[0.5em] font-mono h-14"
+              />
+              {twoFaPin.length > 0 && twoFaPin.length < 4 && (
+                <p className="text-[10px] text-orange-500">{4 - twoFaPin.length} more digit(s) needed</p>
+              )}
+            </div>
+
+            {/* Confirm PIN */}
+            <div className="space-y-2">
+              <Label htmlFor="2fa-confirm-pin">Confirm PIN</Label>
+              <Input
+                id="2fa-confirm-pin"
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="• • • •"
+                value={twoFaConfirmPin}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 4)
+                  setTwoFaConfirmPin(val)
+                }}
+                className="text-center text-2xl tracking-[0.5em] font-mono h-14"
+              />
+              {twoFaConfirmPin.length > 0 && twoFaPin !== twoFaConfirmPin && (
+                <p className="text-[10px] text-destructive">PINs don&apos;t match</p>
+              )}
+              {twoFaPin.length === 4 && twoFaConfirmPin.length === 4 && twoFaPin === twoFaConfirmPin && (
+                <p className="text-[10px] text-emerald-600 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> PINs match
+                </p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => { setShow2faDialog(false); setTwoFaPin(''); setTwoFaConfirmPin('') }}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={handleEnable2fa}
+              disabled={toggling2fa || twoFaPin.length !== 4 || twoFaPin !== twoFaConfirmPin}
+            >
+              {toggling2fa ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Enabling...</>
+              ) : (
+                <><Fingerprint className="h-4 w-4 mr-2" />Enable 2FA</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

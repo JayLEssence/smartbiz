@@ -167,6 +167,40 @@ export async function POST(request: Request) {
       },
     })
 
+    // ---- Concurrent Session Detection ----
+    try {
+      const activeSessions = await db.session.findMany({
+        where: {
+          userId: user.id,
+          isValid: true,
+          expiresAt: { gt: new Date() },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+
+      if (activeSessions.length > 0) {
+        // Check if any existing session is from a different IP
+        const differentIpSessions = activeSessions.filter(
+          (s) => s.ipAddress && s.ipAddress !== ipAddress && s.ipAddress !== 'unknown'
+        )
+
+        if (differentIpSessions.length > 0) {
+          logAudit({
+            action: 'SUSPICIOUS_ACTIVITY',
+            userId: user.id,
+            userEmail: user.email,
+            companyId: user.companyId,
+            branchId: user.branchId,
+            ipAddress,
+            userAgent,
+            details: `Concurrent login detected from different IP. Previous IPs: ${differentIpSessions.map(s => s.ipAddress).join(', ')}. Active sessions: ${activeSessions.length}`,
+          })
+        }
+      }
+    } catch {
+      // Session check is non-critical; continue login
+    }
+
     // ---- Create Audit Log ----
     logAudit({
       action: 'LOGIN_SUCCESS',
@@ -192,6 +226,23 @@ export async function POST(request: Request) {
 
     const accessToken = generateAccessToken(tokenPayload)
     const refreshToken = generateRefreshToken(tokenPayload)
+
+    // ---- Create Session Record ----
+    try {
+      await db.session.create({
+        data: {
+          userId: user.id,
+          companyId: user.companyId,
+          tokenHash: sessionId,
+          deviceInfo: userAgent,
+          ipAddress,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+          isValid: true,
+        },
+      })
+    } catch {
+      // Session creation is non-critical; continue login
+    }
 
     // ---- Build Response ----
     const responseData = {

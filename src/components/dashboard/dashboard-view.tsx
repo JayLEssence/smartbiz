@@ -19,10 +19,18 @@ import {
   ArrowDown,
   Minus,
   Shield,
+  Zap,
+  ShoppingCart,
+  Package,
+  FileBarChart,
+  Users,
+  Clock,
+  AlertCircle,
+  CreditCard,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { useAppStore } from '@/stores/app-store'
+import { useAppStore, type ViewType } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
 import { getAuthHeaders } from '@/lib/auth-fetch'
 
@@ -51,12 +59,28 @@ interface DashboardData {
   }[]
 }
 
+// Quick actions configuration with role-based access
+const quickActions = [
+  { id: 'new-sale', labelKey: 'dashboard.newSale', view: 'pos' as ViewType, icon: ShoppingCart, color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400', roles: ['Employee', 'Manager', 'CompanyAdmin'] },
+  { id: 'add-stock', labelKey: 'dashboard.addStock', view: 'inventory' as ViewType, icon: Package, color: 'bg-teal-100 text-teal-600 dark:bg-teal-900/40 dark:text-teal-400', roles: ['Employee', 'Manager', 'CompanyAdmin'] },
+  { id: 'record-expense', labelKey: 'dashboard.recordExpense', view: 'expenses' as ViewType, icon: Receipt, color: 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400', roles: ['Manager', 'CompanyAdmin'] },
+  { id: 'view-reports', labelKey: 'dashboard.viewReports', view: 'reports' as ViewType, icon: FileBarChart, color: 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-400', roles: ['Manager', 'CompanyAdmin'] },
+  { id: 'add-customer', labelKey: 'dashboard.addCustomer', view: 'customers' as ViewType, icon: Users, color: 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400', roles: ['Manager', 'CompanyAdmin'] },
+]
+
 export function DashboardView() {
   const isMobile = useIsMobile()
-  const { currentBranchId, currentUser } = useAppStore()
+  const { currentBranchId, currentUser, setView } = useAppStore()
   const { t } = useLanguage()
   const companyId = currentUser?.companyId
   const isEmployee = currentUser?.role === 'Employee'
+  const userRole = currentUser?.role || 'Employee'
+
+  // Filter quick actions based on user role
+  const visibleActions = quickActions.filter(action => action.roles.includes(userRole))
+
+  // Today's summary state
+  const [todaysExpenseCount, setTodaysExpenseCount] = useState<number>(0)
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [healthScore, setHealthScore] = useState<{ overallScore: number; grade: string; trend: string; recommendations: string[]; breakdown: Record<string, { score: number; weight: string }> } | null>(null)
@@ -99,6 +123,28 @@ export function DashboardView() {
     fetchHealth()
   }, [currentBranchId, companyId, isEmployee])
 
+  // Fetch today's expense count for managers/admins
+  useEffect(() => {
+    if (isEmployee) return
+    const fetchExpenseCount = async () => {
+      try {
+        const params = new URLSearchParams()
+        if (currentBranchId) params.set('branchId', currentBranchId)
+        const now = new Date()
+        const todayStr = now.toISOString().split('T')[0]
+        params.set('dateFrom', todayStr)
+        params.set('dateTo', todayStr)
+        params.set('limit', '1')
+        const res = await fetch(`/api/expenses?${params.toString()}`, { headers: getAuthHeaders() })
+        const json = await res.json()
+        if (json.success && json.pagination) {
+          setTodaysExpenseCount(json.pagination.total)
+        }
+      } catch { /* ignore */ }
+    }
+    fetchExpenseCount()
+  }, [currentBranchId, isEmployee])
+
   if (loading) {
     return (
       <div className={isMobile ? 'p-4 pb-24' : 'p-4'}>
@@ -123,8 +169,84 @@ export function DashboardView() {
     )
   }
 
+  // Helper to get local currency info
+  const currencySymbol = currentUser?.company?.currencySymbol || '$'
+  const exchangeRate = currentUser?.company?.exchangeRate || 1
+
   return (
     <div className={isMobile ? 'p-4 pb-24' : 'p-4'}>
+      {/* Quick Actions */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Zap className="h-4 w-4 text-emerald-600" />
+          <h2 className="text-sm font-semibold text-muted-foreground">{t('dashboard.quickActions')}</h2>
+        </div>
+        <div className={`grid gap-3 ${isMobile ? 'grid-cols-3' : 'grid-cols-5'}`}>
+          {visibleActions.map((action) => (
+            <button
+              key={action.id}
+              onClick={() => setView(action.view)}
+              className="group flex flex-col items-center gap-2 rounded-xl border bg-card p-4 shadow-sm transition-all duration-200 hover:scale-[1.03] hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+            >
+              <div className={`flex h-10 w-10 items-center justify-center rounded-full ${action.color} transition-transform duration-200 group-hover:scale-110`}>
+                <action.icon className="h-5 w-5" />
+              </div>
+              <span className="text-xs font-medium text-center leading-tight">{t(action.labelKey)}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Today's Summary */}
+      <Card className="mb-6 border-0 bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-cyan-50/80 dark:from-emerald-950/20 dark:via-teal-950/15 dark:to-cyan-950/20 shadow-sm">
+        <CardContent className="pt-4 pb-4 px-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Clock className="h-4 w-4 text-emerald-600" />
+            <h3 className="text-sm font-semibold text-muted-foreground">{t('dashboard.todaysSummary')}</h3>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="flex items-center gap-3 rounded-lg bg-white/60 dark:bg-black/10 p-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400">
+                <ShoppingCart className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-lg font-bold">{data?.todaySalesCount ?? 0}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{t('dashboard.todaysSalesCount')}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-lg bg-white/60 dark:bg-black/10 p-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-600 dark:bg-teal-900/40 dark:text-teal-400">
+                <DollarSign className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold">{currencySymbol}{((data?.todayRevenue ?? 0) * exchangeRate).toFixed(0)}</p>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  {exchangeRate !== 1 ? `$${(data?.todayRevenue ?? 0).toFixed(2)}` : t('dashboard.todaysRevenue')}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-lg bg-white/60 dark:bg-black/10 p-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400">
+                <AlertCircle className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-lg font-bold">{data?.lowStockProducts?.length ?? 0}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{t('dashboard.lowStockAlertsCount')}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-lg bg-white/60 dark:bg-black/10 p-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400">
+                <CreditCard className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-lg font-bold">{todaysExpenseCount}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{t('dashboard.pendingExpenses')}</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <SummaryCard
