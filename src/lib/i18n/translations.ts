@@ -512,6 +512,14 @@ export const t: TranslationDict = {
   'common.noResults': { en: 'No results found', sw: 'Hakuna matokeo yaliyopatikana' },
   'common.loading': { en: 'Loading...', sw: 'Inapakia...' },
 
+  // ============ SIDEBAR GROUPS ============
+  'sidebar.core': { en: 'Core', sw: 'Kuu' },
+  'sidebar.management': { en: 'Management', sw: 'Usimamizi' },
+  'sidebar.finance': { en: 'Finance', sw: 'Fedha' },
+  'sidebar.insights': { en: 'Insights', sw: 'Uchambuzi' },
+  'sidebar.system': { en: 'System', sw: 'Mfumo' },
+  'sidebar.more': { en: 'More', sw: 'Zaidi' },
+
   // ============ NEW SIDEBAR KEYS ============
   'sidebar.expenses': { en: 'Expenses', sw: 'Matumizi' },
   'sidebar.suppliers': { en: 'Suppliers', sw: 'Wauzaji' },
@@ -529,4 +537,28 @@ export const t: TranslationDict = {
   'notifications.markAllRead': { en: 'Mark all read', sw: 'Weka zote zimesomwa' },
   'notifications.noNotifications': { en: 'No notifications', sw: 'Hakuna arifa' },
   'notifications.new': { en: 'New', sw: 'Mpya' },
+
+  // ============ BARCODE SCANNER ============
+  'barcode.title': { en: 'Barcode Scanner', sw: 'Kisoma Msimbo' },
+  'barcode.description': { en: 'Point your camera at a barcode to scan it, or enter manually below.', sw: 'Elekeza kamera yako kwenye msimbo wa bidhaa kuisoma, au weka mwenyewe hapa chini.' },
+  'barcode.cameraAccessDenied': { en: 'Camera access denied. Please allow camera access or enter barcode manually.', sw: 'Ufikiaji wa kamera umekataliwa. Tafadhali ruhusu kamera au weka msimbo mwenyewe.' },
+  'barcode.startingCamera': { en: 'Starting camera...', sw: 'Inaanza kamera...' },
+  'barcode.startCamera': { en: 'Start Camera', sw: 'Anza Kamera' },
+  'barcode.stopCamera': { en: 'Stop Camera', sw: 'Simama Kamera' },
+  'barcode.addProduct': { en: 'Add', sw: 'Ongeza' },
+  'barcode.manualFallback': { en: 'If the camera doesn\'t detect your barcode, enter it manually:', sw: 'Ikiwa kamera haioni msimbo, weka mwenyewe:' },
+  'barcode.enterManually': { en: 'Type or paste barcode...', sw: 'Andika au bandika msimbo...' },
+  'barcode.search': { en: 'Search', sw: 'Tafuta' },
+  'barcode.supportedFormats': { en: 'Supported formats', sw: 'Muundo unaoungwa mkono' },
+  'barcode.retryCamera': { en: 'Retry Camera', sw: 'Jaribu Kamera Tena' },
+
+  // ============ OFFLINE MODE ============
+  'offline.youAreOffline': { en: 'You are offline — changes will sync when you reconnect', sw: 'Uko nje ya mtandao — mabadiliko yatasawazishwa utakapounganisha tena' },
+  'offline.backOnline': { en: 'You\'re back online!', sw: 'Umerudi mtandaoni!' },
+  'offline.pending': { en: 'pending', sw: 'inasubiri' },
+  'offline.pendingSync': { en: 'actions pending sync', sw: 'vitendo vinasubiri kusawazisha' },
+  'offline.syncNow': { en: 'Sync Now', sw: 'Sawazisha Sasa' },
+  'offline.syncing': { en: 'Syncing...', sw: 'Inasawazisha...' },
+  'offline.synced': { en: 'synced', sw: 'imesawazishwa' },
+  'offline.failed': { en: 'failed', sw: 'imeshindwa' },
 }

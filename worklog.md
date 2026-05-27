@@ -1,41 +1,25 @@
 ---
-Task ID: All Features
-Agent: Main + Subagents
-Task: Implement all recommended features to make SmartBiz incredible
+Task ID: 1
+Agent: Main
+Task: Implement sidebar redesign, barcode scanner, and offline mode
 
 Work Log:
-- Updated Prisma schema with 5 new models: Expense, Supplier, Customer, Notification
-- Added dual currency support (USD + local currency) to Company model
-- Added paymentMethod, customerName, receiptNumber fields to Sale model
-- Built currency utility library (formatDualCurrency, formatLocalCurrency, etc.)
-- Created useCurrency hook for components
-- Updated CompanyInfo type with currency, currencySymbol, country, exchangeRate
-- Updated login API, companies API, auth page, and session restore to include currency fields
-- Built Expense Tracking (API + UI) with category badges, dual currency, notifications
-- Built Supplier Management (API + UI) with card grid, CRUD dialogs
-- Built Customer Credit/Loyalty (API + UI) with credit tracking, loyalty points, dual currency
-- Built Reports & Export (API + UI) with 5 report types, CSV export, dual currency
-- Updated POS with receipt generation, mobile money payments, barcode scanner, customer selection
-- Created Notifications API with polling support
-- Added notification bell to header with unread count badge
-- Added language switcher notification translations
-- Updated sidebar with new navigation items (Expenses, Suppliers, Customers, Reports)
-- Updated header with new view titles
-- Updated page.tsx with routing for all new views
-- Added 50+ i18n translation keys for new features
-- Updated seed file with currency data, suppliers, expenses, customers
-- Reseeded database with demo data
-- All lint checks pass
+- Analyzed current sidebar with 12 flat navigation items causing clutter on mobile
+- Redesigned sidebar with 5 grouped/collapsible sections (Core, Management, Finance, Insights, System)
+- Desktop: Collapsible groups with animated chevrons, auto-expand group containing active view
+- Mobile: Shows 3 primary items (POS, Dashboard, Inventory) + "More" button opening a Sheet drawer
+- Created barcode-scanner-dialog.tsx with camera-based scanning using @ericblade/quagga2
+- Added camera toggle button next to barcode input in POS view
+- Scanner supports EAN-13, EAN-8, UPC-A, UPC-E, Code-128, Code-39 formats
+- Includes manual input fallback for when camera is unavailable
+- Created use-offline.ts hook with offline queue, auto-sync on reconnect
+- Created offline-banner.tsx with visual indicators (amber=offline, green=back online, blue=syncing)
+- Added OfflineBanner to main page layout
+- Added 25+ translation keys for barcode scanner and offline mode (English + Kiswahili)
+- All lint checks pass cleanly
 
 Stage Summary:
-- All 10 recommended features implemented
-- Dual currency (TSh + USD) display throughout the system
-- Expense tracking with categories and notifications
-- Supplier management with delivery tracking
-- Customer credit and loyalty system
-- Receipt generation with print/download
-- Mobile money payments (M-Pesa, Tigo Pesa, Airtel Money)
-- Barcode scanner in POS
-- Reports with CSV export (Sales, Expenses, P&L, Inventory, Tax)
-- Notifications system with bell icon
-- All features support English/Kiswahili
+- Sidebar now organized in collapsible groups, mobile shows only 4 items
+- Barcode scanner with camera support added to POS
+- Offline mode with sync queue and visual banner added
+- All features support English/Kiswahili translations

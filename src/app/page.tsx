@@ -18,6 +18,7 @@ import { CustomersView } from '@/components/customers/customers-view'
 import { ExpensesView } from '@/components/expenses/expenses-view'
 import { ReportsView } from '@/components/reports/reports-view'
 import { AdminPanel } from '@/components/admin/admin-panel'
+import { OfflineBanner } from '@/components/layout/offline-banner'
 import { LanguageProvider, useLanguage } from '@/lib/i18n/language-context'
 
 export default function Home() {
@@ -179,6 +180,7 @@ function HomeContent() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      <OfflineBanner />
       <div className="flex flex-1">
         <AppSidebar />
         <div className="flex flex-1 flex-col min-w-0">

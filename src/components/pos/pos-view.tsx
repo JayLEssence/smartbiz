@@ -10,9 +10,10 @@ import { useAppStore } from '@/stores/app-store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, ScanBarcode, ScanLine } from 'lucide-react'
+import { Plus, ScanBarcode, ScanLine, Camera } from 'lucide-react'
 import { useLanguage } from '@/lib/i18n/language-context'
 import { toast } from 'sonner'
+import { BarcodeScannerDialog } from './barcode-scanner-dialog'
 
 interface QuickProduct {
   id: string
@@ -29,6 +30,7 @@ export function PosView() {
   const [quickProducts, setQuickProducts] = useState<QuickProduct[]>([])
   const [barcodeInput, setBarcodeInput] = useState('')
   const [barcodeSearching, setBarcodeSearching] = useState(false)
+  const [scannerOpen, setScannerOpen] = useState(false)
   const barcodeRef = useRef<HTMLInputElement>(null)
   const addItem = usePosStore((s) => s.addItem)
   const { currentBranchId, currentUser } = useAppStore()
@@ -135,29 +137,40 @@ export function PosView() {
   }
 
   const BarcodeScannerInput = () => (
-    <div className="relative">
-      <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600" />
-      <Input
-        ref={barcodeRef}
-        placeholder="Scan barcode & press Enter..."
-        value={barcodeInput}
-        onChange={(e) => setBarcodeInput(e.target.value)}
-        onKeyDown={handleBarcodeKeyDown}
-        className="pl-9 pr-10 border-emerald-200 focus:border-emerald-400 focus:ring-emerald-400"
-      />
-      {barcodeSearching && (
-        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
-        </div>
-      )}
-      {!barcodeSearching && barcodeInput && (
-        <button
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600 hover:text-emerald-700"
-          onClick={() => handleBarcodeSearch(barcodeInput)}
-        >
-          <ScanLine className="h-4 w-4" />
-        </button>
-      )}
+    <div className="flex gap-2">
+      <div className="relative flex-1">
+        <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600" />
+        <Input
+          ref={barcodeRef}
+          placeholder="Scan barcode & press Enter..."
+          value={barcodeInput}
+          onChange={(e) => setBarcodeInput(e.target.value)}
+          onKeyDown={handleBarcodeKeyDown}
+          className="pl-9 pr-10 border-emerald-200 focus:border-emerald-400 focus:ring-emerald-400"
+        />
+        {barcodeSearching && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
+          </div>
+        )}
+        {!barcodeSearching && barcodeInput && (
+          <button
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600 hover:text-emerald-700"
+            onClick={() => handleBarcodeSearch(barcodeInput)}
+          >
+            <ScanLine className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+      <Button
+        variant="outline"
+        size="icon"
+        className="shrink-0 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-600"
+        onClick={() => setScannerOpen(true)}
+        title="Camera Scanner"
+      >
+        <Camera className="h-4 w-4" />
+      </Button>
     </div>
   )
 
@@ -188,6 +201,7 @@ export function PosView() {
           <Cart onCheckout={() => setCheckoutOpen(true)} />
         </Card>
         <CheckoutDialog open={checkoutOpen} onOpenChange={setCheckoutOpen} />
+        <BarcodeScannerDialog open={scannerOpen} onOpenChange={setScannerOpen} onBarcodeDetected={handleBarcodeSearch} />
       </div>
     )
   }
@@ -234,6 +248,7 @@ export function PosView() {
       </Card>
 
       <CheckoutDialog open={checkoutOpen} onOpenChange={setCheckoutOpen} />
+      <BarcodeScannerDialog open={scannerOpen} onOpenChange={setScannerOpen} onBarcodeDetected={handleBarcodeSearch} />
     </div>
   )
 }
