@@ -1,36 +1,41 @@
 'use client'
 
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react'
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react'
 import { type Language, t as translationDict } from './translations'
-
-function getInitialLanguage(): Language {
-  if (typeof window !== 'undefined') {
-    try {
-      const saved = localStorage.getItem('smartbiz_language')
-      if (saved === 'sw' || saved === 'en') {
-        return saved
-      }
-    } catch {
-      // ignore
-    }
-  }
-  return 'en'
-}
 
 interface LanguageContextType {
   language: Language
   setLanguage: (lang: Language) => void
   t: (key: string) => string
+  mounted: boolean
 }
 
 const LanguageContext = createContext<LanguageContextType>({
   language: 'en',
   setLanguage: () => {},
   t: (key: string) => key,
+  mounted: false,
 })
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(getInitialLanguage)
+  // Always initialize with 'en' to match server-side rendering and avoid hydration mismatch
+  const [language, setLanguageState] = useState<Language>('en')
+  const [mounted, setMounted] = useState(false)
+
+  // After hydration, read saved language preference from localStorage
+  // This is the correct React pattern for avoiding hydration mismatches
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('smartbiz_language')
+      if (saved === 'sw' || saved === 'en') {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setLanguageState(saved)
+      }
+    } catch {
+      // ignore
+    }
+    setMounted(true)
+  }, [])
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang)
@@ -52,7 +57,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     [language]
   )
 
-  const value = useMemo(() => ({ language, setLanguage, t }), [language, setLanguage, t])
+  const value = useMemo(() => ({ language, setLanguage, t, mounted }), [language, setLanguage, t, mounted])
 
   return (
     <LanguageContext.Provider value={value}>
