@@ -1,20 +1,35 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
+import { authenticateRequest, hashPassword, isCompanyAdmin, isManagerOrAbove } from '@/lib/auth'
+import { safeValidate, userCreateSchema, userUpdateSchema, sanitizeString } from '@/lib/validation'
+import { logAudit, getRequestInfo } from '@/lib/audit-log'
 
 // GET: List users for a company (filter by companyId), include branch info
 export async function GET(request: Request) {
   try {
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
-    const companyId = searchParams.get('companyId')
+    const companyId = searchParams.get('companyId') || auth.user.companyId
     const branchId = searchParams.get('branchId')
     const includeInactive = searchParams.get('includeInactive') === 'true'
 
-    const where: Prisma.UserWhereInput = {}
-
-    if (companyId) {
-      where.companyId = companyId
+    // Users can only see users in their own company
+    if (companyId !== auth.user.companyId) {
+      return NextResponse.json(
+        { success: false, error: 'Access denied' },
+        { status: 403 }
+      )
     }
+
+    const where: Prisma.UserWhereInput = { companyId }
 
     if (branchId) {
       where.branchId = branchId
@@ -67,13 +82,55 @@ export async function GET(request: Request) {
 // POST: Create a new user
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const { name, email, password, role, branchId, companyId } = body
-
-    if (!name || !email || !role || !branchId || !companyId) {
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: name, email, role, branchId, companyId' },
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    // Only admins and managers can create users
+    if (!isManagerOrAbove(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Only managers and administrators can create users' },
+        { status: 403 }
+      )
+    }
+
+    const body = await request.json()
+    const validation = safeValidate(userCreateSchema, body)
+    if (!validation.success) {
+      return NextResponse.json(
+        { success: false, error: validation.errors.join(', ') },
         { status: 400 }
+      )
+    }
+
+    const { name, email, password, role, branchId, companyId } = validation.data
+    const { ipAddress, userAgent } = getRequestInfo(request)
+
+    // Verify the company matches
+    if (companyId !== auth.user.companyId) {
+      return NextResponse.json(
+        { success: false, error: 'Cannot create users for a different company' },
+        { status: 403 }
+      )
+    }
+
+    // Only admins can create admin users
+    if (role === 'CompanyAdmin' && !isCompanyAdmin(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Only administrators can create admin users' },
+        { status: 403 }
+      )
+    }
+
+    // Managers can only create employees in their own branch
+    if (auth.user.role === 'BranchManager' && branchId !== auth.user.branchId) {
+      return NextResponse.json(
+        { success: false, error: 'Managers can only create users in their own branch' },
+        { status: 403 }
       )
     }
 
@@ -92,15 +149,6 @@ export async function POST(request: Request) {
       )
     }
 
-    // Validate company exists
-    const company = await db.company.findUnique({ where: { id: companyId } })
-    if (!company) {
-      return NextResponse.json(
-        { success: false, error: 'Company not found' },
-        { status: 404 }
-      )
-    }
-
     // Check for duplicate email
     const existingUser = await db.user.findUnique({ where: { email } })
     if (existingUser) {
@@ -110,15 +158,20 @@ export async function POST(request: Request) {
       )
     }
 
+    // Hash password
+    const hashedPassword = await hashPassword(password)
+
     const user = await db.user.create({
       data: {
-        name,
-        email,
-        passwordHash: password || 'demo-password', // In production, use bcrypt
+        name: sanitizeString(name),
+        email: sanitizeString(email),
+        passwordHash: hashedPassword,
         role,
         branchId,
         companyId,
         isActive: true,
+        passwordChangedAt: new Date(),
+        mustChangePassword: true, // Force password change on first login
       },
       include: {
         branch: {
@@ -130,6 +183,18 @@ export async function POST(request: Request) {
           },
         },
       },
+    })
+
+    // Audit log
+    logAudit({
+      action: 'USER_CREATED',
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      companyId: auth.user.companyId,
+      branchId: auth.user.branchId,
+      ipAddress,
+      userAgent,
+      details: `Created user ${email} with role ${role}`,
     })
 
     // Remove passwordHash from response
@@ -154,21 +219,63 @@ export async function POST(request: Request) {
 // PUT: Update user (role, branchId, name, isActive)
 export async function PUT(request: Request) {
   try {
-    const body = await request.json()
-    const { id, name, role, branchId, isActive } = body
-
-    if (!id) {
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
       return NextResponse.json(
-        { success: false, error: 'Missing required field: id' },
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    const body = await request.json()
+    const validation = safeValidate(userUpdateSchema, body)
+    if (!validation.success) {
+      return NextResponse.json(
+        { success: false, error: validation.errors.join(', ') },
         { status: 400 }
       )
     }
+
+    const { id, name, role, branchId, isActive, password } = validation.data
+    const { ipAddress, userAgent } = getRequestInfo(request)
 
     const existing = await db.user.findUnique({ where: { id } })
     if (!existing) {
       return NextResponse.json(
         { success: false, error: 'User not found' },
         { status: 404 }
+      )
+    }
+
+    // Verify user belongs to the same company
+    if (existing.companyId !== auth.user.companyId) {
+      return NextResponse.json(
+        { success: false, error: 'Cannot update users from a different company' },
+        { status: 403 }
+      )
+    }
+
+    // Only admins can change roles
+    if (role !== undefined && !isCompanyAdmin(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Only administrators can change user roles' },
+        { status: 403 }
+      )
+    }
+
+    // Prevent self-demotion
+    if (id === auth.user.id && role && role !== auth.user.role) {
+      return NextResponse.json(
+        { success: false, error: 'You cannot change your own role' },
+        { status: 403 }
+      )
+    }
+
+    // Managers can only update users in their branch
+    if (auth.user.role === 'BranchManager' && existing.branchId !== auth.user.branchId) {
+      return NextResponse.json(
+        { success: false, error: 'Managers can only update users in their own branch' },
+        { status: 403 }
       )
     }
 
@@ -194,11 +301,34 @@ export async function PUT(request: Request) {
       role?: string
       branchId?: string
       isActive?: boolean
+      passwordHash?: string
+      mustChangePassword?: boolean
     } = {}
-    if (name !== undefined) updateData.name = name
+    if (name !== undefined) updateData.name = sanitizeString(name)
     if (role !== undefined) updateData.role = role
     if (branchId !== undefined) updateData.branchId = branchId
     if (isActive !== undefined) updateData.isActive = isActive
+
+    // If password is being updated, hash it
+    if (password) {
+      updateData.passwordHash = await hashPassword(password)
+      updateData.mustChangePassword = true
+    }
+
+    // Track role changes in audit log
+    if (role && role !== existing.role) {
+      logAudit({
+        action: 'USER_ROLE_CHANGED',
+        userId: auth.user.id,
+        userEmail: auth.user.email,
+        companyId: auth.user.companyId,
+        branchId: auth.user.branchId,
+        ipAddress,
+        userAgent,
+        details: `Changed ${existing.email} role from ${existing.role} to ${role}`,
+        severity: 'warning',
+      })
+    }
 
     const user = await db.user.update({
       where: { id },
@@ -213,6 +343,16 @@ export async function PUT(request: Request) {
           },
         },
       },
+    })
+
+    logAudit({
+      action: 'USER_UPDATED',
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      companyId: auth.user.companyId,
+      ipAddress,
+      userAgent,
+      details: `Updated user ${existing.email}`,
     })
 
     // Remove passwordHash from response
@@ -231,6 +371,21 @@ export async function PUT(request: Request) {
 // DELETE: Soft delete user (set isActive=false)
 export async function DELETE(request: Request) {
   try {
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    if (!isCompanyAdmin(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Only administrators can deactivate users' },
+        { status: 403 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
@@ -238,6 +393,14 @@ export async function DELETE(request: Request) {
       return NextResponse.json(
         { success: false, error: 'Missing required query param: id' },
         { status: 400 }
+      )
+    }
+
+    // Prevent self-deactivation
+    if (id === auth.user.id) {
+      return NextResponse.json(
+        { success: false, error: 'You cannot deactivate your own account' },
+        { status: 403 }
       )
     }
 
@@ -249,13 +412,29 @@ export async function DELETE(request: Request) {
       )
     }
 
-    // Soft delete - set isActive to false
+    if (existing.companyId !== auth.user.companyId) {
+      return NextResponse.json(
+        { success: false, error: 'Cannot deactivate users from a different company' },
+        { status: 403 }
+      )
+    }
+
     const user = await db.user.update({
       where: { id },
       data: { isActive: false },
     })
 
-    // Remove passwordHash from response
+    const { ipAddress, userAgent } = getRequestInfo(request)
+    logAudit({
+      action: 'USER_DEACTIVATED',
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      companyId: auth.user.companyId,
+      ipAddress,
+      userAgent,
+      details: `Deactivated user ${existing.email}`,
+    })
+
     const { passwordHash, ...safeUser } = user
 
     return NextResponse.json({

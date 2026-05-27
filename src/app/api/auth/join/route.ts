@@ -1,37 +1,67 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import {
+  hashPassword,
+  generateAccessToken,
+  generateRefreshToken,
+  checkPasswordStrength,
+} from '@/lib/auth'
+import { safeValidate, joinSchema, sanitizeString } from '@/lib/validation'
+import { logAudit, getRequestInfo } from '@/lib/audit-log'
+import { checkRateLimit, getClientIdentifier, RATE_LIMITS, getRateLimitHeaders } from '@/lib/rate-limit'
 
 export async function POST(request: Request) {
   try {
+    // ---- Rate Limiting ----
+    const clientId = getClientIdentifier(request)
+    const rateResult = checkRateLimit(clientId, RATE_LIMITS.join)
+    if (!rateResult.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Too many registration attempts. Please try again later.', retryAfter: Math.ceil((rateResult.retryAfterMs || 60000) / 1000) },
+        { status: 429, headers: getRateLimitHeaders(rateResult, RATE_LIMITS.join) }
+      )
+    }
+
+    // ---- Input Validation ----
     const body = await request.json()
-    const { name, email, password, branchCode } = body
-
-    // Validate required fields
-    if (!name || !email || !password || !branchCode) {
+    const validation = safeValidate(joinSchema, body)
+    if (!validation.success) {
       return NextResponse.json(
-        { success: false, error: 'All fields are required: name, email, password, branchCode' },
+        { success: false, error: validation.errors.join(', ') },
         { status: 400 }
       )
     }
 
-    // Validate password length
-    if (password.length < 6) {
+    const { name, email, password, branchCode } = validation.data
+    const sanitizedName = sanitizeString(name)
+    const sanitizedEmail = sanitizeString(email)
+    const sanitizedBranchCode = sanitizeString(branchCode)
+    const { ipAddress, userAgent } = getRequestInfo(request)
+
+    // ---- Password Strength Check ----
+    const strength = checkPasswordStrength(password)
+    if (strength.score < 2) {
       return NextResponse.json(
-        { success: false, error: 'Password must be at least 6 characters' },
+        {
+          success: false,
+          error: `Password is too weak: ${strength.feedback.join(', ')}`,
+          strength,
+        },
         { status: 400 }
       )
     }
 
-    // Find the branch by code
+    // ---- Find Branch ----
     const branch = await db.branch.findUnique({
-      where: { code: branchCode.toUpperCase() },
+      where: { code: sanitizedBranchCode.toUpperCase() },
       include: { company: true },
     })
 
     if (!branch) {
+      // Don't reveal whether branch code exists (prevents enumeration)
       return NextResponse.json(
-        { success: false, error: 'Invalid branch code. Please check with your manager.' },
-        { status: 404 }
+        { success: false, error: 'Unable to register with the provided information. Please verify your branch code with your manager.' },
+        { status: 400 }
       )
     }
 
@@ -49,25 +79,32 @@ export async function POST(request: Request) {
       )
     }
 
-    // Check for duplicate email
-    const existingUser = await db.user.findUnique({ where: { email } })
+    // ---- Check Duplicate Email ----
+    const existingUser = await db.user.findUnique({ where: { email: sanitizedEmail } })
     if (existingUser) {
+      // Don't reveal that email exists (prevents enumeration)
       return NextResponse.json(
-        { success: false, error: 'An account with this email already exists. Try signing in instead.' },
+        { success: false, error: 'Unable to create an account with the provided information. Try signing in instead.' },
         { status: 409 }
       )
     }
 
-    // Create the employee user
+    // ---- Hash Password ----
+    const hashedPassword = await hashPassword(password)
+
+    // ---- Create Employee User ----
     const user = await db.user.create({
       data: {
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        passwordHash: password, // In production, use bcrypt
+        name: sanitizedName,
+        email: sanitizedEmail,
+        passwordHash: hashedPassword,
         role: 'Employee',
         branchId: branch.id,
         companyId: branch.companyId,
         isActive: true,
+        lastLoginAt: new Date(),
+        lastLoginIp: ipAddress,
+        passwordChangedAt: new Date(),
       },
       include: {
         branch: true,
@@ -75,49 +112,107 @@ export async function POST(request: Request) {
       },
     })
 
-    // Generate a simple token (base64 of user id)
-    const token = Buffer.from(user.id).toString('base64')
-
-    // Return the same format as login for seamless session creation
-    return NextResponse.json({
-      success: true,
-      data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          branchId: user.branchId,
-          companyId: user.companyId,
-          branch: {
-            id: user.branch.id,
-            name: user.branch.name,
-            code: user.branch.code,
-            isHeadOffice: user.branch.isHeadOffice,
-          },
-          company: {
-            id: user.company.id,
-            name: user.company.name,
-            industry: user.company.industry,
-            plan: user.company.plan,
-            email: user.company.email,
-            phone: user.company.phone,
-            address: user.company.address,
-            logoUrl: user.company.logoUrl,
-            isActive: user.company.isActive,
-            currency: user.company.currency,
-            currencySymbol: user.company.currencySymbol,
-            country: user.company.country,
-            exchangeRate: user.company.exchangeRate,
-          },
-        },
-        token,
-      },
+    // ---- Audit Log ----
+    logAudit({
+      action: 'USER_CREATED',
+      userId: user.id,
+      userEmail: user.email,
+      companyId: user.companyId,
+      branchId: user.branchId,
+      ipAddress,
+      userAgent,
+      details: `Employee self-registered via branch code ${sanitizedBranchCode}`,
     })
+
+    logAudit({
+      action: 'LOGIN_SUCCESS',
+      userId: user.id,
+      userEmail: user.email,
+      companyId: user.companyId,
+      branchId: user.branchId,
+      ipAddress,
+      userAgent,
+      details: 'Auto-login after self-registration',
+    })
+
+    // ---- Generate JWT Tokens ----
+    const sessionId = `sess_${Date.now()}_${Math.random().toString(36).slice(2)}`
+    const tokenPayload = {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      companyId: user.companyId,
+      branchId: user.branchId,
+      sessionId,
+    }
+
+    const accessToken = generateAccessToken(tokenPayload)
+    const refreshToken = generateRefreshToken(tokenPayload)
+
+    // ---- Build Response ----
+    const responseData = {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        branchId: user.branchId,
+        companyId: user.companyId,
+        twoFactorEnabled: false,
+        mustChangePassword: false,
+        branch: {
+          id: user.branch.id,
+          name: user.branch.name,
+          code: user.branch.code,
+          isHeadOffice: user.branch.isHeadOffice,
+        },
+        company: {
+          id: user.company.id,
+          name: user.company.name,
+          industry: user.company.industry,
+          plan: user.company.plan,
+          email: user.company.email,
+          phone: user.company.phone,
+          address: user.company.address,
+          logoUrl: user.company.logoUrl,
+          isActive: user.company.isActive,
+          currency: user.company.currency,
+          currencySymbol: user.company.currencySymbol,
+          country: user.company.country,
+          exchangeRate: user.company.exchangeRate,
+        },
+      },
+      token: accessToken,
+      refreshToken,
+    }
+
+    const response = NextResponse.json({
+      success: true,
+      data: responseData,
+    })
+
+    // Set httpOnly cookies
+    response.cookies.set('smartbiz_token', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60,
+      path: '/',
+    })
+
+    response.cookies.set('smartbiz_refresh', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60,
+      path: '/api/auth',
+    })
+
+    return response
   } catch (error) {
     console.error('Join error:', error)
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: 'An error occurred during registration. Please try again.' },
       { status: 500 }
     )
   }

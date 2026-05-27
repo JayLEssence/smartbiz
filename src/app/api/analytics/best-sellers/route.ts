@@ -1,14 +1,39 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
+import { authenticateRequest, isManagerOrAbove } from '@/lib/auth'
 
 export async function GET(request: Request) {
   try {
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 })
+    }
+
+    // Only managers and admins can access analytics
+    if (!isManagerOrAbove(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Insufficient permissions. Only managers and admins can access analytics.' },
+        { status: 403 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || 'monthly'
     const sortBy = searchParams.get('sortBy') || 'revenue'
-    const branchId = searchParams.get('branchId')
-    const companyId = searchParams.get('companyId')
+
+    // SECURITY: Always use the authenticated user's companyId — never trust client-provided companyId
+    const companyId = auth.user.companyId
+
+    // Override branchId for non-admin users
+    let branchId: string | undefined
+    if (auth.user.role === 'CompanyAdmin') {
+      branchId = searchParams.get('branchId') || undefined
+    } else {
+      // Managers can only see their own branch
+      branchId = auth.user.branchId
+    }
 
     // Calculate date range based on period
     const now = new Date()
@@ -31,12 +56,10 @@ export async function GET(request: Request) {
       saleDate: {
         gte: startDate,
       },
+      companyId,
     }
     if (branchId) {
       saleWhere.branchId = branchId
-    }
-    if (companyId) {
-      saleWhere.companyId = companyId
     }
 
     const saleItems = await db.saleItem.findMany({

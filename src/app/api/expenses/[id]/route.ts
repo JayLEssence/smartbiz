@@ -1,5 +1,8 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { authenticateRequest, isManagerOrAbove } from '@/lib/auth'
+import { sanitizeString } from '@/lib/validation'
+import { logAudit, getRequestInfo } from '@/lib/audit-log'
 
 const EXPENSE_CATEGORIES = ['Rent', 'Utilities', 'Salaries', 'Transport', 'Supplies', 'Maintenance', 'Other']
 
@@ -8,6 +11,23 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Authenticate request
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    // Only managers/admins can access expense data
+    if (!isManagerOrAbove(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Access denied. Manager or Admin role required.' },
+        { status: 403 }
+      )
+    }
+
     const { id } = await params
 
     const expense = await db.expense.findUnique({
@@ -39,6 +59,14 @@ export async function GET(
       )
     }
 
+    // Verify expense belongs to authenticated user's company (tenant isolation)
+    if (expense.companyId !== auth.user.companyId) {
+      return NextResponse.json(
+        { success: false, error: 'Access denied. Expense does not belong to your company.' },
+        { status: 403 }
+      )
+    }
+
     return NextResponse.json({ success: true, data: expense })
   } catch (error) {
     console.error('Expense GET error:', error)
@@ -54,6 +82,24 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Authenticate request
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    // Only managers/admins can update expenses
+    if (!isManagerOrAbove(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Access denied. Manager or Admin role required to update expenses.' },
+        { status: 403 }
+      )
+    }
+
+    const reqInfo = getRequestInfo(request)
     const { id } = await params
     const body = await request.json()
     const { category, description, amount, date, branchId } = body
@@ -63,6 +109,24 @@ export async function PUT(
       return NextResponse.json(
         { success: false, error: 'Expense not found' },
         { status: 404 }
+      )
+    }
+
+    // Verify expense belongs to authenticated user's company (tenant isolation)
+    if (existing.companyId !== auth.user.companyId) {
+      logAudit({
+        action: 'SUSPICIOUS_ACTIVITY',
+        userId: auth.user.id,
+        userEmail: auth.user.email,
+        companyId: auth.user.companyId,
+        branchId: auth.user.branchId,
+        details: `Attempted to update expense outside company: ${id}`,
+        ipAddress: reqInfo.ipAddress,
+        userAgent: reqInfo.userAgent,
+      })
+      return NextResponse.json(
+        { success: false, error: 'Access denied. Expense does not belong to your company.' },
+        { status: 403 }
       )
     }
 
@@ -83,9 +147,9 @@ export async function PUT(
     // If branchId is being changed, verify it belongs to same company
     if (branchId && branchId !== existing.branchId) {
       const branch = await db.branch.findUnique({ where: { id: branchId } })
-      if (!branch || branch.companyId !== existing.companyId) {
+      if (!branch || branch.companyId !== auth.user.companyId) {
         return NextResponse.json(
-          { success: false, error: 'Branch does not belong to the same company' },
+          { success: false, error: 'Branch does not belong to your company' },
           { status: 400 }
         )
       }
@@ -99,7 +163,7 @@ export async function PUT(
       branchId?: string
     } = {}
     if (category !== undefined) updateData.category = category
-    if (description !== undefined) updateData.description = description
+    if (description !== undefined) updateData.description = sanitizeString(description)
     if (amount !== undefined) updateData.amount = Number(amount)
     if (date !== undefined) updateData.date = new Date(date)
     if (branchId !== undefined) updateData.branchId = branchId
@@ -126,11 +190,23 @@ export async function PUT(
           type: 'ExpenseAlert',
           title: 'Large Expense Updated',
           message: `Expense updated to ${newAmount.toLocaleString()}: ${description || existing.description}`,
-          companyId: existing.companyId,
+          companyId: auth.user.companyId,
           branchId: branchId || existing.branchId,
         },
       })
     }
+
+    // Audit log for expense update
+    logAudit({
+      action: 'EXPENSE_UPDATED',
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      companyId: auth.user.companyId,
+      branchId: existing.branchId,
+      details: `Expense updated: ${id}, fields: ${Object.keys(updateData).join(', ')}`,
+      ipAddress: reqInfo.ipAddress,
+      userAgent: reqInfo.userAgent,
+    })
 
     return NextResponse.json({ success: true, data: expense })
   } catch (error) {
@@ -147,6 +223,24 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Authenticate request
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    // Only managers/admins can delete expenses
+    if (!isManagerOrAbove(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Access denied. Manager or Admin role required to delete expenses.' },
+        { status: 403 }
+      )
+    }
+
+    const reqInfo = getRequestInfo(request)
     const { id } = await params
 
     const existing = await db.expense.findUnique({ where: { id } })
@@ -157,7 +251,37 @@ export async function DELETE(
       )
     }
 
+    // Verify expense belongs to authenticated user's company (tenant isolation)
+    if (existing.companyId !== auth.user.companyId) {
+      logAudit({
+        action: 'SUSPICIOUS_ACTIVITY',
+        userId: auth.user.id,
+        userEmail: auth.user.email,
+        companyId: auth.user.companyId,
+        branchId: auth.user.branchId,
+        details: `Attempted to delete expense outside company: ${id}`,
+        ipAddress: reqInfo.ipAddress,
+        userAgent: reqInfo.userAgent,
+      })
+      return NextResponse.json(
+        { success: false, error: 'Access denied. Expense does not belong to your company.' },
+        { status: 403 }
+      )
+    }
+
     await db.expense.delete({ where: { id } })
+
+    // Audit log for expense deletion
+    logAudit({
+      action: 'EXPENSE_DELETED',
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      companyId: auth.user.companyId,
+      branchId: existing.branchId,
+      details: `Expense deleted: ${id}, description: ${existing.description}, amount: ${existing.amount}`,
+      ipAddress: reqInfo.ipAddress,
+      userAgent: reqInfo.userAgent,
+    })
 
     return NextResponse.json({
       success: true,

@@ -1,29 +1,46 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
+import { hashPassword, authenticateRequest, isCompanyAdmin } from '@/lib/auth'
+import { safeValidate, registerSchema, companyUpdateSchema, sanitizeString } from '@/lib/validation'
+import { logAudit, getRequestInfo } from '@/lib/audit-log'
+import { checkRateLimit, getClientIdentifier, RATE_LIMITS, getRateLimitHeaders } from '@/lib/rate-limit'
 
 // POST: Register a new company (creates company + head office branch + admin user)
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const { name, industry, email, phone, address, adminName, adminEmail, adminPassword, currency, currencySymbol, country, exchangeRate } = body
-
-    if (!name || !adminName || !adminEmail) {
+    // ---- Rate Limiting ----
+    const clientId = getClientIdentifier(request)
+    const rateResult = checkRateLimit(clientId, RATE_LIMITS.register)
+    if (!rateResult.allowed) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: name, adminName, adminEmail' },
+        { success: false, error: 'Too many registration attempts. Please try again later.' },
+        { status: 429, headers: getRateLimitHeaders(rateResult, RATE_LIMITS.register) }
+      )
+    }
+
+    // ---- Input Validation ----
+    const body = await request.json()
+    const validation = safeValidate(registerSchema, body)
+    if (!validation.success) {
+      return NextResponse.json(
+        { success: false, error: validation.errors.join(', ') },
         { status: 400 }
       )
     }
+
+    const { name, industry, email, phone, address, adminName, adminEmail, adminPassword, currency, currencySymbol, country, exchangeRate } = validation.data
+    const { ipAddress, userAgent } = getRequestInfo(request)
 
     const result = await db.$transaction(async (tx) => {
       // 1. Create the Company record
       const company = await tx.company.create({
         data: {
-          name,
-          industry: industry || null,
-          email: email || null,
-          phone: phone || null,
-          address: address || null,
+          name: sanitizeString(name),
+          industry: industry ? sanitizeString(industry) : null,
+          email: email ? sanitizeString(email) : null,
+          phone: phone ? sanitizeString(phone) : null,
+          address: address ? sanitizeString(address) : null,
           plan: 'free',
           isActive: true,
           currency: currency || 'TZS',
@@ -39,24 +56,28 @@ export async function POST(request: Request) {
         data: {
           name: `${name} - Head Office`,
           code: branchCode,
-          address: address || null,
-          phone: phone || null,
+          address: address ? sanitizeString(address) : null,
+          phone: phone ? sanitizeString(phone) : null,
           isHeadOffice: true,
           isActive: true,
           companyId: company.id,
         },
       })
 
-      // 3. Create an Admin user for that company assigned to the head office branch
+      // 3. Create an Admin user with HASHED password
+      const hashedPassword = await hashPassword(adminPassword)
       const admin = await tx.user.create({
         data: {
-          email: adminEmail,
-          name: adminName,
-          passwordHash: adminPassword || '$2a$10$defaultpasswordhash',
+          email: sanitizeString(adminEmail),
+          name: sanitizeString(adminName),
+          passwordHash: hashedPassword,
           role: 'CompanyAdmin',
           branchId: headOffice.id,
           companyId: company.id,
           isActive: true,
+          lastLoginAt: new Date(),
+          lastLoginIp: ipAddress,
+          passwordChangedAt: new Date(),
         },
         include: {
           branch: true,
@@ -65,6 +86,27 @@ export async function POST(request: Request) {
       })
 
       return { company, headOffice, admin }
+    })
+
+    logAudit({
+      action: 'COMPANY_CREATED',
+      userId: result.admin.id,
+      userEmail: result.admin.email,
+      companyId: result.company.id,
+      ipAddress,
+      userAgent,
+      details: `Company "${name}" registered with head office`,
+    })
+
+    logAudit({
+      action: 'USER_CREATED',
+      userId: result.admin.id,
+      userEmail: result.admin.email,
+      companyId: result.company.id,
+      branchId: result.headOffice.id,
+      ipAddress,
+      userAgent,
+      details: 'Admin user created during company registration',
     })
 
     return NextResponse.json(
@@ -115,7 +157,7 @@ export async function POST(request: Request) {
       }
     }
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: 'An error occurred during registration. Please try again.' },
       { status: 500 }
     )
   }
@@ -124,11 +166,27 @@ export async function POST(request: Request) {
 // GET: Get company info by ID (query param: id) or list all companies
 export async function GET(request: Request) {
   try {
+    // ---- Authentication ----
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
     if (id) {
-      // Get specific company
+      // Non-admin users can only see their own company
+      if (id !== auth.user.companyId && !isCompanyAdmin(auth.user.role)) {
+        return NextResponse.json(
+          { success: false, error: 'Access denied' },
+          { status: 403 }
+        )
+      }
+
       const company = await db.company.findUnique({
         where: { id },
         include: {
@@ -169,9 +227,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, data: company })
     }
 
-    // List all active companies
+    // List only the user's company (no company enumeration)
     const companies = await db.company.findMany({
-      where: { isActive: true },
+      where: { id: auth.user.companyId, isActive: true },
       orderBy: { createdAt: 'desc' },
       include: {
         _count: {
@@ -197,13 +255,37 @@ export async function GET(request: Request) {
 // PUT: Update company info
 export async function PUT(request: Request) {
   try {
-    const body = await request.json()
-    const { id, name, industry, email, phone, address, logoUrl, plan, currency, currencySymbol, country, exchangeRate } = body
-
-    if (!id) {
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
       return NextResponse.json(
-        { success: false, error: 'Missing required field: id' },
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    if (!isCompanyAdmin(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Only company administrators can update company settings' },
+        { status: 403 }
+      )
+    }
+
+    const body = await request.json()
+    const validation = safeValidate(companyUpdateSchema, body)
+    if (!validation.success) {
+      return NextResponse.json(
+        { success: false, error: validation.errors.join(', ') },
         { status: 400 }
+      )
+    }
+
+    const { id, ...updateData } = validation.data
+
+    // Verify the company belongs to the user
+    if (id !== auth.user.companyId) {
+      return NextResponse.json(
+        { success: false, error: 'You can only update your own company' },
+        { status: 403 }
       )
     }
 
@@ -215,34 +297,30 @@ export async function PUT(request: Request) {
       )
     }
 
-    const updateData: {
-      name?: string
-      industry?: string | null
-      email?: string | null
-      phone?: string | null
-      address?: string | null
-      logoUrl?: string | null
-      plan?: string
-      currency?: string
-      currencySymbol?: string
-      country?: string
-      exchangeRate?: number
-    } = {}
-    if (name !== undefined) updateData.name = name
-    if (industry !== undefined) updateData.industry = industry
-    if (email !== undefined) updateData.email = email
-    if (phone !== undefined) updateData.phone = phone
-    if (address !== undefined) updateData.address = address
-    if (logoUrl !== undefined) updateData.logoUrl = logoUrl
-    if (plan !== undefined) updateData.plan = plan
-    if (currency !== undefined) updateData.currency = currency
-    if (currencySymbol !== undefined) updateData.currencySymbol = currencySymbol
-    if (country !== undefined) updateData.country = country
-    if (exchangeRate !== undefined) updateData.exchangeRate = exchangeRate
+    // Sanitize string fields
+    const sanitizedData: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(updateData)) {
+      if (typeof value === 'string') {
+        sanitizedData[key] = sanitizeString(value)
+      } else {
+        sanitizedData[key] = value
+      }
+    }
 
     const company = await db.company.update({
       where: { id },
-      data: updateData,
+      data: sanitizedData,
+    })
+
+    const { ipAddress, userAgent } = getRequestInfo(request)
+    logAudit({
+      action: 'COMPANY_UPDATED',
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      companyId: auth.user.companyId,
+      ipAddress,
+      userAgent,
+      details: `Company settings updated`,
     })
 
     return NextResponse.json({ success: true, data: company })

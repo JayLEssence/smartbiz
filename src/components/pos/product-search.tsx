@@ -5,6 +5,7 @@ import { usePosStore } from '@/stores/pos-store'
 import { Input } from '@/components/ui/input'
 import { Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getAuthHeaders } from '@/lib/auth-fetch'
 
 interface Product {
   id: string
@@ -41,7 +42,7 @@ export function ProductSearch({ branchId, companyId }: ProductSearchProps) {
       const params = new URLSearchParams({ search })
       if (companyId) params.set('companyId', companyId)
       if (branchId) params.set('branchId', branchId)
-      const res = await fetch(`/api/products?${params.toString()}`)
+      const res = await fetch(`/api/products?${params.toString()}`, { headers: getAuthHeaders() })
       const json = await res.json()
       if (json.success) {
         setResults(json.data)
@@ -98,7 +99,7 @@ export function ProductSearch({ branchId, companyId }: ProductSearchProps) {
         const params = new URLSearchParams({ search: trimmed })
         if (companyId) params.set('companyId', companyId)
         if (branchId) params.set('branchId', branchId)
-        const res = await fetch(`/api/products?${params.toString()}`)
+        const res = await fetch(`/api/products?${params.toString()}`, { headers: getAuthHeaders() })
         const json = await res.json()
         if (json.success && json.data.length === 1) {
           handleSelect(json.data[0])

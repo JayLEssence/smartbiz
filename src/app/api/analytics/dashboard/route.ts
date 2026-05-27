@@ -1,15 +1,34 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { authenticateRequest, isCompanyAdmin } from '@/lib/auth'
+import { logAudit, getRequestInfo } from '@/lib/audit-log'
 
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url)
-    const branchId = searchParams.get('branchId')
-    const companyId = searchParams.get('companyId')
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 })
+    }
+
+    // All authenticated users can access the dashboard (they see their own data)
+    // SECURITY: Always use the authenticated user's companyId — never trust client-provided companyId
+    const companyId = auth.user.companyId
+
+    // Override branchId for employees — they can only see their own branch
+    let branchId: string | undefined
+    if (isCompanyAdmin(auth.user.role)) {
+      // Admins can optionally filter by branch
+      const { searchParams } = new URL(request.url)
+      branchId = searchParams.get('branchId') || undefined
+    } else {
+      // Managers and employees are restricted to their own branch
+      branchId = auth.user.branchId
+    }
 
     // Build branch filter for all queries
     const branchFilter = branchId ? { branchId } : {}
-    const companyFilter = companyId ? { companyId } : {}
+    const companyFilter = { companyId }
     const combinedFilter = { ...branchFilter, ...companyFilter }
 
     // Get today's date range
@@ -110,14 +129,14 @@ export async function GET(request: Request) {
       }
     }
 
-    // Branch summary when no branch filter is applied
+    // Branch summary when no branch filter is applied (only for admins)
     let branchSummary: { id: string; name: string; code: string; todayRevenue: number; todaySalesCount: number }[] | undefined
     if (!branchId) {
-      const branchWhere: { isActive: boolean; companyId?: string } = { isActive: true }
-      if (companyId) branchWhere.companyId = companyId
-
       const branches = await db.branch.findMany({
-        where: branchWhere,
+        where: {
+          isActive: true,
+          companyId,
+        },
       })
       branchSummary = await Promise.all(
         branches.map(async (branch) => {
@@ -128,7 +147,7 @@ export async function GET(request: Request) {
                 lt: todayEnd,
               },
               branchId: branch.id,
-              ...(companyId ? { companyId } : {}),
+              companyId,
             },
           })
           return {

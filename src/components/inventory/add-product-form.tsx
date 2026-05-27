@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2, PlusCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/stores/app-store'
+import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
 
 interface Branch {
   id: string
@@ -57,7 +58,7 @@ export function AddProductForm({ onProductAdded }: AddProductFormProps) {
     if (branches.length > 0) {
       setBranchList(branches)
     } else {
-      fetch('/api/branches')
+      fetch('/api/branches', { headers: getAuthHeaders() })
         .then((res) => res.json())
         .then((json) => {
           if (json.success) {
@@ -104,7 +105,7 @@ export function AddProductForm({ onProductAdded }: AddProductFormProps) {
     try {
       const res = await fetch('/api/products', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name,
           sku,

@@ -9,6 +9,7 @@ import { Package, PackagePlus, PlusCircle, History } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
+import { getAuthHeaders } from '@/lib/auth-fetch'
 
 interface InventoryBatch {
   id: string
@@ -45,7 +46,7 @@ export function InventoryView() {
       const params = new URLSearchParams()
       if (companyId) params.set('companyId', companyId)
       if (currentBranchId) params.set('branchId', currentBranchId)
-      const res = await fetch(`/api/inventory?${params.toString()}`)
+      const res = await fetch(`/api/inventory?${params.toString()}`, { headers: getAuthHeaders() })
       const json = await res.json()
       if (json.success) {
         setBatches(json.data)

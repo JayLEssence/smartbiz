@@ -19,6 +19,7 @@ import {
   Truck,
   ChevronDown,
   MoreHorizontal,
+  Shield,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -96,6 +97,7 @@ const allNavGroups: NavGroup[] = [
     labelKey: 'sidebar.system',
     collapsible: true,
     items: [
+      { view: 'security', labelKey: 'sidebar.security', icon: Shield, managerOnly: true },
       { view: 'branches', labelKey: 'sidebar.branches', icon: Building2, adminOnly: true },
       { view: 'admin', labelKey: 'sidebar.admin', icon: Settings, adminOnly: true },
     ],

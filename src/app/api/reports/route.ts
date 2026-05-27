@@ -1,18 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { authenticateRequest, isManagerOrAbove } from '@/lib/auth'
+import { logAudit, getRequestInfo } from '@/lib/audit-log'
 
 export async function GET(request: NextRequest) {
   try {
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 })
+    }
+
+    // Only managers and admins can access reports
+    if (!isManagerOrAbove(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Insufficient permissions. Only managers and admins can access reports.' },
+        { status: 403 }
+      )
+    }
+
     const { searchParams } = request.nextUrl
     const type = searchParams.get('type') || 'sales'
-    const companyId = searchParams.get('companyId')
-    const branchId = searchParams.get('branchId')
+    // SECURITY: Always use the authenticated user's companyId — never trust client-provided companyId
+    const companyId = auth.user.companyId
+    // For employees (shouldn't reach here due to role check), override branchId with their own
+    let branchId = searchParams.get('branchId') || undefined
+    if (auth.user.role !== 'CompanyAdmin' && auth.user.branchId) {
+      branchId = auth.user.branchId
+    }
     const dateFrom = searchParams.get('dateFrom')
     const dateTo = searchParams.get('dateTo')
-
-    if (!companyId) {
-      return NextResponse.json({ success: false, error: 'companyId is required' }, { status: 400 })
-    }
 
     // Build date filter
     const dateFilter: Record<string, Date> = {}
@@ -23,20 +40,30 @@ export async function GET(request: NextRequest) {
       dateFilter.lte = to
     }
 
-    // Build branch filter
-    const branchFilter = branchId ? { branchId } : { companyId }
+    // Audit log for sensitive data access
+    const reqInfo = getRequestInfo(request)
+    logAudit({
+      action: 'SUSPICIOUS_ACTIVITY' as never,
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      companyId: auth.user.companyId,
+      branchId: auth.user.branchId,
+      details: `Report accessed: type=${type}, branchId=${branchId || 'all'}`,
+      ipAddress: reqInfo.ipAddress,
+      userAgent: reqInfo.userAgent,
+    })
 
     switch (type) {
       case 'sales':
-        return NextResponse.json({ success: true, data: await getSalesReport(companyId, branchId, dateFilter) })
+        return NextResponse.json({ success: true, data: await getSalesReport(companyId, branchId || null, dateFilter) })
       case 'expenses':
-        return NextResponse.json({ success: true, data: await getExpensesReport(companyId, branchId, dateFilter) })
+        return NextResponse.json({ success: true, data: await getExpensesReport(companyId, branchId || null, dateFilter) })
       case 'profit-loss':
-        return NextResponse.json({ success: true, data: await getProfitLossReport(companyId, branchId, dateFilter) })
+        return NextResponse.json({ success: true, data: await getProfitLossReport(companyId, branchId || null, dateFilter) })
       case 'inventory':
-        return NextResponse.json({ success: true, data: await getInventoryReport(companyId, branchId) })
+        return NextResponse.json({ success: true, data: await getInventoryReport(companyId, branchId || null) })
       case 'tax':
-        return NextResponse.json({ success: true, data: await getTaxReport(companyId, branchId, dateFilter) })
+        return NextResponse.json({ success: true, data: await getTaxReport(companyId, branchId || null, dateFilter) })
       default:
         return NextResponse.json({ success: false, error: 'Invalid report type' }, { status: 400 })
     }

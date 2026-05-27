@@ -21,6 +21,8 @@ model Company {
   currencySymbol  String   @default("TSh")   // Local currency symbol
   country         String   @default("Tanzania")
   exchangeRate    Float    @default(2570)     // Exchange rate: 1 USD = X local currency
+  twoFactorEnabled Boolean @default(false)    // Company-wide 2FA requirement
+  dataRetentionDays Int    @default(365)      // Data retention policy in days
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -32,6 +34,8 @@ model Company {
   suppliers   Supplier[]
   customers   Customer[]
   notifications Notification[]
+  auditLogs   AuditLog[]
+  sessions    Session[]
 }
 
 model Branch {
@@ -66,12 +70,54 @@ model User {
   branchId     String
   companyId    String
   isActive     Boolean  @default(true)
+  twoFactorSecret String?          // TOTP secret for 2FA
+  twoFactorEnabled Boolean @default(false)
+  lastLoginAt  DateTime?           // Track last login time
+  lastLoginIp  String?             // Track last login IP
+  passwordChangedAt DateTime?      // When password was last changed
+  mustChangePassword Boolean @default(false) // Force password change on next login
+  failedLoginAttempts Int @default(0)        // Track failed login attempts
+  lockedUntil DateTime?                      // Account lockout timestamp
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  branch  Branch @relation(fields: [branchId], references: [id])
-  company Company @relation(fields: [companyId], references: [id])
-  sales   Sale[]
+  branch   Branch   @relation(fields: [branchId], references: [id])
+  company  Company  @relation(fields: [companyId], references: [id])
+  sales    Sale[]
+  sessions Session[]
+  auditLogs AuditLog[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  tokenHash    String            // Hashed token for verification
+  deviceInfo   String?           // Browser/device info
+  ipAddress    String?           // IP address at session creation
+  expiresAt    DateTime          // When the session expires
+  isValid      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  user    User     @relation(fields: [userId], references: [id])
+  company Company  @relation(fields: [companyId], references: [id])
+  companyId String
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  action       String             // LOGIN_SUCCESS, USER_CREATED, etc.
+  userId       String?            // Who performed the action
+  userEmail    String?            // Email at time of action
+  companyId    String?            // Which company
+  branchId     String?            // Which branch
+  details      String?            // Additional details
+  ipAddress    String?            // Request IP
+  userAgent    String?            // Browser user agent
+  severity     String  @default("info") // info, warning, critical
+  createdAt    DateTime @default(now())
+
+  user    User?    @relation(fields: [userId], references: [id])
+  company Company? @relation(fields: [companyId], references: [id])
 }
 
 model Product {

@@ -1,17 +1,33 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
+import { authenticateRequest, isManagerOrAbove } from '@/lib/auth'
+import { safeValidate, saleCreateSchema, sanitizeString } from '@/lib/validation'
+import { logAudit, getRequestInfo } from '@/lib/audit-log'
 
 export async function GET(request: Request) {
   try {
+    // Authenticate request
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const from = searchParams.get('from')
     const to = searchParams.get('to')
     const userId = searchParams.get('userId')
     const branchId = searchParams.get('branchId')
-    const companyId = searchParams.get('companyId')
 
-    const where: Prisma.SaleWhereInput = {}
+    // ALWAYS filter by authenticated user's companyId (tenant isolation)
+    const companyId = auth.user.companyId
+
+    const where: Prisma.SaleWhereInput = {
+      companyId, // Enforce tenant isolation
+    }
 
     if (from || to) {
       where.saleDate = {}
@@ -31,8 +47,9 @@ export async function GET(request: Request) {
       where.branchId = branchId
     }
 
-    if (companyId) {
-      where.companyId = companyId
+    // Employees can only see sales from their own branch
+    if (!isManagerOrAbove(auth.user.role)) {
+      where.branchId = auth.user.branchId
     }
 
     const sales = await db.sale.findMany({
@@ -102,39 +119,70 @@ async function generateReceiptNumber(tx: Prisma.TransactionClient): Promise<stri
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const { userId, items, discount, branchId, companyId, paymentMethod, customerName } = body
-
-    if (!userId || !items || !Array.isArray(items) || items.length === 0) {
+    // Authenticate request
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: userId, items (non-empty array)' },
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    const reqInfo = getRequestInfo(request)
+    const body = await request.json()
+
+    // Validate input with Zod schema
+    const validation = safeValidate(saleCreateSchema, body)
+    if (!validation.success) {
+      return NextResponse.json(
+        { success: false, error: 'Validation failed', details: validation.errors },
         { status: 400 }
       )
     }
 
-    // Validate payment method
-    const salePaymentMethod: PaymentMethod = VALID_PAYMENT_METHODS.includes(paymentMethod)
-      ? paymentMethod
+    const validatedData = validation.data
+
+    // CRITICAL: ALWAYS override companyId with authenticated user's companyId (never trust request body)
+    const companyId = auth.user.companyId
+
+    // Employees can only create sales for their own branch
+    if (!isManagerOrAbove(auth.user.role) && validatedData.branchId !== auth.user.branchId) {
+      logAudit({
+        action: 'SUSPICIOUS_ACTIVITY',
+        userId: auth.user.id,
+        userEmail: auth.user.email,
+        companyId: auth.user.companyId,
+        branchId: auth.user.branchId,
+        details: `Employee attempted to create sale for branch ${validatedData.branchId} (not their branch)`,
+        ipAddress: reqInfo.ipAddress,
+        userAgent: reqInfo.userAgent,
+      })
+      return NextResponse.json(
+        { success: false, error: 'You can only create sales for your own branch' },
+        { status: 403 }
+      )
+    }
+
+    const salePaymentMethod: PaymentMethod = VALID_PAYMENT_METHODS.includes(validatedData.paymentMethod as PaymentMethod)
+      ? (validatedData.paymentMethod as PaymentMethod)
       : 'Cash'
 
-    const saleCustomerName = typeof customerName === 'string' && customerName.trim()
-      ? customerName.trim()
+    const saleCustomerName = validatedData.customerName
+      ? sanitizeString(validatedData.customerName)
       : null
 
     const result = await db.$transaction(async (tx) => {
       // Verify user exists and get their branch and company
       const user = await tx.user.findUnique({
-        where: { id: userId },
+        where: { id: auth.user!.id },
         include: { branch: true, company: true },
       })
       if (!user) {
         throw new Error('User not found')
       }
 
-      // Use provided branchId or fall back to user's branch
-      const saleBranchId = branchId || user.branchId
-      // Use provided companyId or fall back to user's company
-      const saleCompanyId = companyId || user.companyId
+      // Use validated branchId (already checked for employees above)
+      const saleBranchId = validatedData.branchId || user.branchId
 
       // Auto-generate receipt number
       const receiptNumber = await generateReceiptNumber(tx)
@@ -148,11 +196,11 @@ export async function POST(request: Request) {
       }[] = []
 
       // Validate all items and prepare data
-      for (const item of items) {
-        const { productId, quantity, salePricePerUnit } = item
+      for (const item of validatedData.items) {
+        const { productId, quantitySold, salePricePerUnit } = item
 
-        if (!productId || !quantity || !salePricePerUnit) {
-          throw new Error('Each item must have productId, quantity, and salePricePerUnit')
+        if (!productId || !quantitySold || !salePricePerUnit) {
+          throw new Error('Each item must have productId, quantitySold, and salePricePerUnit')
         }
 
         const product = await tx.product.findUnique({
@@ -163,13 +211,13 @@ export async function POST(request: Request) {
           throw new Error(`Product not found: ${productId}`)
         }
 
-        // Validate product belongs to the same company
-        if (product.companyId !== saleCompanyId) {
+        // Validate product belongs to the same company (tenant isolation)
+        if (product.companyId !== companyId) {
           throw new Error(`Product ${product.name} does not belong to the same company`)
         }
 
-        if (product.currentStockLevel < Number(quantity)) {
-          throw new Error(`Insufficient stock for ${product.name}. Available: ${product.currentStockLevel}, Requested: ${quantity}`)
+        if (product.currentStockLevel < Number(quantitySold)) {
+          throw new Error(`Insufficient stock for ${product.name}. Available: ${product.currentStockLevel}, Requested: ${quantitySold}`)
         }
 
         // Get cost price from most recent inventory batch
@@ -179,7 +227,7 @@ export async function POST(request: Request) {
         })
 
         const costPricePerUnit = latestBatch ? latestBatch.purchasePricePerUnit : 0
-        const qty = Number(quantity)
+        const qty = Number(quantitySold)
         const price = Number(salePricePerUnit)
 
         totalAmount += qty * price
@@ -192,17 +240,17 @@ export async function POST(request: Request) {
       }
 
       // Apply discount
-      const discountAmount = discount ? Number(discount) : 0
+      const discountAmount = validatedData.discount ? Number(validatedData.discount) : 0
       totalAmount -= discountAmount
 
       // Create the sale
       const sale = await tx.sale.create({
         data: {
-          userId,
+          userId: auth.user!.id,
           totalAmount,
           discount: discountAmount,
           branchId: saleBranchId,
-          companyId: saleCompanyId,
+          companyId, // Use auth-derived companyId, NEVER from request body
           paymentMethod: salePaymentMethod,
           customerName: saleCustomerName,
           receiptNumber,
@@ -256,6 +304,18 @@ export async function POST(request: Request) {
       }
 
       return sale
+    })
+
+    // Audit log for sale creation
+    logAudit({
+      action: 'SALE_CREATED',
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      companyId: auth.user.companyId,
+      branchId: validatedData.branchId,
+      details: `Sale created with receipt ${result.receiptNumber}, total: ${result.totalAmount}`,
+      ipAddress: reqInfo.ipAddress,
+      userAgent: reqInfo.userAgent,
     })
 
     return NextResponse.json({ success: true, data: result }, { status: 201 })

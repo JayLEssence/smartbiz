@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Loader2, CheckCircle2, Printer, Download, Receipt } from 'lucide-react'
 import { toast } from 'sonner'
+import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
 
 interface CheckoutDialogProps {
   open: boolean
@@ -73,7 +74,7 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
 
       const res = await fetch('/api/sales', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           userId: currentUser.id,
           items: saleItems,

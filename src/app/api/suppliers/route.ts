@@ -1,23 +1,38 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
+import { authenticateRequest, isManagerOrAbove, isCompanyAdmin } from '@/lib/auth'
+import { safeValidate, supplierCreateSchema, sanitizeString } from '@/lib/validation'
+import { logAudit, getRequestInfo } from '@/lib/audit-log'
 
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url)
-    const companyId = searchParams.get('companyId')
-    const search = searchParams.get('search') || ''
-    const includeInactive = searchParams.get('includeInactive') === 'true'
-
-    if (!companyId) {
+    // Authenticate request
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
       return NextResponse.json(
-        { success: false, error: 'Missing required field: companyId' },
-        { status: 400 }
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
       )
     }
 
+    // Only managers/admins can access supplier data
+    if (!isManagerOrAbove(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Access denied. Manager or Admin role required.' },
+        { status: 403 }
+      )
+    }
+
+    const { searchParams } = new URL(request.url)
+
+    // ALWAYS use authenticated user's companyId (tenant isolation)
+    const companyId = auth.user.companyId
+    const search = searchParams.get('search') || ''
+    const includeInactive = searchParams.get('includeInactive') === 'true'
+
     const where: Prisma.SupplierWhereInput = {
-      companyId,
+      companyId, // Enforce tenant isolation
     }
 
     if (!includeInactive) {
@@ -56,40 +71,69 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const { name, email, phone, address, companyId } = body
+    // Authenticate request
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      )
+    }
 
+    // Only admins can create suppliers
+    if (!isCompanyAdmin(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Access denied. Company Admin role required to create suppliers.' },
+        { status: 403 }
+      )
+    }
+
+    const reqInfo = getRequestInfo(request)
+    const body = await request.json()
+
+    // CRITICAL: ALWAYS override companyId with authenticated user's companyId (never trust request body)
+    const companyId = auth.user.companyId
+
+    // Validate input with Zod schema
+    const validation = safeValidate(supplierCreateSchema, body)
+    if (!validation.success) {
+      return NextResponse.json(
+        { success: false, error: 'Validation failed', details: validation.errors },
+        { status: 400 }
+      )
+    }
+
+    const validatedData = validation.data
+
+    // Sanitize string inputs
+    const name = sanitizeString(validatedData.name)
     if (!name) {
       return NextResponse.json(
-        { success: false, error: 'Missing required field: name' },
+        { success: false, error: 'Supplier name is required after sanitization' },
         { status: 400 }
-      )
-    }
-
-    if (!companyId) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required field: companyId' },
-        { status: 400 }
-      )
-    }
-
-    // Verify company exists
-    const company = await db.company.findUnique({ where: { id: companyId } })
-    if (!company) {
-      return NextResponse.json(
-        { success: false, error: 'Company not found' },
-        { status: 404 }
       )
     }
 
     const supplier = await db.supplier.create({
       data: {
         name,
-        email: email || null,
-        phone: phone || null,
-        address: address || null,
-        companyId,
+        email: validatedData.email ? sanitizeString(validatedData.email) : null,
+        phone: validatedData.phone ? sanitizeString(validatedData.phone) : null,
+        address: validatedData.address ? sanitizeString(validatedData.address) : null,
+        companyId, // Use auth-derived companyId, NEVER from request body
       },
+    })
+
+    // Audit log for supplier creation
+    logAudit({
+      action: 'SUPPLIER_CREATED',
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      companyId: auth.user.companyId,
+      branchId: auth.user.branchId,
+      details: `Supplier created: ${name}`,
+      ipAddress: reqInfo.ipAddress,
+      userAgent: reqInfo.userAgent,
     })
 
     return NextResponse.json({ success: true, data: supplier }, { status: 201 })

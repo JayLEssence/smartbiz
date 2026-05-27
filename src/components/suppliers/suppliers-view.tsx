@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useLanguage } from '@/lib/i18n/language-context'
+import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
 import { useAppStore } from '@/stores/app-store'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { toast } from 'sonner'
@@ -103,7 +104,8 @@ export function SuppliersView() {
       const params = new URLSearchParams({ includeInactive: String(showInactive) })
       if (companyId) params.set('companyId', companyId)
       if (searchQuery) params.set('search', searchQuery)
-      const res = await fetch(`/api/suppliers?${params.toString()}`)
+      const res = await fetch(`/api/suppliers?${params.toString()}`, { headers: getAuthHeaders() })
+      if (checkUnauthorized(res)) return
       const json = await res.json()
       if (json.success) {
         setSuppliers(json.data)
@@ -146,7 +148,7 @@ export function SuppliersView() {
     try {
       const res = await fetch('/api/suppliers', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: addForm.name.trim(),
           email: addForm.email.trim() || undefined,
@@ -182,7 +184,7 @@ export function SuppliersView() {
     try {
       const res = await fetch(`/api/suppliers/${selectedSupplier.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: editForm.name.trim(),
           email: editForm.email.trim() || null,
@@ -215,7 +217,9 @@ export function SuppliersView() {
     try {
       const res = await fetch(`/api/suppliers/${selectedSupplier.id}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(),
       })
+      if (checkUnauthorized(res)) return
       const json = await res.json()
 
       if (json.success) {

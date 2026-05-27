@@ -51,6 +51,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/stores/app-store'
+import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
 
 type TrendingType = 'up' | 'down' | 'stable' | 'new' | 'no-sales'
 
@@ -222,7 +223,8 @@ export function ProductList({ branchId, companyId, onRefresh }: ProductListProps
       if (companyId) params.set('companyId', companyId)
       if (branchId) params.set('branchId', branchId)
 
-      const res = await fetch(`/api/products?${params.toString()}`)
+      const res = await fetch(`/api/products?${params.toString()}`, { headers: getAuthHeaders() })
+      if (checkUnauthorized(res)) return
       const json = await res.json()
       if (json.success) {
         setProducts(json.data)
@@ -248,7 +250,8 @@ export function ProductList({ branchId, companyId, onRefresh }: ProductListProps
       const params = new URLSearchParams()
       params.set('productId', product.id)
       if (branchId) params.set('branchId', branchId)
-      const res = await fetch(`/api/inventory?${params.toString()}`)
+      const res = await fetch(`/api/inventory?${params.toString()}`, { headers: getAuthHeaders() })
+      if (checkUnauthorized(res)) return
       const json = await res.json()
       if (json.success) {
         setBatches(json.data)
@@ -267,7 +270,9 @@ export function ProductList({ branchId, companyId, onRefresh }: ProductListProps
     try {
       const res = await fetch(`/api/products/${deleteProduct.id}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(),
       })
+      if (checkUnauthorized(res)) return
       const json = await res.json()
       if (json.success) {
         toast.success('Product deactivated', {

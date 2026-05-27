@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
 
 interface Notification {
   id: string
@@ -72,8 +73,9 @@ export function AppHeader() {
       try {
         const params = new URLSearchParams({ companyId: currentCompany.id, unreadOnly: 'true' })
         if (currentBranchId) params.set('branchId', currentBranchId)
-        const res = await fetch(`/api/notifications?${params.toString()}`)
+        const res = await fetch(`/api/notifications?${params.toString()}`, { headers: getAuthHeaders() })
         const json = await res.json()
+        if (res.status === 401) { checkUnauthorized(res); return }
         if (json.success) {
           setNotifications(json.data || [])
           setUnreadCount(json.unreadCount || 0)
@@ -93,7 +95,7 @@ export function AppHeader() {
     try {
       await fetch('/api/notifications', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           action: 'markAllRead',
           companyId: currentCompany.id,

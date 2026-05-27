@@ -1,15 +1,42 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { authenticateRequest, isManagerOrAbove } from '@/lib/auth'
+import { safeValidate, productUpdateSchema, sanitizeString } from '@/lib/validation'
+import { logAudit, getRequestInfo } from '@/lib/audit-log'
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
     const { id } = await params
     const product = await db.product.findUnique({ where: { id } })
 
     if (!product) {
+      return NextResponse.json(
+        { success: false, error: 'Product not found' },
+        { status: 404 }
+      )
+    }
+
+    // Tenant isolation: verify product belongs to user's company
+    if (product.companyId !== auth.user.companyId) {
+      return NextResponse.json(
+        { success: false, error: 'Product not found' },
+        { status: 404 }
+      )
+    }
+
+    // Employees and managers can only see products from their own branch
+    if (auth.user.role !== 'CompanyAdmin' && product.branchId !== auth.user.branchId) {
       return NextResponse.json(
         { success: false, error: 'Product not found' },
         { status: 404 }
@@ -31,15 +58,67 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    if (!isManagerOrAbove(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Only managers and admins can update products' },
+        { status: 403 }
+      )
+    }
+
     const { id } = await params
     const body = await request.json()
-    const { name, sku, barcode, category, reorderThreshold, defaultSalePrice } = body
+
+    // Sanitize string inputs
+    const sanitizedBody = {
+      id,
+      name: body.name !== undefined ? sanitizeString(String(body.name)) : body.name,
+      sku: body.sku !== undefined ? sanitizeString(String(body.sku)) : body.sku,
+      barcode: body.barcode !== undefined ? (body.barcode ? sanitizeString(String(body.barcode)) : body.barcode) : body.barcode,
+      category: body.category !== undefined ? sanitizeString(String(body.category)) : body.category,
+      reorderThreshold: body.reorderThreshold,
+      defaultSalePrice: body.defaultSalePrice,
+      isActive: body.isActive,
+    }
+
+    // Validate input with Zod schema
+    const validation = safeValidate(productUpdateSchema, sanitizedBody)
+
+    if (!validation.success) {
+      return NextResponse.json(
+        { success: false, error: 'Validation failed', details: validation.errors },
+        { status: 400 }
+      )
+    }
 
     const existing = await db.product.findUnique({ where: { id } })
     if (!existing) {
       return NextResponse.json(
         { success: false, error: 'Product not found' },
         { status: 404 }
+      )
+    }
+
+    // Verify product belongs to user's company (tenant isolation)
+    if (existing.companyId !== auth.user.companyId) {
+      return NextResponse.json(
+        { success: false, error: 'Product not found' },
+        { status: 404 }
+      )
+    }
+
+    // Non-admin users can only update products in their own branch
+    if (auth.user.role !== 'CompanyAdmin' && existing.branchId !== auth.user.branchId) {
+      return NextResponse.json(
+        { success: false, error: 'You can only update products in your assigned branch' },
+        { status: 403 }
       )
     }
 
@@ -50,17 +129,31 @@ export async function PUT(
       category?: string
       reorderThreshold?: number
       defaultSalePrice?: number
+      isActive?: boolean
     } = {}
-    if (name !== undefined) updateData.name = name
-    if (sku !== undefined) updateData.sku = sku
-    if (barcode !== undefined) updateData.barcode = barcode
-    if (category !== undefined) updateData.category = category
-    if (reorderThreshold !== undefined) updateData.reorderThreshold = Number(reorderThreshold)
-    if (defaultSalePrice !== undefined) updateData.defaultSalePrice = Number(defaultSalePrice)
+    if (validation.data.name !== undefined) updateData.name = validation.data.name
+    if (validation.data.sku !== undefined) updateData.sku = validation.data.sku
+    if (validation.data.barcode !== undefined) updateData.barcode = validation.data.barcode
+    if (validation.data.category !== undefined) updateData.category = validation.data.category
+    if (validation.data.reorderThreshold !== undefined) updateData.reorderThreshold = validation.data.reorderThreshold
+    if (validation.data.defaultSalePrice !== undefined) updateData.defaultSalePrice = validation.data.defaultSalePrice
+    if (validation.data.isActive !== undefined) updateData.isActive = validation.data.isActive
 
     const product = await db.product.update({
       where: { id },
       data: updateData,
+    })
+
+    // Audit log
+    const reqInfo = getRequestInfo(request)
+    logAudit({
+      action: 'PRODUCT_UPDATED',
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      companyId: auth.user.companyId,
+      branchId: existing.branchId,
+      details: `Product "${existing.name}" (ID: ${id}) updated`,
+      ...reqInfo,
     })
 
     return NextResponse.json({ success: true, data: product })
@@ -81,10 +174,25 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    if (!isManagerOrAbove(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Only managers and admins can delete products' },
+        { status: 403 }
+      )
+    }
+
     const { id } = await params
 
     const existing = await db.product.findUnique({ where: { id } })
@@ -92,6 +200,22 @@ export async function DELETE(
       return NextResponse.json(
         { success: false, error: 'Product not found' },
         { status: 404 }
+      )
+    }
+
+    // Verify product belongs to user's company (tenant isolation)
+    if (existing.companyId !== auth.user.companyId) {
+      return NextResponse.json(
+        { success: false, error: 'Product not found' },
+        { status: 404 }
+      )
+    }
+
+    // Non-admin users can only delete products in their own branch
+    if (auth.user.role !== 'CompanyAdmin' && existing.branchId !== auth.user.branchId) {
+      return NextResponse.json(
+        { success: false, error: 'You can only delete products in your assigned branch' },
+        { status: 403 }
       )
     }
 
@@ -133,6 +257,18 @@ export async function DELETE(
     const product = await db.product.update({
       where: { id },
       data: { isActive: false },
+    })
+
+    // Audit log
+    const reqInfo = getRequestInfo(request)
+    logAudit({
+      action: 'PRODUCT_DELETED',
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      companyId: auth.user.companyId,
+      branchId: existing.branchId,
+      details: `Product "${existing.name}" (SKU: ${existing.sku}) deactivated (soft delete)`,
+      ...reqInfo,
     })
 
     return NextResponse.json({

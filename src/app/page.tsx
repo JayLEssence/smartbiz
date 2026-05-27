@@ -18,6 +18,7 @@ import { CustomersView } from '@/components/customers/customers-view'
 import { ExpensesView } from '@/components/expenses/expenses-view'
 import { ReportsView } from '@/components/reports/reports-view'
 import { AdminPanel } from '@/components/admin/admin-panel'
+import { SecurityView } from '@/components/security/security-view'
 import { OfflineBanner } from '@/components/layout/offline-banner'
 import { LanguageProvider, useLanguage } from '@/lib/i18n/language-context'
 
@@ -42,8 +43,19 @@ function HomeContent() {
     setCompany,
     setAuthenticated,
     setBranches,
+    setAuthToken,
+    logout,
   } = useAppStore()
   const [initializing, setInitializing] = useState(true)
+
+  // Listen for auth expiry events
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      logout()
+    }
+    window.addEventListener('auth:expired', handleAuthExpired)
+    return () => window.removeEventListener('auth:expired', handleAuthExpired)
+  }, [logout])
 
   // Initialize: try to restore session from localStorage
   useEffect(() => {
@@ -52,7 +64,7 @@ function HomeContent() {
         const stored = localStorage.getItem('smartbiz_session')
         if (stored) {
           const data = JSON.parse(stored)
-          if (data?.user) {
+          if (data?.user && data?.token) {
             const user = data.user
             const companyInfo: CompanyInfo = {
               id: user.company.id,
@@ -75,6 +87,8 @@ function HomeContent() {
               role: user.role,
               branchId: user.branchId,
               companyId: user.companyId,
+              twoFactorEnabled: user.twoFactorEnabled,
+              mustChangePassword: user.mustChangePassword,
               branch: {
                 id: user.branch.id,
                 name: user.branch.name,
@@ -88,9 +102,12 @@ function HomeContent() {
             setCurrentBranchId(user.branchId)
             setCompany(companyInfo)
             setAuthenticated(true)
+            setAuthToken(data.token)
 
-            // Fetch branches for this company
-            fetch(`/api/branches?companyId=${user.companyId}`)
+            // Fetch branches with auth token
+            fetch(`/api/branches?companyId=${user.companyId}`, {
+              headers: { 'Authorization': `Bearer ${data.token}` },
+            })
               .then((res) => res.json())
               .then((json) => {
                 if (json.success && json.data) {
@@ -115,7 +132,7 @@ function HomeContent() {
     }
 
     restoreSession()
-  }, [setUser, setCurrentBranchId, setCompany, setAuthenticated, setBranches])
+  }, [setUser, setCurrentBranchId, setCompany, setAuthenticated, setBranches, setAuthToken])
 
   // Set default view based on device and role
   useEffect(() => {
@@ -169,9 +186,27 @@ function HomeContent() {
       case 'admin':
         if (!isAdmin) return <AccessDenied message={t('common.onlyAdminAdmin')} />
         return <AdminPanel />
+      case 'security':
+        if (isEmployee) return <AccessDenied message="Only managers and admins can access security settings" />
+        return <SecurityView />
       default:
         return <DashboardView />
     }
+  }
+
+  if (initializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white animate-pulse">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
+            </svg>
+          </div>
+          <p className="text-sm text-muted-foreground">Loading SmartBiz...</p>
+        </div>
+      </div>
+    )
   }
 
   if (!isAuthenticated) {

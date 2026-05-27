@@ -18,6 +18,7 @@ import { toast } from 'sonner'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
+import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
 
 interface Product {
   id: string
@@ -56,7 +57,8 @@ export function ShrinkageView() {
       const params = new URLSearchParams()
       if (companyId) params.set('companyId', companyId)
       if (currentBranchId) params.set('branchId', currentBranchId)
-      const res = await fetch(`/api/products?${params.toString()}`)
+      const res = await fetch(`/api/products?${params.toString()}`, { headers: getAuthHeaders() })
+      if (checkUnauthorized(res)) return
       const json = await res.json()
       if (json.success) setProducts(json.data)
     } catch {
@@ -73,7 +75,8 @@ export function ShrinkageView() {
       if (dateFrom) params.set('from', new Date(dateFrom).toISOString())
       if (dateTo) params.set('to', new Date(dateTo).toISOString())
 
-      const res = await fetch(`/api/shrinkage?${params.toString()}`)
+      const res = await fetch(`/api/shrinkage?${params.toString()}`, { headers: getAuthHeaders() })
+      if (checkUnauthorized(res)) return
       const json = await res.json()
       if (json.success) {
         setRecords(json.data)
@@ -106,7 +109,7 @@ export function ShrinkageView() {
     try {
       const res = await fetch('/api/shrinkage', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           productId: selectedProductId,
           quantityLost: parseInt(quantityLost),

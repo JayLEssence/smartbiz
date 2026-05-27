@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { getAuthHeaders } from '@/lib/auth-fetch'
 
 interface BestSellerData {
   productId: string
@@ -45,7 +46,8 @@ export function BestSellersChart({ branchId, companyId }: BestSellersChartProps)
       if (companyId) params.set('companyId', companyId)
       if (branchId) params.set('branchId', branchId)
       const res = await fetch(
-        `/api/analytics/best-sellers?${params.toString()}`
+        `/api/analytics/best-sellers?${params.toString()}`,
+        { headers: getAuthHeaders() }
       )
       const json = await res.json()
       if (json.success) {

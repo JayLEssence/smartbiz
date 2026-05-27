@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useLanguage } from '@/lib/i18n/language-context'
 import { useAppStore } from '@/stores/app-store'
+import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
@@ -106,7 +107,8 @@ export function BranchesView() {
     try {
       const params = new URLSearchParams({ includeInactive: String(showInactive) })
       if (companyId) params.set('companyId', companyId)
-      const res = await fetch(`/api/branches?${params.toString()}`)
+      const res = await fetch(`/api/branches?${params.toString()}`, { headers: getAuthHeaders() })
+      if (checkUnauthorized(res)) return
       const json = await res.json()
       if (json.success) {
         setBranches(json.data)
@@ -149,7 +151,7 @@ export function BranchesView() {
     try {
       const res = await fetch('/api/branches', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: addForm.name.trim(),
           code: addForm.code.trim(),
@@ -186,7 +188,7 @@ export function BranchesView() {
     try {
       const res = await fetch(`/api/branches/${selectedBranch.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: editForm.name.trim(),
           address: editForm.address.trim() || null,
@@ -218,7 +220,9 @@ export function BranchesView() {
     try {
       const res = await fetch(`/api/branches/${selectedBranch.id}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(),
       })
+      if (checkUnauthorized(res)) return
       const json = await res.json()
 
       if (json.success) {

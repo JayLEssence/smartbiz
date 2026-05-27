@@ -1,18 +1,50 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
+import { authenticateRequest, isManagerOrAbove } from '@/lib/auth'
+import { safeValidate, productCreateSchema, productUpdateSchema, sanitizeString } from '@/lib/validation'
+import { logAudit, getRequestInfo } from '@/lib/audit-log'
 
 export async function GET(request: Request) {
   try {
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
     const category = searchParams.get('category')
     const lowStock = searchParams.get('lowStock') === 'true'
     const branchId = searchParams.get('branchId')
-    const companyId = searchParams.get('companyId')
     const includeInactive = searchParams.get('includeInactive') === 'true'
 
     const where: Prisma.ProductWhereInput = {}
+
+    // Tenant isolation: always filter by authenticated user's companyId
+    where.companyId = auth.user.companyId
+
+    // For employees and managers, restrict to their own branch unless they are admin
+    if (auth.user.role !== 'CompanyAdmin') {
+      // Employees and managers can only see their branch's products
+      // But managers can optionally request other branches within the company
+      if (branchId && branchId !== auth.user.branchId) {
+        // Non-admin trying to access another branch - deny
+        return NextResponse.json(
+          { success: false, error: 'You can only view products for your assigned branch' },
+          { status: 403 }
+        )
+      }
+      where.branchId = auth.user.branchId
+    } else {
+      // Admin can filter by any branch within their company
+      if (branchId) {
+        where.branchId = branchId
+      }
+    }
 
     if (search) {
       where.OR = [
@@ -24,14 +56,6 @@ export async function GET(request: Request) {
 
     if (category) {
       where.category = category
-    }
-
-    if (branchId) {
-      where.branchId = branchId
-    }
-
-    if (companyId) {
-      where.companyId = companyId
     }
 
     if (!includeInactive) {
@@ -59,10 +83,15 @@ export async function GET(request: Request) {
 
     const productIds = result.map((p) => p.id)
 
-    // Build sale filter with companyId support
-    const saleFilterBase: Prisma.SaleWhereInput = {}
-    if (branchId) saleFilterBase.branchId = branchId
-    if (companyId) saleFilterBase.companyId = companyId
+    // Build sale filter with companyId from auth
+    const saleFilterBase: Prisma.SaleWhereInput = {
+      companyId: auth.user.companyId,
+    }
+    if (auth.user.role !== 'CompanyAdmin') {
+      saleFilterBase.branchId = auth.user.branchId
+    } else if (branchId) {
+      saleFilterBase.branchId = branchId
+    }
 
     // Get sale items for last 7 days
     const recentSaleItems = await db.saleItem.findMany({
@@ -133,32 +162,59 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    if (!isManagerOrAbove(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Only managers and admins can create products' },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
-    const { name, sku, barcode, category, currentStockLevel, reorderThreshold, defaultSalePrice, branchId, companyId } = body
+    const { name, sku, barcode, category, currentStockLevel, reorderThreshold, defaultSalePrice, branchId } = body
 
-    if (!name || !sku || !category || currentStockLevel === undefined || reorderThreshold === undefined || defaultSalePrice === undefined) {
+    // NEVER trust companyId from request - always use auth.user.companyId
+    const companyId = auth.user.companyId
+
+    // Validate input with Zod schema
+    const validation = safeValidate(productCreateSchema, {
+      name: name ? sanitizeString(String(name)) : name,
+      sku: sku ? sanitizeString(String(sku)) : sku,
+      barcode: barcode ? sanitizeString(String(barcode)) : barcode,
+      category: category ? sanitizeString(String(category)) : category,
+      currentStockLevel,
+      reorderThreshold,
+      defaultSalePrice,
+      branchId,
+      companyId,
+    })
+
+    if (!validation.success) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: name, sku, category, currentStockLevel, reorderThreshold, defaultSalePrice' },
+        { success: false, error: 'Validation failed', details: validation.errors },
         { status: 400 }
       )
     }
 
-    if (!branchId) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required field: branchId' },
-        { status: 400 }
-      )
-    }
+    const validatedData = validation.data
 
-    if (!companyId) {
+    // Non-admin users can only create products in their own branch
+    if (auth.user.role !== 'CompanyAdmin' && validatedData.branchId !== auth.user.branchId) {
       return NextResponse.json(
-        { success: false, error: 'Missing required field: companyId' },
-        { status: 400 }
+        { success: false, error: 'You can only create products for your assigned branch' },
+        { status: 403 }
       )
     }
 
     // Validate branch belongs to the same company
-    const branch = await db.branch.findUnique({ where: { id: branchId } })
+    const branch = await db.branch.findUnique({ where: { id: validatedData.branchId } })
     if (!branch) {
       return NextResponse.json(
         { success: false, error: 'Branch not found' },
@@ -167,23 +223,35 @@ export async function POST(request: Request) {
     }
     if (branch.companyId !== companyId) {
       return NextResponse.json(
-        { success: false, error: 'Branch does not belong to the specified company' },
+        { success: false, error: 'Branch does not belong to your company' },
         { status: 400 }
       )
     }
 
     const product = await db.product.create({
       data: {
-        name,
-        sku,
-        barcode: barcode || null,
-        category,
-        currentStockLevel: Number(currentStockLevel),
-        reorderThreshold: Number(reorderThreshold),
-        defaultSalePrice: Number(defaultSalePrice),
-        branchId,
+        name: validatedData.name,
+        sku: validatedData.sku,
+        barcode: validatedData.barcode || null,
+        category: validatedData.category,
+        currentStockLevel: validatedData.currentStockLevel,
+        reorderThreshold: validatedData.reorderThreshold,
+        defaultSalePrice: validatedData.defaultSalePrice,
+        branchId: validatedData.branchId,
         companyId,
       },
+    })
+
+    // Audit log
+    const reqInfo = getRequestInfo(request)
+    logAudit({
+      action: 'PRODUCT_CREATED',
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      companyId: auth.user.companyId,
+      branchId: validatedData.branchId,
+      details: `Product "${validatedData.name}" (SKU: ${validatedData.sku}) created`,
+      ...reqInfo,
     })
 
     return NextResponse.json({ success: true, data: product }, { status: 201 })
@@ -204,8 +272,42 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    if (!isManagerOrAbove(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Only managers and admins can update products' },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
-    const { id, name, sku, barcode, category, reorderThreshold, defaultSalePrice } = body
+
+    // Validate input with Zod schema
+    const sanitizedBody = {
+      ...body,
+      name: body.name !== undefined ? sanitizeString(String(body.name)) : body.name,
+      sku: body.sku !== undefined ? sanitizeString(String(body.sku)) : body.sku,
+      barcode: body.barcode !== undefined ? (body.barcode ? sanitizeString(String(body.barcode)) : body.barcode) : body.barcode,
+      category: body.category !== undefined ? sanitizeString(String(body.category)) : body.category,
+    }
+
+    const validation = safeValidate(productUpdateSchema, sanitizedBody)
+
+    if (!validation.success) {
+      return NextResponse.json(
+        { success: false, error: 'Validation failed', details: validation.errors },
+        { status: 400 }
+      )
+    }
+
+    const { id } = validation.data
 
     if (!id) {
       return NextResponse.json(
@@ -222,6 +324,22 @@ export async function PUT(request: Request) {
       )
     }
 
+    // Verify product belongs to user's company (tenant isolation)
+    if (existing.companyId !== auth.user.companyId) {
+      return NextResponse.json(
+        { success: false, error: 'Product not found' },
+        { status: 404 }
+      )
+    }
+
+    // Non-admin users can only update products in their own branch
+    if (auth.user.role !== 'CompanyAdmin' && existing.branchId !== auth.user.branchId) {
+      return NextResponse.json(
+        { success: false, error: 'You can only update products in your assigned branch' },
+        { status: 403 }
+      )
+    }
+
     const updateData: {
       name?: string
       sku?: string
@@ -229,17 +347,31 @@ export async function PUT(request: Request) {
       category?: string
       reorderThreshold?: number
       defaultSalePrice?: number
+      isActive?: boolean
     } = {}
-    if (name !== undefined) updateData.name = name
-    if (sku !== undefined) updateData.sku = sku
-    if (barcode !== undefined) updateData.barcode = barcode
-    if (category !== undefined) updateData.category = category
-    if (reorderThreshold !== undefined) updateData.reorderThreshold = Number(reorderThreshold)
-    if (defaultSalePrice !== undefined) updateData.defaultSalePrice = Number(defaultSalePrice)
+    if (validation.data.name !== undefined) updateData.name = validation.data.name
+    if (validation.data.sku !== undefined) updateData.sku = validation.data.sku
+    if (validation.data.barcode !== undefined) updateData.barcode = validation.data.barcode
+    if (validation.data.category !== undefined) updateData.category = validation.data.category
+    if (validation.data.reorderThreshold !== undefined) updateData.reorderThreshold = validation.data.reorderThreshold
+    if (validation.data.defaultSalePrice !== undefined) updateData.defaultSalePrice = validation.data.defaultSalePrice
+    if (validation.data.isActive !== undefined) updateData.isActive = validation.data.isActive
 
     const product = await db.product.update({
       where: { id },
       data: updateData,
+    })
+
+    // Audit log
+    const reqInfo = getRequestInfo(request)
+    logAudit({
+      action: 'PRODUCT_UPDATED',
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      companyId: auth.user.companyId,
+      branchId: existing.branchId,
+      details: `Product "${existing.name}" (ID: ${id}) updated`,
+      ...reqInfo,
     })
 
     return NextResponse.json({ success: true, data: product })
@@ -260,6 +392,21 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    if (!isManagerOrAbove(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Only managers and admins can delete products' },
+        { status: 403 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
@@ -275,6 +422,22 @@ export async function DELETE(request: Request) {
       return NextResponse.json(
         { success: false, error: 'Product not found' },
         { status: 404 }
+      )
+    }
+
+    // Verify product belongs to user's company (tenant isolation)
+    if (existing.companyId !== auth.user.companyId) {
+      return NextResponse.json(
+        { success: false, error: 'Product not found' },
+        { status: 404 }
+      )
+    }
+
+    // Non-admin users can only delete products in their own branch
+    if (auth.user.role !== 'CompanyAdmin' && existing.branchId !== auth.user.branchId) {
+      return NextResponse.json(
+        { success: false, error: 'You can only delete products in your assigned branch' },
+        { status: 403 }
       )
     }
 
@@ -316,6 +479,18 @@ export async function DELETE(request: Request) {
     const product = await db.product.update({
       where: { id },
       data: { isActive: false },
+    })
+
+    // Audit log
+    const reqInfo = getRequestInfo(request)
+    logAudit({
+      action: 'PRODUCT_DELETED',
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      companyId: auth.user.companyId,
+      branchId: existing.branchId,
+      details: `Product "${existing.name}" (SKU: ${existing.sku}) deactivated (soft delete)`,
+      ...reqInfo,
     })
 
     return NextResponse.json({

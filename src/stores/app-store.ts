@@ -2,7 +2,7 @@
 
 import { create } from 'zustand'
 
-export type ViewType = 'pos' | 'inventory' | 'shrinkage' | 'dashboard' | 'analytics' | 'advisor' | 'branches' | 'admin' | 'expenses' | 'suppliers' | 'customers' | 'reports'
+export type ViewType = 'pos' | 'inventory' | 'shrinkage' | 'dashboard' | 'analytics' | 'advisor' | 'branches' | 'admin' | 'expenses' | 'suppliers' | 'customers' | 'reports' | 'security'
 
 export interface BranchInfo {
   id: string
@@ -33,6 +33,8 @@ export interface CurrentUser {
   role: string
   branchId: string
   companyId: string
+  twoFactorEnabled?: boolean
+  mustChangePassword?: boolean
   branch?: BranchInfo
   company?: CompanyInfo
 }
@@ -45,12 +47,14 @@ interface AppState {
   isAuthenticated: boolean
   sidebarOpen: boolean
   branches: BranchInfo[]
+  authToken: string | null
   setView: (view: ViewType) => void
   setUser: (user: CurrentUser | null) => void
   setCurrentBranchId: (branchId: string | null) => void
   setCompany: (company: CompanyInfo | null) => void
   setAuthenticated: (val: boolean) => void
   setBranches: (branches: BranchInfo[]) => void
+  setAuthToken: (token: string | null) => void
   toggleSidebar: () => void
   setSidebarOpen: (open: boolean) => void
   logout: () => void
@@ -64,6 +68,7 @@ export const useAppStore = create<AppState>((set) => ({
   isAuthenticated: false,
   sidebarOpen: false,
   branches: [],
+  authToken: null,
 
   setView: (view) => set({ currentView: view, sidebarOpen: false }),
   setUser: (user) => set((state) => {
@@ -81,11 +86,15 @@ export const useAppStore = create<AppState>((set) => ({
   setCompany: (company) => set({ currentCompany: company }),
   setAuthenticated: (val) => set({ isAuthenticated: val }),
   setBranches: (branches) => set({ branches }),
+  setAuthToken: (token) => set({ authToken: token }),
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   logout: () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('smartbiz_session')
+      // Clear auth cookies by setting them to expired
+      document.cookie = 'smartbiz_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;'
+      document.cookie = 'smartbiz_refresh=; path=/api/auth; expires=Thu, 01 Jan 1970 00:00:01 GMT;'
     }
     set({
       currentUser: null,
@@ -95,6 +104,7 @@ export const useAppStore = create<AppState>((set) => ({
       branches: [],
       currentView: 'pos',
       sidebarOpen: false,
+      authToken: null,
     })
   },
 }))

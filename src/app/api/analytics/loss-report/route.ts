@@ -1,17 +1,44 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
+import { authenticateRequest, isManagerOrAbove } from '@/lib/auth'
 
 export async function GET(request: Request) {
   try {
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 })
+    }
+
+    // Only managers and admins can access analytics
+    if (!isManagerOrAbove(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Insufficient permissions. Only managers and admins can access analytics.' },
+        { status: 403 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const from = searchParams.get('from')
     const to = searchParams.get('to')
     const reason = searchParams.get('reason')
-    const branchId = searchParams.get('branchId')
-    const companyId = searchParams.get('companyId')
 
-    const where: Prisma.ShrinkageWhereInput = {}
+    // SECURITY: Always use the authenticated user's companyId — never trust client-provided companyId
+    const companyId = auth.user.companyId
+
+    // Override branchId for non-admin users
+    let branchId: string | undefined
+    if (auth.user.role === 'CompanyAdmin') {
+      branchId = searchParams.get('branchId') || undefined
+    } else {
+      // Managers can only see their own branch
+      branchId = auth.user.branchId
+    }
+
+    const where: Prisma.ShrinkageWhereInput = {
+      branch: { companyId },
+    }
 
     if (from || to) {
       where.dateRecorded = {}
@@ -29,10 +56,6 @@ export async function GET(request: Request) {
 
     if (branchId) {
       where.branchId = branchId
-    }
-
-    if (companyId) {
-      where.branch = { companyId }
     }
 
     const shrinkages = await db.shrinkage.findMany({

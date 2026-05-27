@@ -1,19 +1,29 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
+import { authenticateRequest, isCompanyAdmin } from '@/lib/auth'
+import { safeValidate, branchCreateSchema, sanitizeString } from '@/lib/validation'
+import { logAudit, getRequestInfo } from '@/lib/audit-log'
 
 export async function GET(request: Request) {
   try {
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const includeInactive = searchParams.get('includeInactive') === 'true'
-    const companyId = searchParams.get('companyId')
 
-    const where: Prisma.BranchWhereInput = {}
+    // Always filter by authenticated user's companyId - never trust query params
+    const where: Prisma.BranchWhereInput = {
+      companyId: auth.user.companyId,
+    }
     if (!includeInactive) {
       where.isActive = true
-    }
-    if (companyId) {
-      where.companyId = companyId
     }
 
     const branches = await db.branch.findMany({
@@ -49,22 +59,37 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    // Only admins can create branches
+    if (!isCompanyAdmin(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Insufficient permissions. Company Admin role required.' },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
-    const { name, code, address, phone, isHeadOffice, companyId } = body
 
-    if (!name || !code) {
+    // Validate input with Zod schema
+    const validation = safeValidate(branchCreateSchema, body)
+    if (!validation.success) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: name, code' },
+        { success: false, error: 'Validation failed', details: validation.errors },
         { status: 400 }
       )
     }
 
-    if (!companyId) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required field: companyId' },
-        { status: 400 }
-      )
-    }
+    const { name, code, address, phone, isHeadOffice } = validation.data
+
+    // CRITICAL: Always use companyId from the authenticated token, never from request body
+    const companyId = auth.user.companyId
 
     // Verify company exists
     const company = await db.company.findUnique({ where: { id: companyId } })
@@ -83,10 +108,10 @@ export async function POST(request: Request) {
 
     const branch = await db.branch.create({
       data: {
-        name,
-        code: code.toUpperCase(),
-        address: address || null,
-        phone: phone || null,
+        name: sanitizeString(name),
+        code: sanitizeString(code).toUpperCase(),
+        address: address ? sanitizeString(address) : null,
+        phone: phone ? sanitizeString(phone) : null,
         isHeadOffice: shouldBeHeadOffice,
         companyId,
       },
@@ -98,6 +123,18 @@ export async function POST(request: Request) {
           },
         },
       },
+    })
+
+    // Audit log
+    const reqInfo = getRequestInfo(request)
+    logAudit({
+      action: 'BRANCH_CREATED',
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      companyId: auth.user.companyId,
+      branchId: branch.id,
+      details: `Created branch: ${branch.name} (${branch.code})`,
+      ...reqInfo,
     })
 
     return NextResponse.json({ success: true, data: branch }, { status: 201 })

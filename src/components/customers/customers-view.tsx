@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useLanguage } from '@/lib/i18n/language-context'
+import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
 import { useAppStore } from '@/stores/app-store'
 import { useCurrency } from '@/hooks/use-currency'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -143,7 +144,8 @@ export function CustomersView() {
       if (searchQuery.trim()) params.set('search', searchQuery.trim())
       if (showInactive) params.set('includeInactive', 'true')
 
-      const res = await fetch(`/api/customers?${params.toString()}`)
+      const res = await fetch(`/api/customers?${params.toString()}`, { headers: getAuthHeaders() })
+      if (checkUnauthorized(res)) return
       const json = await res.json()
       if (json.success) {
         setCustomers(json.data)
@@ -196,7 +198,7 @@ export function CustomersView() {
     try {
       const res = await fetch('/api/customers', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: addForm.name.trim(),
           email: addForm.email.trim() || undefined,
@@ -234,7 +236,7 @@ export function CustomersView() {
     try {
       const res = await fetch(`/api/customers/${selectedCustomer.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: editForm.name.trim(),
           email: editForm.email.trim() || null,
@@ -268,7 +270,9 @@ export function CustomersView() {
     try {
       const res = await fetch(`/api/customers/${selectedCustomer.id}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(),
       })
+      if (checkUnauthorized(res)) return
       const json = await res.json()
 
       if (json.success) {

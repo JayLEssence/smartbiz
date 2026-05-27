@@ -573,6 +573,7 @@ export const t: TranslationDict = {
   'sidebar.suppliers': { en: 'Suppliers', sw: 'Wauzaji' },
   'sidebar.customers': { en: 'Customers', sw: 'Wateja' },
   'sidebar.reports': { en: 'Reports', sw: 'Ripoti' },
+  'sidebar.security': { en: 'Security', sw: 'Usalama' },
 
   // ============ NEW HEADER KEYS ============
   'header.expenseTracking': { en: 'Expense Tracking', sw: 'Ufuatiliaji wa Matumizi' },

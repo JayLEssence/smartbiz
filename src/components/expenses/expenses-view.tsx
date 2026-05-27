@@ -49,6 +49,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore } from '@/stores/app-store'
 import { useCurrency } from '@/hooks/use-currency'
 import { useLanguage } from '@/lib/i18n/language-context'
+import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
 
 const EXPENSE_CATEGORIES = ['Rent', 'Utilities', 'Salaries', 'Transport', 'Supplies', 'Maintenance', 'Other'] as const
 type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
@@ -167,7 +168,8 @@ export function ExpensesView() {
       params.set('limit', String(pagination.limit))
       params.set('offset', String(page * pagination.limit))
 
-      const res = await fetch(`/api/expenses?${params.toString()}`)
+      const res = await fetch(`/api/expenses?${params.toString()}`, { headers: getAuthHeaders() })
+      if (checkUnauthorized(res)) return
       const json: ExpenseListResponse = await res.json()
       if (json.success) {
         setExpenses(json.data)
@@ -229,7 +231,7 @@ export function ExpensesView() {
         // Update
         const res = await fetch(`/api/expenses/${editingExpense.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             category: formData.category,
             description: formData.description,
@@ -250,7 +252,7 @@ export function ExpensesView() {
         // Create
         const res = await fetch('/api/expenses', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             category: formData.category,
             description: formData.description,
@@ -285,7 +287,8 @@ export function ExpensesView() {
     if (!deleteTarget) return
     setDeleting(true)
     try {
-      const res = await fetch(`/api/expenses/${deleteTarget.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/expenses/${deleteTarget.id}`, { method: 'DELETE', headers: getAuthHeaders() })
+      if (checkUnauthorized(res)) return
       const json = await res.json()
       if (json.success) {
         toast.success('Expense deleted successfully')

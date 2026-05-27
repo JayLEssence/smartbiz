@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useAppStore, type CompanyInfo } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
-import { Store, Building2, User, Mail, Lock, Phone, MapPin, Loader2, ArrowRight, CheckCircle2, Users, Hash, ShieldCheck, FileText, ShoppingCart, Package, BarChart3 } from 'lucide-react'
+import { Store, Building2, User, Mail, Lock, Phone, MapPin, Loader2, ArrowRight, CheckCircle2, Users, Hash, ShieldCheck, ShoppingCart, Package, BarChart3, Eye, EyeOff, Shield, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -26,6 +26,70 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
+// Password strength checker (matching backend logic)
+function checkPasswordStrength(password: string): { score: number; label: string; color: string; feedback: string[] } {
+  const feedback: string[] = []
+  let score = 0
+
+  if (password.length >= 8) score++
+  if (password.length >= 12) score++
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++
+  if (/\d/.test(password)) score++
+  if (/[^a-zA-Z0-9]/.test(password)) score++
+
+  if (password.length < 8) feedback.push('8+ characters')
+  if (!/[a-z]/.test(password) || !/[A-Z]/.test(password)) feedback.push('Mix cases')
+  if (!/\d/.test(password)) feedback.push('Add numbers')
+  if (!/[^a-zA-Z0-9]/.test(password)) feedback.push('Add symbols')
+
+  const labels = ['Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong']
+  const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-emerald-500', 'bg-emerald-600']
+  const textColors = ['text-red-500', 'text-orange-500', 'text-yellow-500', 'text-emerald-500', 'text-emerald-600']
+
+  return {
+    score: password.length === 0 ? -1 : Math.min(score, 4),
+    label: labels[Math.min(Math.max(score, 0), 4)],
+    color: colors[Math.min(Math.max(score, 0), 4)],
+    feedback,
+    _textColors: textColors,
+  }
+}
+
+function PasswordStrengthBar({ password }: { password: string }) {
+  const strength = checkPasswordStrength(password)
+  if (strength.score < 0) return null
+
+  return (
+    <div className="mt-1.5 space-y-1">
+      <div className="flex gap-1">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div
+            key={i}
+            className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+              i <= strength.score ? strength.color : 'bg-muted'
+            }`}
+          />
+        ))}
+      </div>
+      <div className="flex items-center justify-between">
+        <span className={`text-[10px] font-medium ${
+          strength.score <= 1 ? 'text-red-500' :
+          strength.score === 2 ? 'text-orange-500' :
+          strength.score === 3 ? 'text-emerald-500' :
+          'text-emerald-600'
+        }`}>
+          {strength.label}
+        </span>
+        {strength.feedback.length > 0 && strength.score < 3 && (
+          <span className="text-[10px] text-muted-foreground">
+            Need: {strength.feedback.join(' · ')}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 interface SessionData {
   user: {
     id: string
@@ -34,6 +98,8 @@ interface SessionData {
     role: string
     branchId: string
     companyId: string
+    twoFactorEnabled?: boolean
+    mustChangePassword?: boolean
     branch: {
       id: string
       name: string
@@ -50,27 +116,35 @@ interface SessionData {
       address: string | null
       logoUrl: string | null
       isActive: boolean
+      currency?: string
+      currencySymbol?: string
+      country?: string
+      exchangeRate?: number
     }
   }
   token: string
+  refreshToken?: string
 }
 
 export function AuthPage() {
   const { t } = useLanguage()
-  const { setUser, setCurrentBranchId, setCompany, setAuthenticated, setBranches } = useAppStore()
+  const { setUser, setCurrentBranchId, setCompany, setAuthenticated, setBranches, setAuthToken } = useAppStore()
 
   // Login state
   const [loginEmail, setLoginEmail] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
   const [loginLoading, setLoginLoading] = useState(false)
+  const [showLoginPassword, setShowLoginPassword] = useState(false)
+  const [loginAttemptsLeft, setLoginAttemptsLeft] = useState<number | null>(null)
 
-  // Join state (employee self-registration)
+  // Join state
   const [joinName, setJoinName] = useState('')
   const [joinEmail, setJoinEmail] = useState('')
   const [joinPassword, setJoinPassword] = useState('')
   const [joinConfirmPassword, setJoinConfirmPassword] = useState('')
   const [joinBranchCode, setJoinBranchCode] = useState('')
   const [joinLoading, setJoinLoading] = useState(false)
+  const [showJoinPassword, setShowJoinPassword] = useState(false)
 
   // Register state
   const [regCompanyName, setRegCompanyName] = useState('')
@@ -83,6 +157,7 @@ export function AuthPage() {
   const [regPassword, setRegPassword] = useState('')
   const [regConfirmPassword, setRegConfirmPassword] = useState('')
   const [regLoading, setRegLoading] = useState(false)
+  const [showRegPassword, setShowRegPassword] = useState(false)
 
   const [activeTab, setActiveTab] = useState('login')
   const [tosOpen, setTosOpen] = useState(false)
@@ -95,7 +170,7 @@ export function AuthPage() {
     { value: 'Other', label: t('auth.other') },
   ]
 
-  const saveSessionAndLogin = (data: SessionData) => {
+  const saveSessionAndLogin = useCallback((data: SessionData) => {
     const user = data.user
     const companyInfo: CompanyInfo = {
       id: user.company.id,
@@ -118,6 +193,8 @@ export function AuthPage() {
       role: user.role,
       branchId: user.branchId,
       companyId: user.companyId,
+      twoFactorEnabled: user.twoFactorEnabled,
+      mustChangePassword: user.mustChangePassword,
       branch: {
         id: user.branch.id,
         name: user.branch.name,
@@ -130,13 +207,17 @@ export function AuthPage() {
     setCurrentBranchId(user.branchId)
     setCompany(companyInfo)
     setAuthenticated(true)
+    setAuthToken(data.token)
 
     localStorage.setItem('smartbiz_session', JSON.stringify(data))
-  }
+  }, [setUser, setCurrentBranchId, setCompany, setAuthenticated, setAuthToken])
 
-  const fetchBranches = async (companyId: string) => {
+  const fetchBranches = useCallback(async (companyId: string) => {
     try {
-      const res = await fetch(`/api/branches?companyId=${companyId}`)
+      const token = JSON.parse(localStorage.getItem('smartbiz_session') || '{}')?.token
+      const res = await fetch(`/api/branches?companyId=${companyId}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      })
       const json = await res.json()
       if (json.success && json.data) {
         const branches = json.data.map((b: { id: string; name: string; code: string; isHeadOffice: boolean; isActive: boolean }) => ({
@@ -151,7 +232,7 @@ export function AuthPage() {
     } catch {
       // ignore
     }
-  }
+  }, [setBranches])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -162,6 +243,7 @@ export function AuthPage() {
     }
 
     setLoginLoading(true)
+    setLoginAttemptsLeft(null)
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
@@ -171,7 +253,16 @@ export function AuthPage() {
       const json = await res.json()
 
       if (!json.success) {
-        toast.error(json.error || 'Login failed')
+        // Check if there are attempts left info
+        if (json.error?.includes('attempts remaining')) {
+          const match = json.error.match(/(\d+) attempts remaining/)
+          if (match) setLoginAttemptsLeft(parseInt(match[1]))
+        }
+        if (res.status === 423) {
+          toast.error('Account locked. Too many failed attempts. Try again in 15 minutes.', { duration: 8000 })
+        } else {
+          toast.error(json.error || 'Login failed')
+        }
         return
       }
 
@@ -198,8 +289,9 @@ export function AuthPage() {
       return
     }
 
-    if (joinPassword.length < 6) {
-      toast.error(t('auth.passwordMinLength'))
+    const strength = checkPasswordStrength(joinPassword)
+    if (strength.score < 2) {
+      toast.error('Password is too weak. Please use a stronger password.')
       return
     }
 
@@ -245,8 +337,9 @@ export function AuthPage() {
       return
     }
 
-    if (regPassword.length < 6) {
-      toast.error(t('auth.passwordMinLength'))
+    const strength = checkPasswordStrength(regPassword)
+    if (strength.score < 2) {
+      toast.error('Password is too weak. Please use a stronger password.')
       return
     }
 
@@ -273,6 +366,7 @@ export function AuthPage() {
         return
       }
 
+      // Auto-login after registration
       const loginRes = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -334,6 +428,7 @@ export function AuthPage() {
                         onChange={(e) => setLoginEmail(e.target.value)}
                         className="pl-9"
                         disabled={loginLoading}
+                        autoComplete="email"
                       />
                     </div>
                   </div>
@@ -343,15 +438,34 @@ export function AuthPage() {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="login-password"
-                        type="password"
+                        type={showLoginPassword ? 'text' : 'password'}
                         placeholder={t('auth.passwordPlaceholder')}
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
-                        className="pl-9"
+                        className="pl-9 pr-10"
                         disabled={loginLoading}
+                        autoComplete="current-password"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowLoginPassword(!showLoginPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        tabIndex={-1}
+                      >
+                        {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
                     </div>
                   </div>
+
+                  {loginAttemptsLeft !== null && loginAttemptsLeft > 0 && loginAttemptsLeft <= 3 && (
+                    <div className="flex items-center gap-2 rounded-lg bg-orange-50 dark:bg-orange-950/30 p-2.5">
+                      <AlertTriangle className="h-4 w-4 text-orange-600 shrink-0" />
+                      <p className="text-xs text-orange-700 dark:text-orange-400">
+                        {loginAttemptsLeft} attempts remaining before account lockout
+                      </p>
+                    </div>
+                  )}
+
                   <Button
                     type="submit"
                     className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -370,6 +484,7 @@ export function AuthPage() {
                     )}
                   </Button>
 
+                  {/* Quick Tips */}
                   <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-3 mt-4 space-y-2">
                     <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">{t('auth.quickTips')}</p>
                     <div className="grid grid-cols-3 gap-2">
@@ -467,6 +582,7 @@ export function AuthPage() {
                           onChange={(e) => setJoinEmail(e.target.value)}
                           className="pl-9"
                           disabled={joinLoading}
+                          autoComplete="email"
                         />
                       </div>
                     </div>
@@ -480,14 +596,24 @@ export function AuthPage() {
                           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input
                             id="join-password"
-                            type="password"
+                            type={showJoinPassword ? 'text' : 'password'}
                             placeholder={t('auth.minChars')}
                             value={joinPassword}
                             onChange={(e) => setJoinPassword(e.target.value)}
-                            className="pl-9"
+                            className="pl-9 pr-10"
                             disabled={joinLoading}
+                            autoComplete="new-password"
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowJoinPassword(!showJoinPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            tabIndex={-1}
+                          >
+                            {showJoinPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
                         </div>
+                        <PasswordStrengthBar password={joinPassword} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="join-confirm-password">
@@ -503,8 +629,12 @@ export function AuthPage() {
                             onChange={(e) => setJoinConfirmPassword(e.target.value)}
                             className="pl-9"
                             disabled={joinLoading}
+                            autoComplete="new-password"
                           />
                         </div>
+                        {joinConfirmPassword && joinPassword && joinConfirmPassword !== joinPassword && (
+                          <p className="text-[10px] text-destructive">Passwords don&apos;t match</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -672,6 +802,7 @@ export function AuthPage() {
                           onChange={(e) => setRegAdminEmail(e.target.value)}
                           className="pl-9"
                           disabled={regLoading}
+                          autoComplete="email"
                         />
                       </div>
                     </div>
@@ -685,14 +816,24 @@ export function AuthPage() {
                           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input
                             id="reg-password"
-                            type="password"
+                            type={showRegPassword ? 'text' : 'password'}
                             placeholder={t('auth.minChars')}
                             value={regPassword}
                             onChange={(e) => setRegPassword(e.target.value)}
-                            className="pl-9"
+                            className="pl-9 pr-10"
                             disabled={regLoading}
+                            autoComplete="new-password"
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowRegPassword(!showRegPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            tabIndex={-1}
+                          >
+                            {showRegPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
                         </div>
+                        <PasswordStrengthBar password={regPassword} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="reg-confirm-password">
@@ -708,8 +849,12 @@ export function AuthPage() {
                             onChange={(e) => setRegConfirmPassword(e.target.value)}
                             className="pl-9"
                             disabled={regLoading}
+                            autoComplete="new-password"
                           />
                         </div>
+                        {regConfirmPassword && regPassword && regConfirmPassword !== regPassword && (
+                          <p className="text-[10px] text-destructive">Passwords don&apos;t match</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -737,8 +882,14 @@ export function AuthPage() {
           </Tabs>
         </Card>
 
+        {/* Security Badge */}
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <Shield className="h-3.5 w-3.5 text-emerald-600" />
+          <span className="text-[11px] text-muted-foreground">Bank-grade encryption · JWT authentication · Account lockout protection</span>
+        </div>
+
         {/* Footer */}
-        <div className="text-center mt-6 space-y-2">
+        <div className="text-center mt-3 space-y-2">
           <p className="text-xs text-muted-foreground">
             {t('auth.termsNotice')}
           </p>
@@ -789,7 +940,42 @@ export function AuthPage() {
               <h4 className="text-sm font-semibold mb-1">{t('auth.termsChanges')}</h4>
               <p className="text-xs text-muted-foreground">{t('auth.termsChangesDesc')}</p>
             </div>
-            {/* Demo Accounts Section */}
+
+            {/* Security Information Section */}
+            <div className="pt-2 border-t">
+              <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                <Shield className="h-4 w-4 text-emerald-600" />
+                Security & Privacy
+              </h4>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600 mt-0.5 shrink-0" />
+                  <span>Passwords are encrypted with bcrypt (12 salt rounds) and never stored in plain text</span>
+                </div>
+                <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600 mt-0.5 shrink-0" />
+                  <span>All API requests are authenticated with JWT tokens (24-hour expiry)</span>
+                </div>
+                <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600 mt-0.5 shrink-0" />
+                  <span>Account lockout after 5 failed login attempts (15-minute cooldown)</span>
+                </div>
+                <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600 mt-0.5 shrink-0" />
+                  <span>Rate limiting on all endpoints to prevent brute force attacks</span>
+                </div>
+                <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600 mt-0.5 shrink-0" />
+                  <span>Complete audit logging of all sensitive operations</span>
+                </div>
+                <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600 mt-0.5 shrink-0" />
+                  <span>Tenant isolation - your data is never shared between companies</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Demo Accounts Section - moved from login page */}
             <div className="pt-2 border-t">
               <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
                 <Store className="h-4 w-4 text-emerald-600" />

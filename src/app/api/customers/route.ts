@@ -1,20 +1,38 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
+import { authenticateRequest, isManagerOrAbove } from '@/lib/auth'
+import { safeValidate, customerCreateSchema, sanitizeString } from '@/lib/validation'
+import { logAudit, getRequestInfo } from '@/lib/audit-log'
 
 export async function GET(request: Request) {
   try {
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    // Only managers/admins can access customers
+    if (!isManagerOrAbove(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Insufficient permissions. Manager or Admin role required.' },
+        { status: 403 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
-    const companyId = searchParams.get('companyId')
     const branchId = searchParams.get('branchId')
     const search = searchParams.get('search')
     const includeInactive = searchParams.get('includeInactive') === 'true'
 
-    const where: Prisma.CustomerWhereInput = {}
-
-    if (companyId) {
-      where.companyId = companyId
+    // Always filter by authenticated user's companyId - never trust query params
+    const where: Prisma.CustomerWhereInput = {
+      companyId: auth.user.companyId,
     }
+
     if (branchId) {
       where.branchId = branchId
     }
@@ -67,57 +85,59 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    // Only managers/admins can create customers
+    if (!isManagerOrAbove(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Insufficient permissions. Manager or Admin role required.' },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
-    const { name, email, phone, address, creditLimit, branchId, companyId } = body
 
-    if (!name) {
+    // Validate input with Zod schema
+    const validation = safeValidate(customerCreateSchema, body)
+    if (!validation.success) {
       return NextResponse.json(
-        { success: false, error: 'Missing required field: name' },
+        { success: false, error: 'Validation failed', details: validation.errors },
         { status: 400 }
       )
     }
 
-    if (!branchId) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required field: branchId' },
-        { status: 400 }
-      )
-    }
+    const { name, email, phone, address, loyaltyPoints, creditBalance, creditLimit, branchId } = validation.data
 
-    if (!companyId) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required field: companyId' },
-        { status: 400 }
-      )
-    }
+    // CRITICAL: Always use companyId from the authenticated token, never from request body
+    const companyId = auth.user.companyId
 
-    // Verify company exists
-    const company = await db.company.findUnique({ where: { id: companyId } })
-    if (!company) {
-      return NextResponse.json(
-        { success: false, error: 'Company not found' },
-        { status: 404 }
-      )
-    }
-
-    // Verify branch exists and belongs to company
+    // Verify branch exists and belongs to the user's company
     const branch = await db.branch.findFirst({
       where: { id: branchId, companyId },
     })
     if (!branch) {
       return NextResponse.json(
-        { success: false, error: 'Branch not found or does not belong to this company' },
+        { success: false, error: 'Branch not found or does not belong to your company' },
         { status: 404 }
       )
     }
 
+    // Sanitize all string inputs
     const customer = await db.customer.create({
       data: {
-        name: name.trim(),
-        email: email?.trim() || null,
-        phone: phone?.trim() || null,
-        address: address?.trim() || null,
-        creditLimit: typeof creditLimit === 'number' ? creditLimit : 0,
+        name: sanitizeString(name),
+        email: email ? sanitizeString(email) : null,
+        phone: phone ? sanitizeString(phone) : null,
+        address: address ? sanitizeString(address) : null,
+        loyaltyPoints: loyaltyPoints ?? 0,
+        creditBalance: creditBalance ?? 0,
+        creditLimit: creditLimit ?? 0,
         branchId,
         companyId,
       },
@@ -130,6 +150,18 @@ export async function POST(request: Request) {
           },
         },
       },
+    })
+
+    // Audit log
+    const reqInfo = getRequestInfo(request)
+    logAudit({
+      action: 'CUSTOMER_CREATED',
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      companyId: auth.user.companyId,
+      branchId: auth.user.branchId,
+      details: `Created customer: ${customer.name} (${customer.id})`,
+      ...reqInfo,
     })
 
     return NextResponse.json({ success: true, data: customer }, { status: 201 })

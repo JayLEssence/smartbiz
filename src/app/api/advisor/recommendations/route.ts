@@ -2,6 +2,8 @@ import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import ZAI from 'z-ai-web-dev-sdk'
+import { authenticateRequest, isCompanyAdmin } from '@/lib/auth'
+import { logAudit, getRequestInfo } from '@/lib/audit-log'
 
 interface Recommendation {
   type: 'reorder' | 'pricing' | 'discount' | 'general'
@@ -69,13 +71,44 @@ function generateRuleBasedRecommendations(
 
 export async function GET(request: Request) {
   try {
+    // Authenticate the request
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 })
+    }
+
+    // Only admins can access the AI advisor
+    if (!isCompanyAdmin(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Insufficient permissions. Only company admins can access the AI advisor.' },
+        { status: 403 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
-    const branchId = searchParams.get('branchId')
-    const companyId = searchParams.get('companyId')
+
+    // SECURITY: Always use the authenticated user's companyId — never trust client-provided companyId
+    const companyId = auth.user.companyId
+
+    // Admins can optionally filter by branch
+    const branchId = searchParams.get('branchId') || undefined
+
+    // Audit log for sensitive AI advisor access
+    const reqInfo = getRequestInfo(request)
+    logAudit({
+      action: 'SUSPICIOUS_ACTIVITY' as never,
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      companyId: auth.user.companyId,
+      branchId: auth.user.branchId,
+      details: `AI Advisor recommendations accessed, branchId=${branchId || 'all'}`,
+      ipAddress: reqInfo.ipAddress,
+      userAgent: reqInfo.userAgent,
+    })
 
     // Build filters
     const branchFilter = branchId ? { branchId } : {}
-    const companyFilter = companyId ? { companyId } : {}
+    const companyFilter = { companyId }
     const combinedFilter = { ...branchFilter, ...companyFilter }
 
     // Gather business data
@@ -95,12 +128,10 @@ export async function GET(request: Request) {
 
     const saleWhere: Prisma.SaleWhereInput = {
       saleDate: { gte: thirtyDaysAgo },
+      companyId,
     }
     if (branchId) {
       saleWhere.branchId = branchId
-    }
-    if (companyId) {
-      saleWhere.companyId = companyId
     }
 
     const recentSaleItems = await db.saleItem.findMany({
@@ -137,12 +168,9 @@ export async function GET(request: Request) {
       const saleItemWhere: Prisma.SaleItemWhereInput = {
         productId: product.id,
       }
-      const saleSubWhere: Prisma.SaleWhereInput = {}
+      const saleSubWhere: Prisma.SaleWhereInput = { companyId }
       if (branchId) {
         saleSubWhere.branchId = branchId
-      }
-      if (companyId) {
-        saleSubWhere.companyId = companyId
       }
       if (Object.keys(saleSubWhere).length > 0) {
         saleItemWhere.sale = saleSubWhere
@@ -187,7 +215,6 @@ export async function GET(request: Request) {
         daysSinceLastSale: d.daysSinceLastSale,
       })),
       branchId: branchId || 'all',
-      companyId: companyId || 'all',
     }
 
     // Try LLM-powered recommendations

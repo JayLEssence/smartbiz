@@ -32,6 +32,7 @@ import {
   Archive,
 } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { getAuthHeaders } from '@/lib/auth-fetch'
 
 // ============ Types ============
 
@@ -123,7 +124,7 @@ export function ReportsView() {
         params.set('branchId', selectedBranch)
       }
 
-      const res = await fetch(`/api/reports?${params.toString()}`)
+      const res = await fetch(`/api/reports?${params.toString()}`, { headers: getAuthHeaders() })
       const json = await res.json()
       if (json.success) {
         setReportData(json.data)

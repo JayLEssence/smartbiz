@@ -14,11 +14,17 @@ import {
   Star,
   RefreshCw,
   Building2,
+  Heart,
+  ArrowUp,
+  ArrowDown,
+  Minus,
+  Shield,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
+import { getAuthHeaders } from '@/lib/auth-fetch'
 
 interface DashboardData {
   todayRevenue: number
@@ -53,6 +59,7 @@ export function DashboardView() {
   const isEmployee = currentUser?.role === 'Employee'
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [healthScore, setHealthScore] = useState<{ overallScore: number; grade: string; trend: string; recommendations: string[]; breakdown: Record<string, { score: number; weight: string }> } | null>(null)
 
   const fetchDashboard = useCallback(async () => {
     setLoading(true)
@@ -60,7 +67,7 @@ export function DashboardView() {
       const params = new URLSearchParams()
       if (companyId) params.set('companyId', companyId)
       if (currentBranchId) params.set('branchId', currentBranchId)
-      const res = await fetch(`/api/analytics/dashboard?${params.toString()}`)
+      const res = await fetch(`/api/analytics/dashboard?${params.toString()}`, { headers: getAuthHeaders() })
       const json = await res.json()
       if (json.success) {
         setData(json.data)
@@ -75,6 +82,22 @@ export function DashboardView() {
   useEffect(() => {
     fetchDashboard()
   }, [fetchDashboard])
+
+  // Fetch health score for managers/admins
+  useEffect(() => {
+    if (isEmployee) return
+    const fetchHealth = async () => {
+      try {
+        const params = new URLSearchParams()
+        if (companyId) params.set('companyId', companyId)
+        if (currentBranchId) params.set('branchId', currentBranchId)
+        const res = await fetch(`/api/business/health-score?${params.toString()}`, { headers: getAuthHeaders() })
+        const json = await res.json()
+        if (json.success) setHealthScore(json.data)
+      } catch { /* ignore */ }
+    }
+    fetchHealth()
+  }, [currentBranchId, companyId, isEmployee])
 
   if (loading) {
     return (
@@ -129,6 +152,59 @@ export function DashboardView() {
           className="bg-stone-100 text-stone-600"
         />
       </div>
+
+      {/* Business Health Score - for managers/admins */}
+      {!isEmployee && healthScore && (
+        <Card className="mb-6 border-0 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 dark:from-emerald-950/30 dark:via-teal-950/30 dark:to-cyan-950/30 shadow-sm">
+          <CardContent className="pt-5 pb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className={`relative flex h-14 w-14 items-center justify-center rounded-full border-[3px] ${
+                  healthScore.overallScore >= 70 ? 'border-emerald-500' :
+                  healthScore.overallScore >= 50 ? 'border-yellow-500' :
+                  'border-red-500'
+                }`}>
+                  <Heart className={`h-6 w-6 ${
+                    healthScore.overallScore >= 70 ? 'text-emerald-600' :
+                    healthScore.overallScore >= 50 ? 'text-yellow-600' :
+                    'text-red-600'
+                  }`} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-bold">{healthScore.overallScore}</span>
+                    <span className="text-sm text-muted-foreground">/100</span>
+                    <Badge variant="outline" className={`text-xs font-bold ${
+                      healthScore.grade.startsWith('A') ? 'border-emerald-500 text-emerald-600' :
+                      healthScore.grade === 'B' ? 'border-emerald-400 text-emerald-500' :
+                      healthScore.grade === 'C' ? 'border-yellow-500 text-yellow-600' :
+                      'border-red-500 text-red-600'
+                    }`}>
+                      {healthScore.grade}
+                    </Badge>
+                    {healthScore.trend === 'up' && <ArrowUp className="h-4 w-4 text-emerald-500" />}
+                    {healthScore.trend === 'down' && <ArrowDown className="h-4 w-4 text-red-500" />}
+                    {healthScore.trend === 'stable' && <Minus className="h-4 w-4 text-yellow-500" />}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Business Health Score</p>
+                </div>
+              </div>
+              <div className="flex-1 grid grid-cols-5 gap-2 text-center">
+                {Object.entries(healthScore.breakdown).map(([key, val]) => (
+                  <div key={key} className="rounded-lg bg-white/60 dark:bg-black/20 p-2">
+                    <p className="text-sm font-bold" style={{ color: val.score >= 70 ? '#059669' : val.score >= 50 ? '#d97706' : '#dc2626' }}>{val.score}</p>
+                    <p className="text-[10px] text-muted-foreground capitalize">{key}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="sm:max-w-[200px]">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Top Recommendation</p>
+                <p className="text-xs">{healthScore.recommendations[0]}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Per-Branch Summary (shown when all branches selected and user is admin) */}
       {!currentBranchId && currentUser?.role === 'CompanyAdmin' && data.branchSummary && data.branchSummary.length > 0 && (

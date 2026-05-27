@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAppStore } from '@/stores/app-store'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useLanguage } from '@/lib/i18n/language-context'
+import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -73,6 +74,8 @@ import {
   Copy,
   Check,
   Info,
+  Download,
+  Database,
 } from 'lucide-react'
 
 // ============ Types ============
@@ -354,7 +357,8 @@ export function AdminPanel() {
     if (!companyId) return
     setCompanyLoading(true)
     try {
-      const res = await fetch(`/api/companies/${companyId}`)
+      const res = await fetch(`/api/companies/${companyId}`, { headers: getAuthHeaders() })
+      if (checkUnauthorized(res)) return
       const json = await res.json()
       if (json.success) {
         setCompany(json.data)
@@ -377,7 +381,8 @@ export function AdminPanel() {
     if (!companyId) return
     setBranchesLoading(true)
     try {
-      const res = await fetch(`/api/branches?companyId=${companyId}&includeInactive=true`)
+      const res = await fetch(`/api/branches?companyId=${companyId}&includeInactive=true`, { headers: getAuthHeaders() })
+      if (checkUnauthorized(res)) return
       const json = await res.json()
       if (json.success) {
         setBranches(json.data)
@@ -393,7 +398,8 @@ export function AdminPanel() {
     if (!companyId) return
     setUsersLoading(true)
     try {
-      const res = await fetch(`/api/users?companyId=${companyId}&includeInactive=true`)
+      const res = await fetch(`/api/users?companyId=${companyId}&includeInactive=true`, { headers: getAuthHeaders() })
+      if (checkUnauthorized(res)) return
       const json = await res.json()
       if (json.success) {
         setUsers(json.data)
@@ -413,7 +419,8 @@ export function AdminPanel() {
       if (productBranchFilter && productBranchFilter !== 'all') {
         params.set('branchId', productBranchFilter)
       }
-      const res = await fetch(`/api/products?${params}`)
+      const res = await fetch(`/api/products?${params}`, { headers: getAuthHeaders() })
+      if (checkUnauthorized(res)) return
       const json = await res.json()
       if (json.success) {
         setProducts(json.data)
@@ -458,7 +465,7 @@ export function AdminPanel() {
     try {
       const res = await fetch('/api/companies', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           id: companyId,
           name: companyForm.name,
@@ -493,7 +500,7 @@ export function AdminPanel() {
     try {
       const res = await fetch('/api/branches', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: branchForm.name.trim(),
           code: branchForm.code.trim(),
@@ -528,7 +535,7 @@ export function AdminPanel() {
     try {
       const res = await fetch(`/api/branches/${selectedBranch.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: branchForm.name.trim(),
           address: branchForm.address.trim() || null,
@@ -555,7 +562,8 @@ export function AdminPanel() {
     if (!selectedBranch) return
     setBranchSubmitting(true)
     try {
-      const res = await fetch(`/api/branches/${selectedBranch.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/branches/${selectedBranch.id}`, { method: 'DELETE', headers: getAuthHeaders() })
+      if (checkUnauthorized(res)) return
       const json = await res.json()
       if (json.success) {
         toast.success(t('admin.branchDeactivated'))
@@ -583,7 +591,7 @@ export function AdminPanel() {
     try {
       const res = await fetch('/api/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: userForm.name.trim(),
           email: userForm.email.trim(),
@@ -616,7 +624,7 @@ export function AdminPanel() {
     try {
       const res = await fetch(`/api/users/${selectedUser.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: userForm.name.trim() || undefined,
           role: userForm.role,
@@ -644,7 +652,8 @@ export function AdminPanel() {
     if (!selectedUser) return
     setUserSubmitting(true)
     try {
-      const res = await fetch(`/api/users/${selectedUser.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/users/${selectedUser.id}`, { method: 'DELETE', headers: getAuthHeaders() })
+      if (checkUnauthorized(res)) return
       const json = await res.json()
       if (json.success) {
         toast.success(t('admin.userDeactivated'))
@@ -667,7 +676,7 @@ export function AdminPanel() {
     try {
       const res = await fetch(`/api/users/${user.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ role: newRole }),
       })
       const json = await res.json()
@@ -695,7 +704,7 @@ export function AdminPanel() {
     try {
       const res = await fetch('/api/products', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: productForm.name.trim(),
           sku: productForm.sku.trim(),
@@ -732,7 +741,8 @@ export function AdminPanel() {
     if (!selectedProduct) return
     setProductSubmitting(true)
     try {
-      const res = await fetch(`/api/products/${selectedProduct.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/products/${selectedProduct.id}`, { method: 'DELETE', headers: getAuthHeaders() })
+      if (checkUnauthorized(res)) return
       const json = await res.json()
       if (json.success) {
         toast.success(t('admin.productDeactivated'))
@@ -788,7 +798,7 @@ export function AdminPanel() {
 
       {/* Tabs */}
       <Tabs defaultValue="company" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 h-auto">
+        <TabsList className="grid w-full grid-cols-5 h-auto">
           <TabsTrigger value="company" className="text-xs sm:text-sm gap-1 py-2">
             <Settings className="h-3.5 w-3.5 hidden sm:inline" />
             {t('admin.company')}
@@ -804,6 +814,10 @@ export function AdminPanel() {
           <TabsTrigger value="products" className="text-xs sm:text-sm gap-1 py-2">
             <Package className="h-3.5 w-3.5 hidden sm:inline" />
             {t('admin.products')}
+          </TabsTrigger>
+          <TabsTrigger value="data" className="text-xs sm:text-sm gap-1 py-2">
+            <Download className="h-3.5 w-3.5 hidden sm:inline" />
+            Data
           </TabsTrigger>
         </TabsList>
 
@@ -1498,6 +1512,100 @@ export function AdminPanel() {
             </Card>
           )}
         </TabsContent>
+        {/* ============ TAB 5: Data Export ============ */}
+        <TabsContent value="data">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Download className="h-5 w-5 text-emerald-600" />
+                Data Export
+              </CardTitle>
+              <CardDescription>
+                Export your business data for backup, analysis, or migration
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { type: 'all', label: 'Complete Export', desc: 'All data (sales, products, customers, expenses)', icon: Database },
+                  { type: 'sales', label: 'Sales Data', desc: 'All sales transactions with items', icon: Receipt },
+                  { type: 'products', label: 'Product Catalog', desc: 'All products with stock levels', icon: Package },
+                  { type: 'customers', label: 'Customer Data', desc: 'All customers with loyalty info', icon: Users },
+                  { type: 'expenses', label: 'Expense Records', desc: 'All expense transactions', icon: Receipt },
+                ].map((item) => (
+                  <div key={item.type} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                      <item.icon className="h-5 w-5 text-emerald-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{item.label}</p>
+                      <p className="text-xs text-muted-foreground">{item.desc}</p>
+                      <div className="flex gap-2 mt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => {
+                            const token = JSON.parse(localStorage.getItem('smartbiz_session') || '{}')?.token
+                            window.open(`/api/data/export?type=${item.type}&format=json&XTransformPort=`, '_blank')
+                            // For JSON, use fetch
+                            fetch(`/api/data/export?type=${item.type}&format=json`, {
+                              headers: { 'Authorization': `Bearer ${token}` }
+                            })
+                            .then(r => r.json())
+                            .then(json => {
+                              if (json.success) {
+                                const blob = new Blob([JSON.stringify(json.data, null, 2)], { type: 'application/json' })
+                                const url = URL.createObjectURL(blob)
+                                const a = document.createElement('a')
+                                a.href = url
+                                a.download = `smartbiz-${item.type}-export-${new Date().toISOString().split('T')[0]}.json`
+                                a.click()
+                                URL.revokeObjectURL(url)
+                                toast.success(`${item.label} exported successfully`)
+                              } else {
+                                toast.error(json.error || 'Export failed')
+                              }
+                            })
+                            .catch(() => toast.error('Export failed'))
+                          }}
+                        >
+                          JSON
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => {
+                            const token = JSON.parse(localStorage.getItem('smartbiz_session') || '{}')?.token
+                            fetch(`/api/data/export?type=${item.type}&format=csv`, {
+                              headers: { 'Authorization': `Bearer ${token}` }
+                            })
+                            .then(r => r.text())
+                            .then(csv => {
+                              const blob = new Blob([csv], { type: 'text/csv' })
+                              const url = URL.createObjectURL(blob)
+                              const a = document.createElement('a')
+                              a.href = url
+                              a.download = `smartbiz-${item.type}-export-${new Date().toISOString().split('T')[0]}.csv`
+                              a.click()
+                              URL.revokeObjectURL(url)
+                              toast.success(`${item.label} exported as CSV`)
+                            })
+                            .catch(() => toast.error('Export failed'))
+                          }}
+                        >
+                          CSV
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
       </Tabs>
 
       {/* ============ DIALOGS ============ */}

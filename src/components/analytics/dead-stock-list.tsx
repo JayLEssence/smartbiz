@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AlertOctagon } from 'lucide-react'
+import { getAuthHeaders } from '@/lib/auth-fetch'
 
 interface DeadStockItem {
   productId: string
@@ -29,7 +30,7 @@ export function DeadStockList({ branchId, companyId }: DeadStockListProps) {
       const params = new URLSearchParams({ days: '45' })
       if (companyId) params.set('companyId', companyId)
       if (branchId) params.set('branchId', branchId)
-      const res = await fetch(`/api/analytics/dead-stock?${params.toString()}`)
+      const res = await fetch(`/api/analytics/dead-stock?${params.toString()}`, { headers: getAuthHeaders() })
       const json = await res.json()
       if (json.success) {
         setData(json.data)

@@ -1,13 +1,35 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
+import { authenticateRequest, isManagerOrAbove } from '@/lib/auth'
+import { safeValidate, expenseCreateSchema, sanitizeString } from '@/lib/validation'
+import { logAudit, getRequestInfo } from '@/lib/audit-log'
 
 const EXPENSE_CATEGORIES = ['Rent', 'Utilities', 'Salaries', 'Transport', 'Supplies', 'Maintenance', 'Other']
 
 export async function GET(request: Request) {
   try {
+    // Authenticate request
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    // Only managers/admins can access expense data
+    if (!isManagerOrAbove(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Access denied. Manager or Admin role required.' },
+        { status: 403 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
-    const companyId = searchParams.get('companyId')
+
+    // ALWAYS use authenticated user's companyId (tenant isolation)
+    const companyId = auth.user.companyId
     const branchId = searchParams.get('branchId')
     const category = searchParams.get('category')
     const dateFrom = searchParams.get('dateFrom')
@@ -15,15 +37,8 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
 
-    if (!companyId) {
-      return NextResponse.json(
-        { success: false, error: 'companyId is required' },
-        { status: 400 }
-      )
-    }
-
     const where: Prisma.ExpenseWhereInput = {
-      companyId,
+      companyId, // Enforce tenant isolation
     }
 
     if (branchId) {
@@ -121,33 +136,52 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    // Authenticate request
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    // Only managers/admins can create expenses
+    if (!isManagerOrAbove(auth.user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Access denied. Manager or Admin role required to create expenses.' },
+        { status: 403 }
+      )
+    }
+
+    const reqInfo = getRequestInfo(request)
     const body = await request.json()
-    const { category, description, amount, branchId, companyId, date } = body
 
-    if (!category || !description || !amount || !branchId || !companyId) {
+    // CRITICAL: ALWAYS override companyId with authenticated user's companyId (never trust request body)
+    const companyId = auth.user.companyId
+
+    // Validate input with Zod schema
+    const validation = safeValidate(expenseCreateSchema, body)
+    if (!validation.success) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: category, description, amount, branchId, companyId' },
+        { success: false, error: 'Validation failed', details: validation.errors },
         { status: 400 }
       )
     }
 
-    if (!EXPENSE_CATEGORIES.includes(category)) {
+    const validatedData = validation.data
+
+    // Sanitize string inputs
+    const description = sanitizeString(validatedData.description)
+    if (!description) {
       return NextResponse.json(
-        { success: false, error: `Invalid category. Must be one of: ${EXPENSE_CATEGORIES.join(', ')}` },
+        { success: false, error: 'Description is required after sanitization' },
         { status: 400 }
       )
     }
 
-    if (Number(amount) <= 0) {
-      return NextResponse.json(
-        { success: false, error: 'Amount must be greater than 0' },
-        { status: 400 }
-      )
-    }
-
-    // Verify branch belongs to company
+    // Verify branch belongs to the authenticated user's company
     const branch = await db.branch.findUnique({
-      where: { id: branchId },
+      where: { id: validatedData.branchId },
     })
     if (!branch) {
       return NextResponse.json(
@@ -156,20 +190,30 @@ export async function POST(request: Request) {
       )
     }
     if (branch.companyId !== companyId) {
+      logAudit({
+        action: 'SUSPICIOUS_ACTIVITY',
+        userId: auth.user.id,
+        userEmail: auth.user.email,
+        companyId: auth.user.companyId,
+        branchId: auth.user.branchId,
+        details: `Attempted to create expense for branch outside company: ${validatedData.branchId}`,
+        ipAddress: reqInfo.ipAddress,
+        userAgent: reqInfo.userAgent,
+      })
       return NextResponse.json(
-        { success: false, error: 'Branch does not belong to the specified company' },
+        { success: false, error: 'Branch does not belong to your company' },
         { status: 400 }
       )
     }
 
     const expense = await db.expense.create({
       data: {
-        category,
+        category: validatedData.category,
         description,
-        amount: Number(amount),
-        date: date ? new Date(date) : new Date(),
-        branchId,
-        companyId,
+        amount: Number(validatedData.amount),
+        date: validatedData.date ? new Date(validatedData.date) : new Date(),
+        branchId: validatedData.branchId,
+        companyId, // Use auth-derived companyId, NEVER from request body
       },
       include: {
         branch: {
@@ -183,17 +227,29 @@ export async function POST(request: Request) {
     })
 
     // Create notification if expense exceeds threshold (1,000,000 local currency)
-    if (Number(amount) > 1000000) {
+    if (Number(validatedData.amount) > 1000000) {
       await db.notification.create({
         data: {
           type: 'ExpenseAlert',
           title: 'Large Expense Recorded',
-          message: `Expense of ${Number(amount).toLocaleString()} recorded: ${description}`,
+          message: `Expense of ${Number(validatedData.amount).toLocaleString()} recorded: ${description}`,
           companyId,
-          branchId,
+          branchId: validatedData.branchId,
         },
       })
     }
+
+    // Audit log for expense creation
+    logAudit({
+      action: 'EXPENSE_CREATED',
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      companyId: auth.user.companyId,
+      branchId: validatedData.branchId,
+      details: `Expense created: ${description}, amount: ${validatedData.amount}, category: ${validatedData.category}`,
+      ipAddress: reqInfo.ipAddress,
+      userAgent: reqInfo.userAgent,
+    })
 
     return NextResponse.json({ success: true, data: expense }, { status: 201 })
   } catch (error) {
