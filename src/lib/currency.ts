@@ -29,42 +29,47 @@ export interface CurrencyInfo {
 /**
  * Format an amount in local currency
  */
-export function formatLocalCurrency(amount: number, currency: CurrencyInfo): string {
-  return `${currency.symbol} ${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+export function formatLocalCurrency(amount: number | null | undefined, currency: CurrencyInfo): string {
+  const safeAmount = amount ?? 0
+  return `${currency.symbol} ${safeAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 }
 
 /**
  * Format an amount in USD (compact, no decimals for whole numbers)
  */
-export function formatUSD(amount: number): string {
-  if (amount % 1 === 0) {
-    return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+export function formatUSD(amount: number | null | undefined): string {
+  const safeAmount = amount ?? 0
+  if (safeAmount % 1 === 0) {
+    return `$${safeAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
   }
-  return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return `$${safeAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 /**
  * Convert local currency amount to USD
  */
-export function localToUSD(amount: number, rate: number): number {
-  if (!rate || rate === 0) return amount
-  return amount / rate
+export function localToUSD(amount: number | null | undefined, rate: number): number {
+  const safeAmount = amount ?? 0
+  if (!rate || rate === 0) return safeAmount
+  return safeAmount / rate
 }
 
 /**
  * Convert USD to local currency amount
  */
-export function usdToLocal(amount: number, rate: number): number {
-  return amount * rate
+export function usdToLocal(amount: number | null | undefined, rate: number): number {
+  const safeAmount = amount ?? 0
+  return safeAmount * rate
 }
 
 /**
  * Format dual currency display - shows both local and USD
  * Example: "TSh 25,700 ($10)"
  */
-export function formatDualCurrency(localAmount: number, currency: CurrencyInfo): string {
-  const local = formatLocalCurrency(localAmount, currency)
-  const usdAmount = localToUSD(localAmount, currency.rate)
+export function formatDualCurrency(localAmount: number | null | undefined, currency: CurrencyInfo): string {
+  const safeLocalAmount = localAmount ?? 0
+  const local = formatLocalCurrency(safeLocalAmount, currency)
+  const usdAmount = localToUSD(safeLocalAmount, currency.rate)
   const usd = formatUSD(Math.round(usdAmount * 100) / 100)
   return `${local} (${usd})`
 }
@@ -73,9 +78,10 @@ export function formatDualCurrency(localAmount: number, currency: CurrencyInfo):
  * Format a short dual currency for compact displays
  * Example: "TSh 25.7K ($10)"
  */
-export function formatDualCurrencyShort(localAmount: number, currency: CurrencyInfo): string {
-  const local = formatLocalCurrency(localAmount, currency)
-  const usdAmount = localToUSD(localAmount, currency.rate)
+export function formatDualCurrencyShort(localAmount: number | null | undefined, currency: CurrencyInfo): string {
+  const safeLocalAmount = localAmount ?? 0
+  const local = formatLocalCurrency(safeLocalAmount, currency)
+  const usdAmount = localToUSD(safeLocalAmount, currency.rate)
   const usd = usdAmount >= 1000
     ? `$${(usdAmount / 1000).toFixed(1)}K`
     : `$${Math.round(usdAmount)}`
@@ -88,9 +94,10 @@ export function formatDualCurrencyShort(localAmount: number, currency: CurrencyI
  * Primary format for the app — user sees both currencies at once.
  * Example: "$10/TSh 25,700"
  */
-export function formatUSDDual(usdAmount: number, currency: CurrencyInfo): string {
-  const usd = formatUSD(Math.round(usdAmount * 100) / 100)
-  const localAmount = usdToLocal(usdAmount, currency.rate)
+export function formatUSDDual(usdAmount: number | null | undefined, currency: CurrencyInfo): string {
+  const safeUsdAmount = usdAmount ?? 0
+  const usd = formatUSD(Math.round(safeUsdAmount * 100) / 100)
+  const localAmount = usdToLocal(safeUsdAmount, currency.rate)
   const local = formatLocalCurrency(Math.round(localAmount), currency)
   return `${usd}/${local}`
 }

@@ -267,7 +267,7 @@ export async function POST(request: Request) {
     response.cookies.set('smartbiz_token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge: 24 * 60 * 60, // 24 hours
       path: '/',
     })
@@ -275,7 +275,7 @@ export async function POST(request: Request) {
     response.cookies.set('smartbiz_refresh', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60, // 7 days
       path: '/api/auth',
     })

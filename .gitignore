@@ -20,6 +20,11 @@ node_modules
 # production
 /build
 
+# database
+*.db
+*.db-journal
+prisma/dev.db
+
 # misc
 .DS_Store
 *.pem
@@ -32,10 +37,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
-
 
 # typescript
 *.tsbuildinfo
@@ -48,7 +53,16 @@ dev.log
 dev.out.log
 test
 prompt
-
 server.log
-# Skills directory
+
+# Skills directory (dev only)
 /skills/
+
+# Agent context (dev only)
+/agent-ctx/
+
+# Mini services (dev only)
+/mini-services/
+
+# Upload directory
+/upload/

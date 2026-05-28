@@ -38,7 +38,7 @@ export const RATE_LIMITS = {
   passwordReset: { windowMs: 60 * 60 * 1000, maxRequests: 3, keyPrefix: 'pwreset' }, // 3 per hour
 
   // General API - moderate limits
-  api: { windowMs: 60 * 1000, maxRequests: 100, keyPrefix: 'api' }, // 100 per minute
+  api: { windowMs: 60 * 1000, maxRequests: 200, keyPrefix: 'api' }, // 200 per minute
 
   // Write operations - stricter
   apiWrite: { windowMs: 60 * 1000, maxRequests: 30, keyPrefix: 'apiw' }, // 30 per minute

@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: smartbiz
+    runtime: node
+    plan: free
+    buildCommand: npm install && npx prisma generate && npx prisma db push && npm run build
+    startCommand: npx next start -p $PORT
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: file:./data/smartbiz.db
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+    disk:
+      name: smartbiz-data
+      mountPath: /opt/render/project/data
+      sizeGB: 1

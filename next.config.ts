@@ -1,11 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
   reactStrictMode: true,
-  poweredByHeader: false, // Remove X-Powered-By header
+  poweredByHeader: false,
   typescript: {
-    ignoreBuildErrors: true, // Keep for development speed
+    ignoreBuildErrors: false,
   },
 };
 
