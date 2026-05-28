@@ -1,7 +1,7 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { authenticateRequest, isManagerOrAbove, isCompanyAdmin } from '@/lib/auth'
-import { sanitizeString } from '@/lib/validation'
+import { safeValidate, sanitizeString, supplierCreateSchema } from '@/lib/validation'
 import { logAudit, getRequestInfo } from '@/lib/audit-log'
 
 export async function GET(
@@ -102,7 +102,14 @@ export async function PUT(
     const reqInfo = getRequestInfo(request)
     const { id } = await params
     const body = await request.json()
-    const { name, email, phone, address, isActive } = body
+
+    const validation = safeValidate(supplierCreateSchema, { ...body, companyId: auth.user.companyId })
+    if (!validation.success) {
+      return NextResponse.json(
+        { success: false, error: validation.errors.join(', ') },
+        { status: 400 }
+      )
+    }
 
     const existing = await db.supplier.findUnique({ where: { id } })
     if (!existing) {
@@ -130,18 +137,13 @@ export async function PUT(
       )
     }
 
-    const updateData: {
-      name?: string
-      email?: string | null
-      phone?: string | null
-      address?: string | null
-      isActive?: boolean
-    } = {}
+    const { name, email, phone, address, companyId: _companyId } = validation.data
+
+    const updateData: Record<string, unknown> = {}
     if (name !== undefined) updateData.name = sanitizeString(name)
     if (email !== undefined) updateData.email = email ? sanitizeString(email) : null
     if (phone !== undefined) updateData.phone = phone ? sanitizeString(phone) : null
     if (address !== undefined) updateData.address = address ? sanitizeString(address) : null
-    if (isActive !== undefined) updateData.isActive = isActive
 
     const supplier = await db.supplier.update({
       where: { id },

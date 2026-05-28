@@ -45,14 +45,11 @@ function checkPasswordStrength(password: string): { score: number; label: string
 
   const labels = ['Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong']
   const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-emerald-500', 'bg-emerald-600']
-  const textColors = ['text-red-500', 'text-orange-500', 'text-yellow-500', 'text-emerald-500', 'text-emerald-600']
-
   return {
     score: password.length === 0 ? -1 : Math.min(score, 4),
     label: labels[Math.min(Math.max(score, 0), 4)],
     color: colors[Math.min(Math.max(score, 0), 4)],
     feedback,
-    _textColors: textColors,
   }
 }
 

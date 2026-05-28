@@ -42,7 +42,7 @@ export async function GET(request: Request) {
         activeUsersCount,
         securityScore: calculateSecurityScore({
           twoFactorEnabled: user?.twoFactorEnabled || false,
-          passwordChangedAt: user?.passwordChangedAt,
+          passwordChangedAt: user?.passwordChangedAt ?? null,
           failedLogins: summary.failedLogins,
           lockedAccounts: summary.lockedAccounts,
           activeUsersCount,

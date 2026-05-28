@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     const result = getAuditLogs({
       companyId: auth.user.companyId,
       userId,
-      action: action as never,
+      action: (action || undefined) as import('@/lib/audit-log').AuditAction | undefined,
       limit,
       offset,
     })

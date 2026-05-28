@@ -326,7 +326,6 @@ export async function PUT(request: Request) {
         ipAddress,
         userAgent,
         details: `Changed ${existing.email} role from ${existing.role} to ${role}`,
-        severity: 'warning',
       })
     }
 

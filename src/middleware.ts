@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { checkRateLimit, getClientIdentifier, RATE_LIMITS, getRateLimitHeaders } from '@/lib/rate-limit'
+import { checkRateLimit, getClientIdentifier, RATE_LIMITS, getRateLimitHeaders, type RateLimitConfig } from '@/lib/rate-limit'
 
 // ============================================
 // SECURITY MIDDLEWARE
@@ -16,11 +16,14 @@ const PUBLIC_ROUTES = [
 ]
 
 // Routes that have specific rate limits
-const RATE_LIMITED_ROUTES: Record<string, typeof RATE_LIMITS.login> = {
+const RATE_LIMITED_ROUTES: Record<string, RateLimitConfig> = {
   '/api/auth/login': RATE_LIMITS.login,
   '/api/auth/join': RATE_LIMITS.join,
   '/api/companies': RATE_LIMITS.register,
 }
+
+// HTTP methods that mutate state
+const MUTATION_METHODS = new Set(['POST', 'PUT', 'DELETE', 'PATCH'])
 
 // Security headers to add to all responses
 const SECURITY_HEADERS = {
@@ -42,8 +45,21 @@ const SECURITY_HEADERS = {
   ].join('; '),
 }
 
+function addSecurityHeaders(response: NextResponse): void {
+  Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+    response.headers.set(key, value)
+  })
+}
+
+function jsonResponse(data: Record<string, unknown>, status: number): NextResponse {
+  const response = NextResponse.json(data, { status })
+  addSecurityHeaders(response)
+  return response
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const method = request.method
 
   // Only apply to API routes
   if (!pathname.startsWith('/api/')) {
@@ -52,7 +68,10 @@ export function middleware(request: NextRequest) {
 
   // ---- Rate Limiting ----
   const clientId = getClientIdentifier(request as unknown as Request)
-  const rateLimitConfig = RATE_LIMITED_ROUTES[pathname] || RATE_LIMITS.api
+  const isMutation = MUTATION_METHODS.has(method)
+
+  // Use stricter rate limits for write endpoints
+  const rateLimitConfig = RATE_LIMITED_ROUTES[pathname] || (isMutation ? RATE_LIMITS.apiWrite : RATE_LIMITS.api)
 
   const rateLimitResult = checkRateLimit(clientId, rateLimitConfig)
   const rateLimitHeaders = getRateLimitHeaders(rateLimitResult, rateLimitConfig)
@@ -67,10 +86,7 @@ export function middleware(request: NextRequest) {
       { status: 429 }
     )
 
-    // Add security headers
-    Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
-      response.headers.set(key, value)
-    })
+    addSecurityHeaders(response)
     Object.entries(rateLimitHeaders).forEach(([key, value]) => {
       response.headers.set(key, value)
     })
@@ -82,37 +98,34 @@ export function middleware(request: NextRequest) {
   const isPublicRoute = PUBLIC_ROUTES.some(route => pathname === route)
 
   if (!isPublicRoute && pathname.startsWith('/api/')) {
-    // Try to get token from Authorization header or cookie
     const authHeader = request.headers.get('authorization')
     const authToken = authHeader?.startsWith('Bearer ')
       ? authHeader.substring(7)
       : request.cookies.get('smartbiz_token')?.value || null
 
     if (!authToken) {
-      // Also check for legacy base64 tokens in a custom header
       const customToken = request.headers.get('x-smartbiz-token')
       if (!customToken) {
-        const response = NextResponse.json(
-          { success: false, error: 'Authentication required' },
-          { status: 401 }
-        )
-        Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
-          response.headers.set(key, value)
-        })
-        return response
+        return jsonResponse({ success: false, error: 'Authentication required' }, 401)
       }
+    }
+  }
+
+  // ---- CSRF Protection (mutation requests) ----
+  // Require X-CSRF-Token header on state-changing requests to same-origin pages
+  // API-to-API calls via Authorization header are exempt
+  const hasAuthHeader = request.headers.get('authorization')?.startsWith('Bearer ')
+  if (isMutation && !hasAuthHeader && !isPublicRoute) {
+    const csrfToken = request.headers.get('x-csrf-token')
+    if (!csrfToken) {
+      return jsonResponse({ success: false, error: 'CSRF token required' }, 403)
     }
   }
 
   // ---- Continue with request ----
   const response = NextResponse.next()
 
-  // Add security headers to all responses
-  Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
-    response.headers.set(key, value)
-  })
-
-  // Add rate limit headers
+  addSecurityHeaders(response)
   Object.entries(rateLimitHeaders).forEach(([key, value]) => {
     response.headers.set(key, value)
   })

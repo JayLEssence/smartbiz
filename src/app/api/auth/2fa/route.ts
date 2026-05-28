@@ -47,7 +47,7 @@ export async function POST(request: Request) {
         data: {
           twoFactorEnabled: true,
           twoFactorSecret: hashedPin,
-        } as never,
+        },
       })
 
       return NextResponse.json({
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
         data: {
           twoFactorEnabled: false,
           twoFactorSecret: null,
-        } as never,
+        },
       })
 
       return NextResponse.json({

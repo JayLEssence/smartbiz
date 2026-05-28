@@ -438,7 +438,7 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
                     </span>
                   </div>
                   <span className="font-medium shrink-0 ml-4">
-                    {formatDualUSD((item.quantity * (item.salePricePerUnit ?? 0)) ?? 0)}
+                    {formatDualUSD(item.quantity * (item.salePricePerUnit ?? 0))}
                   </span>
                 </div>
               ))}

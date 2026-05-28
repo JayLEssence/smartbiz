@@ -23,6 +23,7 @@ import { OfflineBanner } from '@/components/layout/offline-banner'
 import { SessionTimeout } from '@/components/layout/session-timeout'
 import { apiGet } from '@/lib/auth-fetch'
 import { CommandPalette } from '@/components/layout/command-palette'
+import { PwaInstallPrompt } from '@/components/layout/pwa-install-prompt'
 import { LanguageProvider, useLanguage } from '@/lib/i18n/language-context'
 
 export default function Home() {
@@ -226,7 +227,14 @@ function HomeContent() {
   }
 
   if (!isAuthenticated) {
-    return <AuthPage />
+    return (
+      <>
+        <AuthPage />
+        <div className="fixed bottom-4 right-4 z-50">
+          <PwaInstallPrompt />
+        </div>
+      </>
+    )
   }
 
   return (

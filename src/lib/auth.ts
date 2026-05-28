@@ -128,22 +128,22 @@ export async function handleFailedLogin(email: string): Promise<{ locked: boolea
   const newAttempts = currentAttempts + 1
 
   if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
+      await db.user.update({
+        where: { id: user.id },
+        data: {
+          failedLoginAttempts: newAttempts,
+          lockedUntil: new Date(Date.now() + LOCKOUT_DURATION_MINUTES * 60 * 1000),
+        },
+      })
+    return { locked: true, attemptsLeft: 0 }
+  }
+
     await db.user.update({
       where: { id: user.id },
       data: {
         failedLoginAttempts: newAttempts,
-        lockedUntil: new Date(Date.now() + LOCKOUT_DURATION_MINUTES * 60 * 1000),
-      } as never,
+      },
     })
-    return { locked: true, attemptsLeft: 0 }
-  }
-
-  await db.user.update({
-    where: { id: user.id },
-    data: {
-      failedLoginAttempts: newAttempts,
-    } as never,
-  })
 
   return { locked: false, attemptsLeft: MAX_LOGIN_ATTEMPTS - newAttempts }
 }
@@ -163,7 +163,7 @@ export async function isAccountLocked(email: string): Promise<boolean> {
     data: {
       failedLoginAttempts: 0,
       lockedUntil: null,
-    } as never,
+    },
   })
 
   return false
@@ -175,7 +175,7 @@ export async function resetLoginAttempts(userId: string): Promise<void> {
     data: {
       failedLoginAttempts: 0,
       lockedUntil: null,
-    } as never,
+    },
   })
 }
 

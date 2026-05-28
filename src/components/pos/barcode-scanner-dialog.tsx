@@ -123,7 +123,7 @@ export function BarcodeScannerDialog({ open, onOpenChange, onBarcodeDetected }: 
         tempCtx.putImageData(imageData, 0, 0)
         const dataUrl = tempCanvas.toDataURL('image/png')
 
-        Quagga.decodeSingle({
+        ;(Quagga as unknown as { decodeSingle: Function }).decodeSingle({
           src: dataUrl,
           numOfWorkers: 0,
           inputStream: {

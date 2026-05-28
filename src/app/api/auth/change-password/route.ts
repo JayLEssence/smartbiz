@@ -42,20 +42,18 @@ export async function POST(request: Request) {
     try {
       currentPasswordValid = await verifyPassword(currentPassword, user.passwordHash)
     } catch {
-      // Legacy plaintext fallback
-      currentPasswordValid = currentPassword === user.passwordHash
+      currentPasswordValid = false
     }
 
     if (!currentPasswordValid) {
       logAudit({
-        action: 'PASSWORD_CHANGED',
+        action: 'LOGIN_FAILED',
         userId: user.id,
         userEmail: user.email,
         companyId: user.companyId,
         ipAddress,
         userAgent,
-        details: 'Failed - incorrect current password',
-        severity: 'warning',
+        details: 'Password change failed - incorrect current password',
       })
       return NextResponse.json(
         { success: false, error: 'Current password is incorrect' },

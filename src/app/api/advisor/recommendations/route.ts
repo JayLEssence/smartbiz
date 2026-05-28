@@ -96,7 +96,7 @@ export async function GET(request: Request) {
     // Audit log for sensitive AI advisor access
     const reqInfo = getRequestInfo(request)
     logAudit({
-      action: 'SUSPICIOUS_ACTIVITY' as never,
+      action: 'REPORT_ACCESSED',
       userId: auth.user.id,
       userEmail: auth.user.email,
       companyId: auth.user.companyId,

@@ -127,6 +127,9 @@ export async function POST(request: Request) {
       )
     }
 
+    const userId = auth.user.id
+    const userCompanyId = auth.user.companyId
+
     const result = await db.$transaction(async (tx) => {
       // Verify product exists and belongs to user's company
       const product = await tx.product.findUnique({
@@ -138,7 +141,7 @@ export async function POST(request: Request) {
       }
 
       // Tenant isolation: product must belong to the authenticated user's company
-      if (product.companyId !== auth.user.companyId) {
+      if (product.companyId !== userCompanyId) {
         throw new Error('Product not found')
       }
 
@@ -154,7 +157,7 @@ export async function POST(request: Request) {
         throw new Error('Branch not found')
       }
 
-      if (batchBranch.companyId !== auth.user.companyId) {
+      if (batchBranch.companyId !== userCompanyId) {
         throw new Error('Branch does not belong to your company')
       }
 
@@ -168,7 +171,7 @@ export async function POST(request: Request) {
           productId: validatedData.productId,
           quantityAdded: validatedData.quantityAdded,
           purchasePricePerUnit: validatedData.purchasePricePerUnit,
-          supplier: supplier ? sanitizeString(String(supplier)) : null,
+          supplierId: validatedData.supplierId,
           branchId: batchBranchId,
         },
         include: {

@@ -165,6 +165,15 @@ export const expenseCreateSchema = z.object({
   receiptUrl: urlSchema,
 })
 
+export const expenseUpdateSchema = z.object({
+  id: z.string().min(1),
+  category: z.enum(['Rent', 'Utilities', 'Salaries', 'Transport', 'Supplies', 'Maintenance', 'Other']).optional(),
+  description: z.string().min(1).max(200).optional(),
+  amount: positiveNumber.optional(),
+  date: z.string().optional(),
+  branchId: z.string().min(1).optional(),
+})
+
 // Supplier schema
 export const supplierCreateSchema = z.object({
   name: z.string().min(1, 'Supplier name is required').max(100),

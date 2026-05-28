@@ -1,5 +1,8 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { authenticateRequest, isCompanyAdmin } from '@/lib/auth'
+import { safeValidate, sanitizeString, companyUpdateSchema } from '@/lib/validation'
+import { logAudit, getRequestInfo } from '@/lib/audit-log'
 
 // GET: Get company details with branches summary
 export async function GET(
@@ -7,7 +10,17 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 })
+    }
+
     const { id } = await params
+
+    // Tenant isolation: users can only view their own company
+    if (id !== auth.user.companyId) {
+      return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 })
+    }
 
     const company = await db.company.findUnique({
       where: { id },
@@ -77,9 +90,30 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 })
+    }
+
+    if (!isCompanyAdmin(auth.user.role)) {
+      return NextResponse.json({ success: false, error: 'Only company administrators can update company settings' }, { status: 403 })
+    }
+
     const { id } = await params
+
+    if (id !== auth.user.companyId) {
+      return NextResponse.json({ success: false, error: 'You can only update your own company' }, { status: 403 })
+    }
+
     const body = await request.json()
-    const { name, industry, email, phone, address, logoUrl, plan } = body
+
+    const validation = safeValidate(companyUpdateSchema, body)
+    if (!validation.success) {
+      return NextResponse.json(
+        { success: false, error: validation.errors.join(', ') },
+        { status: 400 }
+      )
+    }
 
     const existing = await db.company.findUnique({ where: { id } })
     if (!existing) {
@@ -89,26 +123,28 @@ export async function PUT(
       )
     }
 
-    const updateData: {
-      name?: string
-      industry?: string | null
-      email?: string | null
-      phone?: string | null
-      address?: string | null
-      logoUrl?: string | null
-      plan?: string
-    } = {}
-    if (name !== undefined) updateData.name = name
-    if (industry !== undefined) updateData.industry = industry
-    if (email !== undefined) updateData.email = email
-    if (phone !== undefined) updateData.phone = phone
-    if (address !== undefined) updateData.address = address
-    if (logoUrl !== undefined) updateData.logoUrl = logoUrl
-    if (plan !== undefined) updateData.plan = plan
+    const { id: schemaId, ...validatedData } = validation.data
+
+    const updateData: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(validatedData)) {
+      if (value !== undefined) {
+        updateData[key] = typeof value === 'string' ? sanitizeString(value) : value
+      }
+    }
 
     const company = await db.company.update({
       where: { id },
       data: updateData,
+    })
+
+    const reqInfo = getRequestInfo(request)
+    logAudit({
+      action: 'COMPANY_UPDATED',
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      companyId: auth.user.companyId,
+      details: `Company settings updated`,
+      ...reqInfo,
     })
 
     return NextResponse.json({ success: true, data: company })
@@ -127,7 +163,20 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await authenticateRequest(request)
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 })
+    }
+
+    if (!isCompanyAdmin(auth.user.role)) {
+      return NextResponse.json({ success: false, error: 'Only company administrators can deactivate the company' }, { status: 403 })
+    }
+
     const { id } = await params
+
+    if (id !== auth.user.companyId) {
+      return NextResponse.json({ success: false, error: 'You can only deactivate your own company' }, { status: 403 })
+    }
 
     const existing = await db.company.findUnique({ where: { id } })
     if (!existing) {

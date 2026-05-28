@@ -52,7 +52,17 @@ export async function GET(request: Request) {
     })
 
     // Get the last sale for each product
-    const result = []
+    const result: {
+      productId: string
+      productName: string
+      productSku: string
+      category: string
+      currentStockLevel: number
+      defaultSalePrice: number
+      lastSaleDate: Date | null
+      daysSinceLastSale: number
+      branchId: string
+    }[] = []
 
     for (const product of productsWithStock) {
       const saleItemWhere: Prisma.SaleItemWhereInput = {

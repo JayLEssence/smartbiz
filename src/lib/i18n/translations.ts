@@ -285,7 +285,6 @@ export const t: TranslationDict = {
 
   // ============ ADMIN ============
   'admin.adminControlPanel': { en: 'Admin Control Panel', sw: 'Jopo la Msimamizi' },
-  'admin.company': { en: 'Company', sw: 'Kampuni' },
   'admin.branches': { en: 'Branches', sw: 'Matawi' },
   'admin.users': { en: 'Users', sw: 'Watumiaji' },
   'admin.products': { en: 'Products', sw: 'Bidhaa' },
@@ -319,7 +318,6 @@ export const t: TranslationDict = {
   'admin.creating': { en: 'Creating...', sw: 'Inaunda...' },
   'admin.createBranch': { en: 'Create Branch', sw: 'Unda Tawi' },
   'admin.codeCannotChange': { en: 'Branch code cannot be changed after creation.', sw: 'Kificho cha tawi hakiwezi kubadilishwa baada ya kuundwa.' },
-  'admin.saveChanges': { en: 'Save Changes', sw: 'Hifadhi Mabadiliko' },
   'admin.editBranchInfo': { en: 'Update branch information for', sw: 'Sasisha maelezo ya tawi la' },
   'admin.branchDataHidden': { en: 'Branch data that will be hidden:', sw: 'Data ya tawi itakayofichwa:' },
   'admin.warningHeadOffice': { en: 'Warning: This is the head office branch.', sw: 'Onyo: Hili ni tawi la makao makuu.' },
@@ -362,7 +360,6 @@ export const t: TranslationDict = {
   'admin.removeProduct': { en: 'Remove Product', sw: 'Ondoa Bidhaa' },
   'admin.removeProductExplanation': { en: 'The product will no longer appear in active inventory or POS.', sw: 'Bidhaa haitaonekana tena kwenye hifadhi au uuzaji.' },
   'admin.currentStock': { en: 'Current Stock:', sw: 'Hifadhi ya Sasa:' },
-  'admin.salePrice': { en: 'Sale Price:', sw: 'Bei ya Uuzaji:' },
   'admin.trending': { en: 'Trending:', sw: 'Mwelekeo:' },
   'admin.warningDeclining': { en: 'Warning: This product has declining sales...', sw: 'Onyo: Bidhaa hii ina mauzo yanayopungua...' },
   'admin.removing': { en: 'Removing...', sw: 'Inatoa...' },
@@ -378,7 +375,6 @@ export const t: TranslationDict = {
   'admin.hq': { en: 'HQ', sw: 'MKM' },
   'admin.notApplicable': { en: 'N/A', sw: 'H/H' },
   'admin.active': { en: 'Active', sw: 'Hai' },
-  'admin.inactive': { en: 'Inactive', sw: 'Isiyo Hai' },
   'admin.actions': { en: 'Actions', sw: 'Vitendo' },
   // Categories
   'admin.catBeverages': { en: 'Beverages', sw: 'Vinywaji' },
@@ -594,19 +590,6 @@ export const t: TranslationDict = {
   'sidebar.insights': { en: 'Insights', sw: 'Uchambuzi' },
   'sidebar.system': { en: 'System', sw: 'Mfumo' },
   'sidebar.more': { en: 'More', sw: 'Zaidi' },
-
-  // ============ NEW SIDEBAR KEYS ============
-  'sidebar.expenses': { en: 'Expenses', sw: 'Matumizi' },
-  'sidebar.suppliers': { en: 'Suppliers', sw: 'Wauzaji' },
-  'sidebar.customers': { en: 'Customers', sw: 'Wateja' },
-  'sidebar.reports': { en: 'Reports', sw: 'Ripoti' },
-  'sidebar.security': { en: 'Security', sw: 'Usalama' },
-
-  // ============ NEW HEADER KEYS ============
-  'header.expenseTracking': { en: 'Expense Tracking', sw: 'Ufuatiliaji wa Matumizi' },
-  'header.supplierManagement': { en: 'Supplier Management', sw: 'Usimamizi wa Wauzaji' },
-  'header.customerManagement': { en: 'Customer Management', sw: 'Usimamizi wa Wateja' },
-  'header.reports': { en: 'Reports & Analytics', sw: 'Ripoti na Uchambuzi' },
 
   // ============ NOTIFICATIONS ============
   'notifications.title': { en: 'Notifications', sw: 'Arifa' },

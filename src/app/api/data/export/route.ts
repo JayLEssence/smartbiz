@@ -22,14 +22,13 @@ export async function GET(request: Request) {
     const { ipAddress, userAgent } = getRequestInfo(request)
 
     logAudit({
-      action: 'SUSPICIOUS_ACTIVITY' as never,
+      action: 'DATA_EXPORT',
       userId: auth.user.id,
       userEmail: auth.user.email,
       companyId,
       ipAddress,
       userAgent,
       details: `Data export requested: type=${type}, format=${format}`,
-      severity: 'warning',
     })
 
     let data: Record<string, unknown> = {}

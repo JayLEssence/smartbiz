@@ -36,6 +36,8 @@ export type AuditAction =
   | 'NOTIFICATION_READ'
   | 'RATE_LIMIT_HIT'
   | 'SUSPICIOUS_ACTIVITY'
+  | 'DATA_EXPORT'
+  | 'REPORT_ACCESSED'
 
 export interface AuditLogEntry {
   action: AuditAction

@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server'
-import { authenticateRequest, extractTokenFromRequest } from '@/lib/auth'
+import { authenticateRequest, extractTokenFromRequest, verifyAccessToken } from '@/lib/auth'
 import { generateCsrfToken } from '@/lib/csrf'
-import jwt from 'jsonwebtoken'
-
-const JWT_SECRET = process.env.JWT_SECRET || 'smartbiz-super-secret-key-change-in-production-2024'
 
 export async function GET(request: Request) {
   try {
@@ -21,15 +18,8 @@ export async function GET(request: Request) {
     let sessionId = ''
 
     if (token) {
-      try {
-        const decoded = jwt.verify(token, JWT_SECRET, {
-          issuer: 'smartbiz',
-          audience: 'smartbiz-app',
-        }) as { sessionId?: string }
-        sessionId = decoded.sessionId || auth.user.id
-      } catch {
-        sessionId = auth.user.id
-      }
+      const decoded = verifyAccessToken(token)
+      sessionId = decoded?.sessionId || auth.user.id
     } else {
       sessionId = auth.user.id
     }

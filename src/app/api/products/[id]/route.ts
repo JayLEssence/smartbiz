@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { authenticateRequest, isManagerOrAbove } from '@/lib/auth'
 import { safeValidate, productUpdateSchema, sanitizeString } from '@/lib/validation'
 import { logAudit, getRequestInfo } from '@/lib/audit-log'
@@ -159,7 +160,6 @@ export async function PUT(
     return NextResponse.json({ success: true, data: product })
   } catch (error) {
     console.error('Product PUT error:', error)
-    const { Prisma } = await import('@prisma/client')
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return NextResponse.json(
         { success: false, error: 'A product with this SKU already exists in this branch' },

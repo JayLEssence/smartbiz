@@ -1,7 +1,7 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { authenticateRequest, isManagerOrAbove } from '@/lib/auth'
-import { sanitizeString } from '@/lib/validation'
+import { safeValidate, sanitizeString, expenseUpdateSchema } from '@/lib/validation'
 import { logAudit, getRequestInfo } from '@/lib/audit-log'
 
 const EXPENSE_CATEGORIES = ['Rent', 'Utilities', 'Salaries', 'Transport', 'Supplies', 'Maintenance', 'Other']
@@ -102,7 +102,14 @@ export async function PUT(
     const reqInfo = getRequestInfo(request)
     const { id } = await params
     const body = await request.json()
-    const { category, description, amount, date, branchId } = body
+
+    const validation = safeValidate(expenseUpdateSchema, body)
+    if (!validation.success) {
+      return NextResponse.json(
+        { success: false, error: validation.errors.join(', ') },
+        { status: 400 }
+      )
+    }
 
     const existing = await db.expense.findUnique({ where: { id } })
     if (!existing) {
@@ -130,19 +137,7 @@ export async function PUT(
       )
     }
 
-    if (category && !EXPENSE_CATEGORIES.includes(category)) {
-      return NextResponse.json(
-        { success: false, error: `Invalid category. Must be one of: ${EXPENSE_CATEGORIES.join(', ')}` },
-        { status: 400 }
-      )
-    }
-
-    if (amount !== undefined && Number(amount) <= 0) {
-      return NextResponse.json(
-        { success: false, error: 'Amount must be greater than 0' },
-        { status: 400 }
-      )
-    }
+    const { category, description, amount, date, branchId } = validation.data
 
     // If branchId is being changed, verify it belongs to same company
     if (branchId && branchId !== existing.branchId) {
@@ -155,16 +150,10 @@ export async function PUT(
       }
     }
 
-    const updateData: {
-      category?: string
-      description?: string
-      amount?: number
-      date?: Date
-      branchId?: string
-    } = {}
+    const updateData: Record<string, unknown> = {}
     if (category !== undefined) updateData.category = category
     if (description !== undefined) updateData.description = sanitizeString(description)
-    if (amount !== undefined) updateData.amount = Number(amount)
+    if (amount !== undefined) updateData.amount = amount
     if (date !== undefined) updateData.date = new Date(date)
     if (branchId !== undefined) updateData.branchId = branchId
 
@@ -183,7 +172,7 @@ export async function PUT(
     })
 
     // Create notification if updated expense now exceeds threshold
-    const newAmount = amount !== undefined ? Number(amount) : existing.amount
+    const newAmount = amount !== undefined ? amount : existing.amount
     if (newAmount > 1000000 && existing.amount <= 1000000) {
       await db.notification.create({
         data: {

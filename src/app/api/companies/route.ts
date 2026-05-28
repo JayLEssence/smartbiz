@@ -170,8 +170,8 @@ export async function GET(request: Request) {
     const id = searchParams.get('id')
 
     if (id) {
-      // Non-admin users can only see their own company
-      if (id !== auth.user.companyId && !isCompanyAdmin(auth.user.role)) {
+      // Tenant isolation: users can only see their own company
+      if (id !== auth.user.companyId) {
         return NextResponse.json(
           { success: false, error: 'Access denied' },
           { status: 403 }

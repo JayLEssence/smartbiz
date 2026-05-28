@@ -6,6 +6,7 @@ import { useAppStore } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
 import { languageNames, type Language } from '@/lib/i18n/translations'
 import { Store, Menu, Building2, LogOut, ChevronDown, Globe, Bell, Search } from 'lucide-react'
+import { PwaInstallPrompt } from '@/components/layout/pwa-install-prompt'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -217,6 +218,7 @@ export function AppHeader() {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <PwaInstallPrompt />
             {notificationBell}
             {/* Mobile search trigger */}
             <Button

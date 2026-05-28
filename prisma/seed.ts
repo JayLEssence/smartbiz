@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
+const SEED_PASSWORD_HASH = bcrypt.hashSync('password123', 10);
 
 async function main() {
   // Clean existing data
@@ -82,7 +84,7 @@ async function main() {
     data: {
       email: 'admin@smartbiz.com',
       name: 'Admin User',
-      passwordHash: '$2a$10$dummyhashforadmin',
+      passwordHash: SEED_PASSWORD_HASH,
       role: 'CompanyAdmin',
       branchId: mainBranch.id,
       companyId: company1.id,
@@ -93,8 +95,8 @@ async function main() {
     data: {
       email: 'manager@smartbiz.com',
       name: 'Sarah Manager',
-      passwordHash: '$2a$10$dummyhashformanager',
-      role: 'Manager',
+      passwordHash: SEED_PASSWORD_HASH,
+      role: 'BranchManager',
       branchId: mainBranch.id,
       companyId: company1.id,
     },
@@ -104,7 +106,7 @@ async function main() {
     data: {
       email: 'cashier1@smartbiz.com',
       name: 'Jane Cashier',
-      passwordHash: '$2a$10$dummyhashforcashier',
+      passwordHash: SEED_PASSWORD_HASH,
       role: 'Employee',
       branchId: mainBranch.id,
       companyId: company1.id,
@@ -115,7 +117,7 @@ async function main() {
     data: {
       email: 'cashier2@smartbiz.com',
       name: 'Bob Cashier',
-      passwordHash: '$2a$10$dummyhashforcashier2',
+      passwordHash: SEED_PASSWORD_HASH,
       role: 'Employee',
       branchId: mainBranch.id,
       companyId: company1.id,
@@ -126,7 +128,7 @@ async function main() {
     data: {
       email: 'east@smartbiz.com',
       name: 'Alice East',
-      passwordHash: '$2a$10$dummyhashforeast',
+      passwordHash: SEED_PASSWORD_HASH,
       role: 'Employee',
       branchId: branchEast.id,
       companyId: company1.id,
@@ -137,7 +139,7 @@ async function main() {
     data: {
       email: 'west@smartbiz.com',
       name: 'Charlie West',
-      passwordHash: '$2a$10$dummyhashforwest',
+      passwordHash: SEED_PASSWORD_HASH,
       role: 'Employee',
       branchId: branchWest.id,
       companyId: company1.id,
@@ -410,7 +412,7 @@ async function main() {
     data: {
       email: 'mamajane@gmail.com',
       name: 'Mama Jane',
-      passwordHash: '$2a$10$dummyhashformamajane',
+      passwordHash: SEED_PASSWORD_HASH,
       role: 'CompanyAdmin',
       branchId: mamaJaneBranch.id,
       companyId: company2.id,
@@ -555,7 +557,7 @@ async function main() {
     { name: 'Nairobi Fresh Supplies', email: 'supply@nairobi-fresh.ke', phone: '+254 733 444 555', address: '20 Supply Chain Ave, Nairobi', companyId: company1.id },
   ];
 
-  const createdSuppliers = [];
+  const createdSuppliers: { id: string }[] = [];
   for (const s of suppliers) {
     const supplier = await prisma.supplier.create({ data: s });
     createdSuppliers.push(supplier);

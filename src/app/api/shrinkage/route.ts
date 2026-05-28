@@ -141,13 +141,15 @@ export async function POST(request: Request) {
 
     const validatedData = validation.data
 
-    // Non-admin users can only record shrinkage for their own branch
+    // Non-admin users can only record shrinkage in their own branch
     if (auth.user.role !== 'CompanyAdmin' && validatedData.branchId !== auth.user.branchId) {
       return NextResponse.json(
-        { success: false, error: 'You can only record shrinkage for your assigned branch' },
+        { success: false, error: 'You can only record shrinkage in your assigned branch' },
         { status: 403 }
       )
     }
+
+    const userCompanyId = auth.user.companyId
 
     const result = await db.$transaction(async (tx) => {
       const product = await tx.product.findUnique({
@@ -159,7 +161,7 @@ export async function POST(request: Request) {
       }
 
       // Tenant isolation: product must belong to the authenticated user's company
-      if (product.companyId !== auth.user.companyId) {
+      if (product.companyId !== userCompanyId) {
         throw new Error('Product not found')
       }
 
@@ -176,7 +178,7 @@ export async function POST(request: Request) {
         throw new Error('Branch not found')
       }
 
-      if (shrinkageBranch.companyId !== auth.user.companyId) {
+      if (shrinkageBranch.companyId !== userCompanyId) {
         throw new Error('Branch does not belong to your company')
       }
 
