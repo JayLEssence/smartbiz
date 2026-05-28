@@ -410,8 +410,8 @@ export function AuthPage() {
       <div className="w-full max-w-md relative z-10">
         {/* Logo & Branding */}
         <div className={`flex flex-col items-center mb-8 transition-opacity duration-600 ${mounted ? 'animate-auth-fade-in' : 'opacity-0'}`}>
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/25 mb-4">
-            <Store className="h-7 w-7" />
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg shadow-emerald-600/25 mb-4 overflow-hidden">
+            <img src="/icon-192.png" alt="SmartBiz" className="h-16 w-16 rounded-2xl" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">SmartBiz</h1>
           <p className="text-sm text-muted-foreground mt-1 animate-auth-tagline-glow">{t('auth.tagline')}</p>

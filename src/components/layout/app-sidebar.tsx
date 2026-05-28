@@ -207,9 +207,7 @@ function DesktopSidebar() {
   return (
     <aside className="hidden md:flex w-56 flex-col border-r bg-card">
       <div className="flex items-center gap-2 px-4 py-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white">
-          <ShoppingCart className="h-4 w-4" />
-        </div>
+        <img src="/icon-192.png" alt="SmartBiz" className="h-8 w-8 rounded-lg" />
         <span className="font-bold text-lg">SmartBiz</span>
       </div>
       <Separator />

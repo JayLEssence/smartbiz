@@ -208,9 +208,7 @@ export function AppHeader() {
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-600 text-white">
-              <Store className="h-4 w-4" />
-            </div>
+            <img src="/icon-192.png" alt="SmartBiz" className="h-7 w-7 rounded-md" />
             <div className="flex flex-col">
               <span className="font-bold text-base leading-tight">SmartBiz</span>
               {currentCompany && (
