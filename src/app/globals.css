@@ -177,6 +177,11 @@
   }
 }
 
+@keyframes scanLine {
+  0%, 100% { top: 22%; }
+  50% { top: 76%; }
+}
+
 .animate-auth-fade-in {
   animation: auth-fade-in 0.6s ease-out both;
 }
