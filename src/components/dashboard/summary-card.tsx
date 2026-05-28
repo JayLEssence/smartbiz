@@ -27,7 +27,7 @@ export function SummaryCard({
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">{title}</p>
-            <p className="text-2xl font-bold">{value}</p>
+            <p className="text-base sm:text-xl lg:text-2xl font-bold break-words leading-tight">{value}</p>
             {trend && (
               <p
                 className={cn(

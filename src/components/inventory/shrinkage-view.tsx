@@ -18,6 +18,7 @@ import { toast } from 'sonner'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
+import { useCurrency } from '@/hooks/use-currency'
 import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
 
 interface Product {
@@ -40,6 +41,7 @@ export function ShrinkageView() {
   const isMobile = useIsMobile()
   const { currentBranchId, currentUser } = useAppStore()
   const { t } = useLanguage()
+  const { formatDualUSD } = useCurrency()
   const companyId = currentUser?.companyId
   const [products, setProducts] = useState<Product[]>([])
   const [selectedProductId, setSelectedProductId] = useState('')
@@ -173,7 +175,7 @@ export function ShrinkageView() {
             <div>
               <p className="text-sm text-muted-foreground">{t('shrinkage.totalFinancialLoss')}</p>
               <p className="text-2xl font-bold text-red-600">
-                ${totalLoss.toFixed(2)}
+                {formatDualUSD(totalLoss ?? 0)}
               </p>
             </div>
           </div>
@@ -329,7 +331,7 @@ export function ShrinkageView() {
                     </div>
                     <div className="flex flex-col items-end shrink-0 ml-3">
                       <span className="text-sm font-medium text-red-600">
-                        -${(record.financialLoss ?? 0).toFixed(2)}
+                        -{formatDualUSD(record.financialLoss ?? 0)}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {new Date(record.dateRecorded).toLocaleDateString()}

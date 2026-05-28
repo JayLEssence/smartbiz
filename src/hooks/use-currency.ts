@@ -8,6 +8,7 @@ import {
   formatUSD,
   formatDualCurrency,
   formatDualCurrencyShort,
+  formatUSDDual,
   localToUSD,
   usdToLocal,
 } from '@/lib/currency'
@@ -30,5 +31,6 @@ export function useCurrency() {
     formatDualShort: (amount: number) => formatDualCurrencyShort(amount, currency),
     toUSD: (amount: number) => localToUSD(amount, currency.rate),
     toLocal: (amount: number) => usdToLocal(amount, currency.rate),
+    formatDualUSD: (amount: number) => formatUSDDual(amount, currency),
   }
 }

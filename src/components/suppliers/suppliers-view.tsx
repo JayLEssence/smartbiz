@@ -375,7 +375,7 @@ export function SuppliersView() {
                         className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200"
                       >
                         <Package className="h-3 w-3 mr-1" />
-                        {supplier._count.inventoryBatches} {t('suppliers.deliveries').toLowerCase()}
+                        {supplier._count?.inventoryBatches ?? 0} {t('suppliers.deliveries').toLowerCase()}
                       </Badge>
                     </div>
                   </div>
@@ -621,7 +621,7 @@ export function SuppliersView() {
               <p className="text-sm font-medium mb-2">{t('suppliers.supplierDataHidden')}</p>
               <div className="flex items-center gap-1.5 text-sm">
                 <Package className="h-3.5 w-3.5 text-emerald-600" />
-                <span>{selectedSupplier._count.inventoryBatches} {t('suppliers.deliveries').toLowerCase()}</span>
+                <span>{selectedSupplier._count?.inventoryBatches ?? 0} {t('suppliers.deliveries').toLowerCase()}</span>
               </div>
             </div>
           )}

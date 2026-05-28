@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getAuthHeaders } from '@/lib/auth-fetch'
+import { useCurrency } from '@/hooks/use-currency'
 
 interface BestSellerData {
   productId: string
@@ -38,6 +39,7 @@ export function BestSellersChart({ branchId, companyId }: BestSellersChartProps)
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState('daily')
   const [sortBy, setSortBy] = useState('revenue')
+  const { currency, formatDualUSD, formatUSD } = useCurrency()
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -121,7 +123,7 @@ export function BestSellersChart({ branchId, companyId }: BestSellersChartProps)
                 type="number"
                 tick={{ fontSize: 11 }}
                 tickFormatter={(v: number) =>
-                  sortBy === 'revenue' ? `$${v}` : String(v)
+                  sortBy === 'revenue' ? formatUSD(v) : String(v)
                 }
               />
               <YAxis
@@ -133,7 +135,7 @@ export function BestSellersChart({ branchId, companyId }: BestSellersChartProps)
               <Tooltip
                 formatter={(value: number) => [
                   sortBy === 'revenue'
-                    ? `$${value.toFixed(2)}`
+                    ? formatDualUSD(value ?? 0)
                     : `${value} units`,
                   sortBy === 'revenue' ? 'Revenue' : 'Quantity',
                 ]}

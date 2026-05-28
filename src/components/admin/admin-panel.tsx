@@ -5,6 +5,7 @@ import { useAppStore } from '@/stores/app-store'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useLanguage } from '@/lib/i18n/language-context'
 import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
+import { useCurrency } from '@/hooks/use-currency'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -268,6 +269,7 @@ export function AdminPanel() {
   const isMobile = useIsMobile()
   const { currentUser } = useAppStore()
   const { t } = useLanguage()
+  const { formatDualUSD } = useCurrency()
 
   const companyId = currentUser?.companyId
   const isAdmin = currentUser?.role === 'CompanyAdmin'
@@ -1429,7 +1431,7 @@ export function AdminPanel() {
                         </div>
                         <div className="flex items-center gap-3 mt-2 text-sm">
                           <span>{t('admin.currentStock')}: <strong>{product.currentStockLevel}</strong></span>
-                          <span>{t('admin.salePrice')}: <strong>${product.defaultSalePrice.toFixed(2)}</strong></span>
+                          <span>{t('admin.salePrice')}: <strong>{formatDualUSD(product.defaultSalePrice ?? 0)}</strong></span>
                         </div>
                       </div>
                       {product.isActive && (
@@ -1479,7 +1481,7 @@ export function AdminPanel() {
                               {product.currentStockLevel}
                             </span>
                           </TableCell>
-                          <TableCell>${product.defaultSalePrice.toFixed(2)}</TableCell>
+                          <TableCell>{formatDualUSD(product.defaultSalePrice ?? 0)}</TableCell>
                           <TableCell><TrendingBadge trending={product.trending} /></TableCell>
                           <TableCell>
                             {product.isActive ? (
@@ -2094,7 +2096,7 @@ export function AdminPanel() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">{t('admin.salePrice')}:</span>
-                <span className="text-sm font-semibold">${selectedProduct.defaultSalePrice.toFixed(2)}</span>
+                <span className="text-sm font-semibold">{formatDualUSD(selectedProduct.defaultSalePrice ?? 0)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">{t('admin.trending')}:</span>

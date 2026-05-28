@@ -124,7 +124,7 @@ export async function GET(request: Request) {
           (sum, batch) => sum + batch.quantityAdded,
           0
         )
-        const avgPrice = totalPurchaseValue / totalPurchaseQty
+        const avgPrice = totalPurchaseQty > 0 ? totalPurchaseValue / totalPurchaseQty : 0
         totalInventoryValue += product.currentStockLevel * avgPrice
       }
     }

@@ -51,6 +51,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/stores/app-store'
+import { useCurrency } from '@/hooks/use-currency'
 import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
 
 type TrendingType = 'up' | 'down' | 'stable' | 'new' | 'no-sales'
@@ -212,6 +213,7 @@ export function ProductList({ branchId, companyId, onRefresh }: ProductListProps
   const [deleting, setDeleting] = useState(false)
 
   const { currentUser } = useAppStore()
+  const { formatDualUSD } = useCurrency()
   const canDelete = currentUser?.role === 'CompanyAdmin' || currentUser?.role === 'Manager'
 
   const fetchProducts = useCallback(async () => {
@@ -389,7 +391,7 @@ export function ProductList({ branchId, companyId, onRefresh }: ProductListProps
                     </span>
                   </TableCell>
                   <TableCell className="text-right hidden sm:table-cell">
-                    ${product.defaultSalePrice.toFixed(2)}
+                    {formatDualUSD(product.defaultSalePrice ?? 0)}
                   </TableCell>
                   <TableCell>{getStockBadge(product)}</TableCell>
                   <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
@@ -437,7 +439,7 @@ export function ProductList({ branchId, companyId, onRefresh }: ProductListProps
                 <div>
                   <span className="text-muted-foreground">Price: </span>
                   <span className="font-semibold">
-                    ${selectedProduct.defaultSalePrice.toFixed(2)}
+                    {formatDualUSD(selectedProduct.defaultSalePrice ?? 0)}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -476,7 +478,7 @@ export function ProductList({ branchId, companyId, onRefresh }: ProductListProps
                             +{batch.quantityAdded}
                           </TableCell>
                           <TableCell className="text-right">
-                            ${batch.purchasePricePerUnit.toFixed(2)}
+                            {formatDualUSD(batch.purchasePricePerUnit ?? 0)}
                           </TableCell>
                           <TableCell className="hidden sm:table-cell text-muted-foreground">
                             {batch.supplier ?? '—'}

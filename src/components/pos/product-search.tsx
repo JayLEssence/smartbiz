@@ -5,6 +5,7 @@ import { usePosStore } from '@/stores/pos-store'
 import { Input } from '@/components/ui/input'
 import { Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useCurrency } from '@/hooks/use-currency'
 import { getAuthHeaders } from '@/lib/auth-fetch'
 
 interface Product {
@@ -30,6 +31,7 @@ export function ProductSearch({ branchId, companyId }: ProductSearchProps) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const addItem = usePosStore((s) => s.addItem)
+  const { formatDualUSD } = useCurrency()
 
   const searchProducts = useCallback(async (search: string) => {
     if (!search.trim()) {
@@ -152,7 +154,7 @@ export function ProductSearch({ branchId, companyId }: ProductSearchProps) {
               </div>
               <div className="flex flex-col items-end gap-0.5">
                 <span className="font-semibold text-emerald-600">
-                  ${product.defaultSalePrice.toFixed(2)}
+                  {formatDualUSD(product.defaultSalePrice ?? 0)}
                 </span>
                 <span
                   className={cn(

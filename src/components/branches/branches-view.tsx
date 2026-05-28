@@ -422,14 +422,14 @@ export function BranchesView() {
                   <div className="flex flex-col items-center rounded-lg bg-muted/50 py-2 px-1">
                     <Users className="h-3.5 w-3.5 text-emerald-600 mb-1" />
                     <span className="text-sm font-semibold">
-                      {branch._count.users}
+                      {branch._count?.users ?? 0}
                     </span>
                     <span className="text-xs text-muted-foreground">{t('branches.users')}</span>
                   </div>
                   <div className="flex flex-col items-center rounded-lg bg-muted/50 py-2 px-1">
                     <Package className="h-3.5 w-3.5 text-teal-600 mb-1" />
                     <span className="text-sm font-semibold">
-                      {branch._count.products}
+                      {branch._count?.products ?? 0}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {t('branches.products')}
@@ -438,7 +438,7 @@ export function BranchesView() {
                   <div className="flex flex-col items-center rounded-lg bg-muted/50 py-2 px-1">
                     <Receipt className="h-3.5 w-3.5 text-stone-600 mb-1" />
                     <span className="text-sm font-semibold">
-                      {branch._count.sales}
+                      {branch._count?.sales ?? 0}
                     </span>
                     <span className="text-xs text-muted-foreground">{t('branches.sales')}</span>
                   </div>
@@ -658,15 +658,15 @@ export function BranchesView() {
               <div className="grid grid-cols-3 gap-2 text-sm">
                 <div className="flex items-center gap-1.5">
                   <Users className="h-3.5 w-3.5 text-emerald-600" />
-                  <span>{selectedBranch._count.users} {t('branches.users').toLowerCase()}</span>
+                  <span>{selectedBranch._count?.users ?? 0} {t('branches.users').toLowerCase()}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Package className="h-3.5 w-3.5 text-teal-600" />
-                  <span>{selectedBranch._count.products} {t('branches.products').toLowerCase()}</span>
+                  <span>{selectedBranch._count?.products ?? 0} {t('branches.products').toLowerCase()}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Receipt className="h-3.5 w-3.5 text-stone-600" />
-                  <span>{selectedBranch._count.sales} {t('branches.sales').toLowerCase()}</span>
+                  <span>{selectedBranch._count?.sales ?? 0} {t('branches.sales').toLowerCase()}</span>
                 </div>
               </div>
               {selectedBranch.isHeadOffice && (

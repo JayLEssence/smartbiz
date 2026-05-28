@@ -385,8 +385,8 @@ function SalesReportDisplay({
   formatDual: (amount: number) => string
   t: (key: string) => string
 }) {
-  const maxRevenue = Math.max(...data.dailyBreakdown.map(d => d.revenue), 1)
-  const maxPaymentRevenue = Math.max(...data.paymentMethods.map(p => p.revenue), 1)
+  const maxRevenue = Math.max(...data.dailyBreakdown.map(d => d.revenue ?? 0), 1)
+  const maxPaymentRevenue = Math.max(...data.paymentMethods.map(p => p.revenue ?? 0), 1)
 
   return (
     <div className="space-y-4">
@@ -398,7 +398,7 @@ function SalesReportDisplay({
               <DollarSign className="h-4 w-4 text-emerald-600" />
               <span className="text-xs font-medium text-muted-foreground">{t('reports.totalRevenue')}</span>
             </div>
-            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">{formatDual(data.totalRevenue)}</p>
+            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">{formatDual(data.totalRevenue ?? 0)}</p>
           </CardContent>
         </Card>
         <Card className="border-teal-200 dark:border-teal-800">
@@ -407,7 +407,7 @@ function SalesReportDisplay({
               <TrendingUp className="h-4 w-4 text-teal-600" />
               <span className="text-xs font-medium text-muted-foreground">{t('reports.averageSale')}</span>
             </div>
-            <p className="text-lg font-bold text-teal-700 dark:text-teal-400">{formatDual(data.averageSale)}</p>
+            <p className="text-lg font-bold text-teal-700 dark:text-teal-400">{formatDual(data.averageSale ?? 0)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -446,7 +446,7 @@ function SalesReportDisplay({
                     <tr key={row.date} className="border-b last:border-0">
                       <td className="py-2 text-muted-foreground">{row.date}</td>
                       <td className="py-2 text-right">{row.count}</td>
-                      <td className="py-2 text-right font-medium">{formatDual(row.revenue)}</td>
+                      <td className="py-2 text-right font-medium">{formatDual(row.revenue ?? 0)}</td>
                       <td className="py-2 pl-2">
                         <div className="w-full bg-muted rounded-full h-2">
                           <div
@@ -484,7 +484,7 @@ function SalesReportDisplay({
                       </Badge>
                       <span className="text-muted-foreground">{pm.count} {t('reports.transactions').toLowerCase()}</span>
                     </div>
-                    <span className="font-medium">{formatDual(pm.revenue)}</span>
+                    <span className="font-medium">{formatDual(pm.revenue ?? 0)}</span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2.5">
                     <div
@@ -513,7 +513,7 @@ function ExpensesReportDisplay({
   formatDual: (amount: number) => string
   t: (key: string) => string
 }) {
-  const maxCategoryAmount = Math.max(...data.categoryBreakdown.map(c => c.amount), 1)
+  const maxCategoryAmount = Math.max(...data.categoryBreakdown.map(c => c.amount ?? 0), 1)
 
   const categoryColors: Record<string, string> = {
     Rent: 'bg-amber-500',
@@ -535,7 +535,7 @@ function ExpensesReportDisplay({
               <TrendingDown className="h-4 w-4 text-red-500" />
               <span className="text-xs font-medium text-muted-foreground">{t('reports.totalExpenses')}</span>
             </div>
-            <p className="text-lg font-bold text-red-600 dark:text-red-400">{formatDual(data.totalExpenses)}</p>
+            <p className="text-lg font-bold text-red-600 dark:text-red-400">{formatDual(data.totalExpenses ?? 0)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -568,7 +568,7 @@ function ExpensesReportDisplay({
                       <span className="font-medium">{cat.category}</span>
                       <span className="text-xs text-muted-foreground">({cat.count})</span>
                     </div>
-                    <span className="font-medium">{formatDual(cat.amount)}</span>
+                    <span className="font-medium">{formatDual(cat.amount ?? 0)}</span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2.5">
                     <div
@@ -610,7 +610,7 @@ function ProfitLossDisplay({
               <DollarSign className="h-4 w-4 text-emerald-600" />
               <span className="text-xs font-medium text-muted-foreground">{t('reports.revenue2')}</span>
             </div>
-            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">{formatDual(data.revenue)}</p>
+            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">{formatDual(data.revenue ?? 0)}</p>
           </CardContent>
         </Card>
 
@@ -621,19 +621,19 @@ function ProfitLossDisplay({
               <ShoppingBag className="h-4 w-4 text-orange-500" />
               <span className="text-xs font-medium text-muted-foreground">{t('reports.cogs')}</span>
             </div>
-            <p className="text-lg font-bold text-orange-600 dark:text-orange-400">- {formatDual(data.cogs)}</p>
+            <p className="text-lg font-bold text-orange-600 dark:text-orange-400">- {formatDual(data.cogs ?? 0)}</p>
           </CardContent>
         </Card>
 
         {/* Gross Profit */}
-        <Card className={data.grossProfit >= 0 ? 'border-emerald-200 dark:border-emerald-800' : 'border-red-200 dark:border-red-800'}>
+        <Card className={(data.grossProfit ?? 0) >= 0 ? 'border-emerald-200 dark:border-emerald-800' : 'border-red-200 dark:border-red-800'}>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-1">
               <TrendingUp className="h-4 w-4 text-emerald-600" />
               <span className="text-xs font-medium text-muted-foreground">{t('reports.grossProfit')}</span>
             </div>
-            <p className={`text-lg font-bold ${data.grossProfit >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-              {formatDual(data.grossProfit)}
+            <p className={`text-lg font-bold ${(data.grossProfit ?? 0) >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+              {formatDual(data.grossProfit ?? 0)}
             </p>
           </CardContent>
         </Card>
@@ -645,7 +645,7 @@ function ProfitLossDisplay({
               <CreditCard className="h-4 w-4 text-red-500" />
               <span className="text-xs font-medium text-muted-foreground">{t('reports.expenses2')}</span>
             </div>
-            <p className="text-lg font-bold text-red-600 dark:text-red-400">- {formatDual(data.totalExpenses)}</p>
+            <p className="text-lg font-bold text-red-600 dark:text-red-400">- {formatDual(data.totalExpenses ?? 0)}</p>
           </CardContent>
         </Card>
 
@@ -664,28 +664,28 @@ function ProfitLossDisplay({
                 </span>
               </div>
               <p className={`text-2xl font-bold ${isProfit ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                {isProfit ? '' : '- '}{formatDual(Math.abs(data.netProfit))}
+                {isProfit ? '' : '- '}{formatDual(Math.abs(data.netProfit ?? 0))}
               </p>
             </div>
             {/* Visual waterfall bar */}
             <div className="mt-3 flex items-center gap-1 h-6">
-              {data.revenue > 0 && (
+              {(data.revenue ?? 0) > 0 && (
                 <>
                   <div
                     className="bg-emerald-500 h-6 rounded-l flex items-center justify-center text-[10px] text-white font-medium min-w-[2px]"
-                    style={{ width: `${(data.revenue / data.revenue) * 100}%` }}
+                    style={{ width: `${((data.revenue ?? 0) / (data.revenue ?? 1)) * 100}%` }}
                   >
                     {t('reports.revenue2')}
                   </div>
                   <div
                     className="bg-orange-400 h-6 flex items-center justify-center text-[10px] text-white font-medium min-w-[2px]"
-                    style={{ width: `${Math.max((data.cogs / data.revenue) * 100, 2)}%` }}
+                    style={{ width: `${Math.max(((data.cogs ?? 0) / (data.revenue ?? 1)) * 100, 2)}%` }}
                   >
                     {t('reports.cogs')}
                   </div>
                   <div
                     className="bg-red-400 h-6 rounded-r flex items-center justify-center text-[10px] text-white font-medium min-w-[2px]"
-                    style={{ width: `${Math.max((data.totalExpenses / data.revenue) * 100, 2)}%` }}
+                    style={{ width: `${Math.max(((data.totalExpenses ?? 0) / (data.revenue ?? 1)) * 100, 2)}%` }}
                   >
                     {t('reports.expenses2')}
                   </div>
@@ -729,7 +729,7 @@ function InventoryReportDisplay({
               <DollarSign className="h-4 w-4 text-emerald-600" />
               <span className="text-xs font-medium text-muted-foreground">{t('reports.totalStockValue')}</span>
             </div>
-            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">{formatDual(data.totalStockValue)}</p>
+            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">{formatDual(data.totalStockValue ?? 0)}</p>
           </CardContent>
         </Card>
         <Card className={data.lowStockCount > 0 ? 'border-amber-200 dark:border-amber-800' : ''}>
@@ -783,7 +783,7 @@ function InventoryReportDisplay({
                         </span>
                         <span className="text-muted-foreground"> / {item.reorderThreshold}</span>
                       </td>
-                      <td className="py-2 text-right text-muted-foreground">{formatDual(item.value)}</td>
+                      <td className="py-2 text-right text-muted-foreground">{formatDual(item.value ?? 0)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -830,7 +830,7 @@ function InventoryReportDisplay({
                           {item.currentStockLevel}
                         </span>
                       </td>
-                      <td className="py-2 text-right">{formatDual(item.value)}</td>
+                      <td className="py-2 text-right">{formatDual(item.value ?? 0)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -864,7 +864,7 @@ function TaxReportDisplay({
               <Receipt className="h-4 w-4 text-emerald-600" />
               <span className="text-xs font-medium text-muted-foreground">{t('reports.taxableAmount')}</span>
             </div>
-            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">{formatDual(data.taxableAmount)}</p>
+            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">{formatDual(data.taxableAmount ?? 0)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -873,7 +873,7 @@ function TaxReportDisplay({
               <Calculator className="h-4 w-4 text-stone-500" />
               <span className="text-xs font-medium text-muted-foreground">{t('reports.taxRate')}</span>
             </div>
-            <p className="text-lg font-bold">{data.taxRate}% VAT</p>
+            <p className="text-lg font-bold">{data.taxRate ?? 0}% VAT</p>
           </CardContent>
         </Card>
         <Card className="border-amber-200 dark:border-amber-800">
@@ -882,7 +882,7 @@ function TaxReportDisplay({
               <DollarSign className="h-4 w-4 text-amber-600" />
               <span className="text-xs font-medium text-muted-foreground">{t('reports.taxAmount')}</span>
             </div>
-            <p className="text-lg font-bold text-amber-700 dark:text-amber-400">{formatDual(data.taxAmount)}</p>
+            <p className="text-lg font-bold text-amber-700 dark:text-amber-400">{formatDual(data.taxAmount ?? 0)}</p>
           </CardContent>
         </Card>
       </div>
@@ -914,8 +914,8 @@ function TaxReportDisplay({
                           {row.method}
                         </Badge>
                       </td>
-                      <td className="py-2 text-right">{formatDual(row.taxableAmount)}</td>
-                      <td className="py-2 text-right font-medium text-amber-700 dark:text-amber-400">{formatDual(row.taxAmount)}</td>
+                      <td className="py-2 text-right">{formatDual(row.taxableAmount ?? 0)}</td>
+                      <td className="py-2 text-right font-medium text-amber-700 dark:text-amber-400">{formatDual(row.taxAmount ?? 0)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -931,7 +931,7 @@ function TaxReportDisplay({
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Calculator className="h-4 w-4" />
             <span>
-              {data.totalTransactions} {t('reports.transactions').toLowerCase()} • {t('reports.taxRate')}: {data.taxRate}% VAT (Tanzania)
+              {data.totalTransactions ?? 0} {t('reports.transactions').toLowerCase()} • {t('reports.taxRate')}: {data.taxRate ?? 0}% VAT (Tanzania)
             </span>
           </div>
         </CardContent>

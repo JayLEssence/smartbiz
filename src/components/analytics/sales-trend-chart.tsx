@@ -12,6 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getAuthHeaders } from '@/lib/auth-fetch'
+import { useCurrency } from '@/hooks/use-currency'
 
 interface TrendData {
   date: string
@@ -27,6 +28,7 @@ interface SalesTrendChartProps {
 export function SalesTrendChart({ branchId, companyId }: SalesTrendChartProps) {
   const [data, setData] = useState<TrendData[]>([])
   const [loading, setLoading] = useState(true)
+  const { currency, formatDualUSD, formatUSD } = useCurrency()
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -83,11 +85,11 @@ export function SalesTrendChart({ branchId, companyId }: SalesTrendChartProps) {
               />
               <YAxis
                 tick={{ fontSize: 11 }}
-                tickFormatter={(v: number) => `$${v}`}
+                tickFormatter={(v: number) => formatUSD(v)}
               />
               <Tooltip
                 formatter={(value: number) => [
-                  `$${value.toFixed(2)}`,
+                  formatDualUSD(value ?? 0),
                   'Revenue',
                 ]}
               />

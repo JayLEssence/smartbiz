@@ -56,7 +56,7 @@ function generateRuleBasedRecommendations(
         type: 'pricing',
         priority: 'low',
         productName: vel.productName,
-        recommendation: `${vel.productName} is selling ${vel.unitsPerWeek.toFixed(1)} units per week — a strong performer.`,
+        recommendation: `${vel.productName} is selling ${(vel.unitsPerWeek ?? 0).toFixed(1)} units per week — a strong performer.`,
         suggestedAction: `Consider a slight price increase (5-10%) on ${vel.productName} to maximize margin while demand is high.`,
       })
     }

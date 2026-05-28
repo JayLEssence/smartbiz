@@ -351,7 +351,7 @@ export function CustomersView() {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">{t('customers.creditOutstanding')}</p>
-                <p className="text-2xl font-bold">{formatDual(summary.totalCreditOutstanding)}</p>
+                <p className="text-2xl font-bold">{formatDual(summary.totalCreditOutstanding ?? 0)}</p>
               </div>
               <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
                 summary.totalCreditOutstanding > 0
@@ -368,7 +368,7 @@ export function CustomersView() {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">{t('customers.loyaltyPoints')}</p>
-                <p className="text-2xl font-bold">{summary.totalLoyaltyPoints.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{(summary.totalLoyaltyPoints ?? 0).toLocaleString()}</p>
               </div>
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
                 <Star className="h-5 w-5" />
@@ -456,7 +456,7 @@ export function CustomersView() {
               }`}
             >
               {/* Credit warning accent bar */}
-              {customer.creditBalance > 0 && (
+              {(customer.creditBalance ?? 0) > 0 && (
                 <div className="absolute top-0 left-0 right-0 h-1 bg-red-500" />
               )}
 
@@ -473,7 +473,7 @@ export function CustomersView() {
                       {customer.loyaltyPoints > 0 && (
                         <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-xs gap-1">
                           <Star className="h-3 w-3" />
-                          {customer.loyaltyPoints.toLocaleString()} {t('customers.points')}
+                          {(customer.loyaltyPoints ?? 0).toLocaleString()} {t('customers.points')}
                         </Badge>
                       )}
                       {!customer.isActive && (
@@ -538,18 +538,18 @@ export function CustomersView() {
                 <div className="space-y-2">
                   {/* Credit Balance - prominent display */}
                   <div className={`rounded-lg p-3 ${
-                    customer.creditBalance > 0
+                    (customer.creditBalance ?? 0) > 0
                       ? 'bg-red-50 border border-red-200'
                       : 'bg-emerald-50/50 border border-emerald-100'
                   }`}>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-medium flex items-center gap-1.5">
                         <CreditCard className={`h-3.5 w-3.5 ${
-                          customer.creditBalance > 0 ? 'text-red-500' : 'text-emerald-500'
+                          (customer.creditBalance ?? 0) > 0 ? 'text-red-500' : 'text-emerald-500'
                         }`} />
                         {t('customers.creditBalance')}
                       </span>
-                      {customer.creditBalance > 0 && (
+                      {(customer.creditBalance ?? 0) > 0 && (
                         <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-5 gap-1">
                           <AlertTriangle className="h-3 w-3" />
                           {t('customers.creditWarning')}
@@ -557,9 +557,9 @@ export function CustomersView() {
                       )}
                     </div>
                     <p className={`text-sm font-bold ${
-                      customer.creditBalance > 0 ? 'text-red-700' : 'text-emerald-700'
+                      (customer.creditBalance ?? 0) > 0 ? 'text-red-700' : 'text-emerald-700'
                     }`}>
-                      {formatDual(customer.creditBalance)}
+                      {formatDual(customer.creditBalance ?? 0)}
                     </p>
                   </div>
 
@@ -571,7 +571,7 @@ export function CustomersView() {
                         <span className="text-xs text-muted-foreground">{t('customers.creditLimit')}</span>
                       </div>
                       <p className="text-xs font-semibold">
-                        {formatDual(customer.creditLimit)}
+                        {formatDual(customer.creditLimit ?? 0)}
                       </p>
                     </div>
                     <div className="rounded-lg bg-muted/50 py-2 px-3">
@@ -580,7 +580,7 @@ export function CustomersView() {
                         <span className="text-xs text-muted-foreground">{t('customers.loyaltyPoints')}</span>
                       </div>
                       <p className="text-xs font-semibold">
-                        {customer.loyaltyPoints.toLocaleString()} {t('customers.points')}
+                        {(customer.loyaltyPoints ?? 0).toLocaleString()} {t('customers.points')}
                       </p>
                     </div>
                   </div>
@@ -857,14 +857,14 @@ export function CustomersView() {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex items-center gap-1.5">
                   <CreditCard className="h-3.5 w-3.5 text-red-500" />
-                  <span>{t('customers.creditBalance')}: <strong>{formatDual(selectedCustomer.creditBalance)}</strong></span>
+                  <span>{t('customers.creditBalance')}: <strong>{formatDual(selectedCustomer.creditBalance ?? 0)}</strong></span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Star className="h-3.5 w-3.5 text-amber-500" />
-                  <span>{selectedCustomer.loyaltyPoints.toLocaleString()} {t('customers.points')}</span>
+                  <span>{(selectedCustomer.loyaltyPoints ?? 0).toLocaleString()} {t('customers.points')}</span>
                 </div>
               </div>
-              {selectedCustomer.creditBalance > 0 && (
+              {(selectedCustomer.creditBalance ?? 0) > 0 && (
                 <p className="text-xs text-red-600 font-medium mt-1 flex items-center gap-1">
                   <AlertTriangle className="h-3 w-3" />
                   This customer has outstanding credit balance.

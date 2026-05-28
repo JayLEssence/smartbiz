@@ -77,7 +77,7 @@ function HomeContent() {
         const stored = localStorage.getItem('smartbiz_session')
         if (stored) {
           const data = JSON.parse(stored)
-          if (data?.user && data?.token) {
+          if (data?.user && data?.token && data.user.company && data.user.branch) {
             const user = data.user
             const companyInfo: CompanyInfo = {
               id: user.company.id,
@@ -100,13 +100,13 @@ function HomeContent() {
               role: user.role,
               branchId: user.branchId,
               companyId: user.companyId,
-              twoFactorEnabled: user.twoFactorEnabled,
-              mustChangePassword: user.mustChangePassword,
+              twoFactorEnabled: user.twoFactorEnabled ?? false,
+              mustChangePassword: user.mustChangePassword ?? false,
               branch: {
                 id: user.branch.id,
                 name: user.branch.name,
                 code: user.branch.code,
-                isHeadOffice: user.branch.isHeadOffice,
+                isHeadOffice: user.branch.isHeadOffice ?? false,
                 isActive: true,
               },
               company: companyInfo,

@@ -19,6 +19,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
 import { getAuthHeaders } from '@/lib/auth-fetch'
+import { useCurrency } from '@/hooks/use-currency'
 
 interface LossData {
   totalFinancialLoss: number
@@ -31,6 +32,7 @@ export function AnalyticsView() {
   const isMobile = useIsMobile()
   const { currentBranchId, currentUser } = useAppStore()
   const { t } = useLanguage()
+  const { currency, formatDualUSD, formatUSD } = useCurrency()
   const companyId = currentUser?.companyId
   const [lossData, setLossData] = useState<LossData | null>(null)
   const [lossLoading, setLossLoading] = useState(true)
@@ -95,7 +97,7 @@ export function AnalyticsView() {
                 <div className="text-center">
                   <p className="text-sm text-muted-foreground">{t('analytics.totalFinancialLoss')}</p>
                   <p className="text-2xl font-bold text-red-600">
-                    ${lossData.totalFinancialLoss.toFixed(2)}
+                    {formatDualUSD(lossData.totalFinancialLoss ?? 0)}
                   </p>
                 </div>
                 {lossByReasonData.length > 0 && (
@@ -107,11 +109,11 @@ export function AnalyticsView() {
                       />
                       <YAxis
                         tick={{ fontSize: 11 }}
-                        tickFormatter={(v: number) => `$${v}`}
+                        tickFormatter={(v: number) => formatUSD(v)}
                       />
                       <Tooltip
                         formatter={(value: number) => [
-                          `$${value.toFixed(2)}`,
+                          formatDualUSD(value ?? 0),
                           t('analytics.loss'),
                         ]}
                       />

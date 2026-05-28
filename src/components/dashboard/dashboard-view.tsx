@@ -33,6 +33,8 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore, type ViewType } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
 import { getAuthHeaders } from '@/lib/auth-fetch'
+import { useCurrency } from '@/hooks/use-currency'
+import { formatUSD } from '@/lib/currency'
 
 interface DashboardData {
   todayRevenue: number
@@ -72,6 +74,7 @@ export function DashboardView() {
   const isMobile = useIsMobile()
   const { currentBranchId, currentUser, setView } = useAppStore()
   const { t } = useLanguage()
+  const { currency, formatDualUSD, formatLocal, toLocal } = useCurrency()
   const companyId = currentUser?.companyId
   const isEmployee = currentUser?.role === 'Employee'
   const userRole = currentUser?.role || 'Employee'
@@ -169,10 +172,6 @@ export function DashboardView() {
     )
   }
 
-  // Helper to get local currency info
-  const currencySymbol = currentUser?.company?.currencySymbol || '$'
-  const exchangeRate = currentUser?.company?.exchangeRate || 1
-
   return (
     <div className={isMobile ? 'p-4 pb-24' : 'p-4'}>
       {/* Quick Actions */}
@@ -219,9 +218,9 @@ export function DashboardView() {
                 <DollarSign className="h-4 w-4" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-bold">{currencySymbol}{((data?.todayRevenue ?? 0) * exchangeRate).toFixed(0)}</p>
+                <p className="text-sm font-bold">{formatLocal(toLocal(data?.todayRevenue ?? 0))}</p>
                 <p className="text-[11px] text-muted-foreground truncate">
-                  {exchangeRate !== 1 ? `$${(data?.todayRevenue ?? 0).toFixed(2)}` : t('dashboard.todaysRevenue')}
+                  {currency.rate !== 1 ? formatUSD(data?.todayRevenue ?? 0) : t('dashboard.todaysRevenue')}
                 </p>
               </div>
             </div>
@@ -251,13 +250,13 @@ export function DashboardView() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <SummaryCard
           title={t('dashboard.todayRevenue')}
-          value={`$${data.todayRevenue.toFixed(2)}`}
+          value={formatDualUSD(data.todayRevenue ?? 0)}
           icon={DollarSign}
           className="bg-emerald-50 text-emerald-600"
         />
         <SummaryCard
           title={t('dashboard.todayProfit')}
-          value={`$${data.todayProfit.toFixed(2)}`}
+          value={formatDualUSD(data.todayProfit ?? 0)}
           icon={TrendingUp}
           className="bg-emerald-50 text-emerald-600"
         />
@@ -269,7 +268,7 @@ export function DashboardView() {
         />
         <SummaryCard
           title={t('dashboard.inventoryValue')}
-          value={`$${data.totalInventoryValue.toFixed(2)}`}
+          value={formatDualUSD(data.totalInventoryValue ?? 0)}
           icon={Warehouse}
           className="bg-stone-100 text-stone-600"
         />
@@ -350,7 +349,7 @@ export function DashboardView() {
                   </div>
                   <div className="flex flex-col items-end shrink-0 ml-3">
                     <span className="text-sm font-semibold text-emerald-600">
-                      ${branch.todayRevenue.toFixed(2)}
+                      {formatDualUSD(branch.todayRevenue ?? 0)}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {branch.todaySalesCount} {t('dashboard.sales')}
@@ -385,7 +384,7 @@ export function DashboardView() {
                   <span className="text-muted-foreground">
                     {t('dashboard.revenue')}{' '}
                     <span className="text-emerald-600 font-medium">
-                      ${data.topSellerToday.totalRevenue?.toFixed(2) ?? '0.00'}
+                      {formatDualUSD(data.topSellerToday.totalRevenue ?? 0)}
                     </span>
                   </span>
                 </div>

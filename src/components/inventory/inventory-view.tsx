@@ -9,6 +9,7 @@ import { Package, PackagePlus, PlusCircle, History } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
+import { useCurrency } from '@/hooks/use-currency'
 import { getAuthHeaders } from '@/lib/auth-fetch'
 
 interface InventoryBatch {
@@ -24,6 +25,7 @@ interface InventoryBatch {
 export function InventoryView() {
   const isMobile = useIsMobile()
   const { t } = useLanguage()
+  const { formatDualUSD } = useCurrency()
   const { currentBranchId, currentUser } = useAppStore()
   const companyId = currentUser?.companyId
   const isEmployee = currentUser?.role === 'Employee'
@@ -145,7 +147,7 @@ export function InventoryView() {
                         +{batch.quantityAdded}
                       </td>
                       <td className="px-3 py-2 text-right">
-                        ${batch.purchasePricePerUnit.toFixed(2)}
+                        {formatDualUSD(batch.purchasePricePerUnit ?? 0)}
                       </td>
                       <td className="px-3 py-2 text-muted-foreground hidden sm:table-cell">
                         {batch.supplier ?? '—'}

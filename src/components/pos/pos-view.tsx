@@ -5,6 +5,7 @@ import { ProductSearch } from './product-search'
 import { Cart } from './cart'
 import { CheckoutDialog } from './checkout-dialog'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useCurrency } from '@/hooks/use-currency'
 import { usePosStore } from '@/stores/pos-store'
 import { useAppStore } from '@/stores/app-store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -27,6 +28,7 @@ interface QuickProduct {
 export function PosView() {
   const isMobile = useIsMobile()
   const { t } = useLanguage()
+  const { formatDualUSD } = useCurrency()
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [quickProducts, setQuickProducts] = useState<QuickProduct[]>([])
   const [barcodeInput, setBarcodeInput] = useState('')
@@ -233,7 +235,7 @@ export function PosView() {
                       {product.name}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      ${product.defaultSalePrice.toFixed(2)}
+                      {formatDualUSD(product.defaultSalePrice ?? 0)}
                     </span>
                   </div>
                 </Button>

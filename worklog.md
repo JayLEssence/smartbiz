@@ -356,3 +356,197 @@ Stage Summary:
 - Active Sessions: Session list from DB with current session highlighting, device/browser parsing, "Revoke Others" functionality
 - Enhanced Security Score: Detailed checklist with per-item points, achieved/not-achieved status, and descriptions
 - All lint checks pass, dev server runs clean with no errors
+
+---
+Task ID: 1
+Agent: Currency Fix Agent
+Task: Fix toFixed null-safety crashes and implement dual currency display on dashboard
+
+Work Log:
+- Read worklog.md and all relevant files (currency.ts, use-currency.ts, dashboard-view.tsx, summary-card.tsx)
+- Added `formatUSDDual(usdAmount, currency)` function to `/src/lib/currency.ts`: Takes a USD amount, formats both USD and local currency, returns "$10.00 / TSh 25,700" format
+- Added `formatDualUSD` to `/src/hooks/use-currency.ts` hook: Exposes `formatUSDDual` via the hook as `formatDualUSD: (amount: number) => formatUSDDual(amount, currency)`
+- Updated `/src/components/dashboard/dashboard-view.tsx`:
+  - Imported `useCurrency` from `@/hooks/use-currency` and `formatUSD` from `@/lib/currency`
+  - Replaced `currencySymbol` and `exchangeRate` manual variables with `const { currency, formatDualUSD, formatLocal, toLocal } = useCurrency()` (moved before early returns to avoid conditional hook call)
+  - Fixed ALL `.toFixed()` calls to be null-safe with `?? 0` pattern:
+    - `data.todayRevenue.toFixed(2)` → `formatDualUSD(data.todayRevenue ?? 0)`
+    - `data.todayProfit.toFixed(2)` → `formatDualUSD(data.todayProfit ?? 0)`
+    - `data.totalInventoryValue.toFixed(2)` → `formatDualUSD(data.totalInventoryValue ?? 0)`
+    - `branch.todayRevenue.toFixed(2)` → `formatDualUSD(branch.todayRevenue ?? 0)`
+    - `data.topSellerToday.totalRevenue?.toFixed(2) ?? '0.00'` → `formatDualUSD(data.topSellerToday.totalRevenue ?? 0)`
+  - Updated Today's Summary compact card:
+    - Revenue primary line: `formatLocal(toLocal(data?.todayRevenue ?? 0))` shows local currency (e.g., "TSh 25,700")
+    - Revenue secondary line: `formatUSD(data?.todayRevenue ?? 0)` shows USD (e.g., "$10.00") when rate !== 1
+  - All SummaryCard values now show dual currency (e.g., "$10.00 / TSh 25,700")
+- Updated `/src/components/dashboard/summary-card.tsx`:
+  - Changed value text from `text-2xl font-bold` to `text-base sm:text-xl lg:text-2xl font-bold break-words leading-tight` to handle longer dual currency strings on mobile without truncation
+- Fixed React hooks rule violation: moved `useCurrency()` call to top of component (before conditional returns)
+- All lint checks pass, dev server compiles cleanly
+
+Stage Summary:
+- Problem 1 (toFixed null crashes): All `.toFixed()` calls on API data now use null-safe `(value ?? 0)` pattern
+- Problem 2 (dual currency): All monetary values now show both USD and local currency using `formatDualUSD` (e.g., "$10.00 / TSh 25,700")
+- SummaryCard responsive text sizing prevents truncation of longer dual currency strings
+- Today's Summary card shows local currency as primary with USD as secondary (compact layout)
+- New `formatUSDDual` function in currency.ts and `formatDualUSD` in useCurrency hook available for use in other components
+
+---
+Task ID: 2-b
+Agent: Currency Fix Agent B
+Task: Fix dual currency display in analytics charts and admin panel
+
+Work Log:
+- Updated `/src/components/analytics/analytics-view.tsx`:
+  - Imported `useCurrency` from `@/hooks/use-currency`
+  - Added `const { currency, formatDualUSD, formatUSD } = useCurrency()` at top of component
+  - Replaced `${lossData.totalFinancialLoss.toFixed(2)}` → `formatDualUSD(lossData.totalFinancialLoss ?? 0)`
+  - Replaced YAxis tick `$${v}` → `formatUSD(v)` (short format for axis)
+  - Replaced Tooltip `$${value.toFixed(2)}` → `formatDualUSD(value ?? 0)` (full dual in tooltip)
+- Updated `/src/components/analytics/sales-trend-chart.tsx`:
+  - Imported `useCurrency` from `@/hooks/use-currency`
+  - Added `const { currency, formatDualUSD, formatUSD } = useCurrency()` at top of component
+  - Replaced YAxis tick `$${v}` → `formatUSD(v)` (short format for axis)
+  - Replaced Tooltip `$${value.toFixed(2)}` → `formatDualUSD(value ?? 0)` (full dual in tooltip)
+- Updated `/src/components/analytics/best-sellers-chart.tsx`:
+  - Imported `useCurrency` from `@/hooks/use-currency`
+  - Added `const { currency, formatDualUSD, formatUSD } = useCurrency()` at top of component
+  - Replaced XAxis tick `$${v}` → `formatUSD(v)` (short format for axis)
+  - Replaced Tooltip `$${value.toFixed(2)}` → `formatDualUSD(value ?? 0)` (full dual in tooltip)
+- Updated `/src/components/admin/admin-panel.tsx`:
+  - Imported `useCurrency` from `@/hooks/use-currency`
+  - Added `const { formatDualUSD } = useCurrency()` at top of component
+  - Replaced 3 occurrences of `${product.defaultSalePrice.toFixed(2)}` → `formatDualUSD(product.defaultSalePrice ?? 0)`
+  - Replaced `${selectedProduct.defaultSalePrice.toFixed(2)}` → `formatDualUSD(selectedProduct.defaultSalePrice ?? 0)`
+
+Stage Summary:
+- All 4 files now use `useCurrency` hook for dual currency formatting
+- Chart axes use short `formatUSD()` format for space-constrained display
+- Chart tooltips use full `formatDualUSD()` format showing both USD and local currency
+- All `.toFixed()` calls made null-safe with `?? 0` pattern
+- All lint checks pass cleanly
+
+---
+Task ID: 2-a
+Agent: Currency Fix Agent A
+Task: Fix dual currency display in POS, checkout, inventory, and shrinkage views
+
+Work Log:
+- Read worklog.md and all 6 target files (pos-view.tsx, product-search.tsx, checkout-dialog.tsx, inventory-view.tsx, product-list.tsx, shrinkage-view.tsx) plus currency.ts and use-currency.ts
+- Updated `/src/components/pos/pos-view.tsx`:
+  - Imported `useCurrency` from `@/hooks/use-currency`
+  - Added `const { formatDualUSD } = useCurrency()` at top of component
+  - Replaced `${product.defaultSalePrice.toFixed(2)}` → `{formatDualUSD(product.defaultSalePrice ?? 0)}` in Quick Add section
+- Updated `/src/components/pos/product-search.tsx`:
+  - Imported `useCurrency` from `@/hooks/use-currency`
+  - Added `const { formatDualUSD } = useCurrency()` at top of component
+  - Replaced `${product.defaultSalePrice.toFixed(2)}` → `{formatDualUSD(product.defaultSalePrice ?? 0)}` in search dropdown
+- Updated `/src/components/pos/checkout-dialog.tsx`:
+  - Added `import { formatUSD as formatUSDAmount } from '@/lib/currency'` for raw USD formatting
+  - Changed hook destructuring to include `formatDualUSD` and `toLocal` (removed `formatUSD`, `toUSD`)
+  - Removed local `convertToUSD` and `formatLocalAmt` functions from handleDownloadReceipt (2 functions)
+  - Removed local `convertToUSD` and `formatLocalAmt` functions from receipt modal section (2 functions)
+  - Replaced all `formatLocalAmt(amount)` with `formatLocal(toLocal(amount ?? 0))` for local currency display
+  - Replaced all `convertToUSD(amount)` with `formatUSDAmount(amount ?? 0)` for USD display
+  - Used `formatDualUSD(amount ?? 0)` for checkout totals, discount, and WhatsApp receipt
+  - Made all price displays null-safe with `?? 0`
+  - Receipt modal: Items show local price (primary) + USD (secondary), totals use `formatDualUSD`
+  - Download receipt: Kept two-line format per item for text readability
+  - WhatsApp receipt: All amounts use `formatDualUSD` for compact dual display
+- Updated `/src/components/inventory/inventory-view.tsx`:
+  - Imported `useCurrency` from `@/hooks/use-currency`
+  - Added `const { formatDualUSD } = useCurrency()` at top of component
+  - Replaced `${batch.purchasePricePerUnit.toFixed(2)}` → `{formatDualUSD(batch.purchasePricePerUnit ?? 0)}` in history table
+- Updated `/src/components/inventory/product-list.tsx`:
+  - Imported `useCurrency` from `@/hooks/use-currency`
+  - Added `const { formatDualUSD } = useCurrency()` at top of component
+  - Replaced 3 `.toFixed(2)` occurrences:
+    - `${product.defaultSalePrice.toFixed(2)}` → `{formatDualUSD(product.defaultSalePrice ?? 0)}` in product table
+    - `${selectedProduct.defaultSalePrice.toFixed(2)}` → `{formatDualUSD(selectedProduct.defaultSalePrice ?? 0)}` in detail dialog
+    - `${batch.purchasePricePerUnit.toFixed(2)}` → `{formatDualUSD(batch.purchasePricePerUnit ?? 0)}` in batch table
+- Updated `/src/components/inventory/shrinkage-view.tsx`:
+  - Imported `useCurrency` from `@/hooks/use-currency`
+  - Added `const { formatDualUSD } = useCurrency()` at top of component
+  - Replaced `${totalLoss.toFixed(2)}` → `{formatDualUSD(totalLoss ?? 0)}` in total loss card (null-safe)
+  - Replaced `-${(record.financialLoss ?? 0).toFixed(2)}` → `-{formatDualUSD(record.financialLoss ?? 0)}` in records list
+- All lint checks pass, dev server compiles cleanly
+
+Stage Summary:
+- 6 components updated with dual currency display using `formatDualUSD` from `useCurrency` hook
+- All `.toFixed(2)` calls on prices replaced with null-safe `formatDualUSD(value ?? 0)` pattern
+- Consistent display format: "$10.00 / TSh 25,700" across POS, checkout, inventory, and shrinkage views
+- Local `convertToUSD` and `formatLocalAmt` functions in checkout-dialog.tsx replaced with hook methods
+- Checkout receipt (download, modal, WhatsApp) all show dual currency
+- All monetary values are null-safe with `?? 0` fallback
+
+---
+Task ID: 3
+Agent: Runtime Error Audit Agent
+Task: Audit remaining component files for runtime errors (null-safety, toFixed on nullable, missing null checks)
+
+Work Log:
+- Read worklog.md and all 11 target files (expenses-view.tsx, customers-view.tsx, suppliers-view.tsx, branches-view.tsx, reports-view.tsx, advisor-view.tsx, app-header.tsx, session-timeout.tsx, offline-banner.tsx, command-palette.tsx, page.tsx) plus dashboard API route
+- Searched all component files for `.toFixed()` calls (none remaining in .tsx files), `.toLocaleString()` calls, and `_count.` property access patterns
+
+- Updated `/src/components/expenses/expenses-view.tsx`:
+  - Made `formatLocal(summary.totalThisMonth)` → `formatLocal(summary.totalThisMonth ?? 0)` null-safe
+  - Made `formatDual(summary.totalThisMonth)` → `formatDual(summary.totalThisMonth ?? 0)` null-safe
+  - Made `formatLocal(amount)` and `formatDual(amount)` in category cards → `?? 0`
+  - Made `formatLocal(expense.amount)` and `formatDual(expense.amount)` in desktop table → `?? 0`
+  - Made `formatLocal(expense.amount)` and `formatDual(expense.amount)` in mobile cards → `?? 0`
+  - Made `formatLocal(deleteTarget.amount)` in delete confirmation → `?? 0`
+
+- Updated `/src/components/customers/customers-view.tsx`:
+  - Made `formatDual(summary.totalCreditOutstanding)` → `?? 0`
+  - Made `summary.totalLoyaltyPoints.toLocaleString()` → `(summary.totalLoyaltyPoints ?? 0).toLocaleString()`
+  - Made `customer.loyaltyPoints.toLocaleString()` → `(customer.loyaltyPoints ?? 0).toLocaleString()` (2 occurrences)
+  - Made `formatDual(customer.creditBalance)` → `?? 0`
+  - Made `formatDual(customer.creditLimit)` → `?? 0`
+  - Made `formatDual(selectedCustomer.creditBalance)` → `?? 0`
+  - Made `selectedCustomer.loyaltyPoints.toLocaleString()` → `(selectedCustomer.loyaltyPoints ?? 0).toLocaleString()`
+  - Made all `customer.creditBalance > 0` comparisons → `(customer.creditBalance ?? 0) > 0` (4 occurrences)
+  - Made `selectedCustomer.creditBalance > 0` → `(selectedCustomer.creditBalance ?? 0) > 0`
+
+- Updated `/src/components/reports/reports-view.tsx`:
+  - Made all `formatDual()` calls null-safe with `?? 0` across all 5 report display sub-components (SalesReportDisplay, ExpensesReportDisplay, ProfitLossDisplay, InventoryReportDisplay, TaxReportDisplay)
+  - Fixed division-by-zero in ProfitLossDisplay waterfall bar: `data.cogs / data.revenue` → `(data.cogs ?? 0) / (data.revenue ?? 1)` and same for totalExpenses
+  - Made `data.taxRate` → `data.taxRate ?? 0` in TaxReportDisplay
+  - Made `data.totalTransactions` → `data.totalTransactions ?? 0`
+  - Made `Math.max(...data.dailyBreakdown.map(d => d.revenue))` → `d.revenue ?? 0`
+  - Made `Math.max(...data.paymentMethods.map(p => p.revenue))` → `p.revenue ?? 0`
+  - Made `Math.max(...data.categoryBreakdown.map(c => c.amount))` → `c.amount ?? 0`
+  - Made `data.grossProfit >= 0` → `(data.grossProfit ?? 0) >= 0` (2 occurrences)
+
+- Updated `/src/components/branches/branches-view.tsx`:
+  - Made `branch._count.users` → `branch._count?.users ?? 0`
+  - Made `branch._count.products` → `branch._count?.products ?? 0`
+  - Made `branch._count.sales` → `branch._count?.sales ?? 0`
+  - Made `selectedBranch._count.users` → `selectedBranch._count?.users ?? 0`
+  - Made `selectedBranch._count.products` → `selectedBranch._count?.products ?? 0`
+  - Made `selectedBranch._count.sales` → `selectedBranch._count?.sales ?? 0`
+
+- Updated `/src/components/suppliers/suppliers-view.tsx`:
+  - Made `supplier._count.inventoryBatches` → `supplier._count?.inventoryBatches ?? 0`
+  - Made `selectedSupplier._count.inventoryBatches` → `selectedSupplier._count?.inventoryBatches ?? 0`
+
+- Updated `/src/app/page.tsx`:
+  - Added `data.user.company && data.user.branch` check to session restoration guard condition (prevents crash if stored session has null company/branch)
+  - Made `user.twoFactorEnabled` → `user.twoFactorEnabled ?? false`
+  - Made `user.mustChangePassword` → `user.mustChangePassword ?? false`
+  - Made `user.branch.isHeadOffice` → `user.branch.isHeadOffice ?? false`
+
+- Updated `/src/app/api/analytics/dashboard/route.ts`:
+  - Fixed division-by-zero in totalInventoryValue calculation: `totalPurchaseValue / totalPurchaseQty` → `totalPurchaseQty > 0 ? totalPurchaseValue / totalPurchaseQty : 0`
+
+- Updated `/src/app/api/advisor/recommendations/route.ts`:
+  - Made `vel.unitsPerWeek.toFixed(1)` → `(vel.unitsPerWeek ?? 0).toFixed(1)` null-safe
+
+- Audited and confirmed clean (no issues found): advisor-view.tsx, app-header.tsx, session-timeout.tsx, offline-banner.tsx, command-palette.tsx
+
+- All lint checks pass cleanly
+
+Stage Summary:
+- Fixed 7 files with null-safety runtime error prevention
+- Key fix categories: `.toLocaleString()` on nullable numbers, `formatDual/formatLocal` on nullable amounts, `_count` property access on nullable objects, division-by-zero in P&L waterfall and inventory value calculation, session restore crash on null company/branch
+- All monetary value displays now use `?? 0` fallback pattern consistently
+- Backend API route division-by-zero fixed for totalInventoryValue and advisor recommendations

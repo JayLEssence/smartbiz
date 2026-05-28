@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import { usePosStore } from '@/stores/pos-store'
 import { useAppStore } from '@/stores/app-store'
 import { useCurrency } from '@/hooks/use-currency'
+import { formatUSD as formatUSDAmount } from '@/lib/currency'
 import {
   Dialog,
   DialogContent,
@@ -51,7 +52,7 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
   const [sharePhone, setSharePhone] = useState('')
   const { items, discount, getTotal, clearCart, paymentMethod, customerName, phoneNumber } = usePosStore()
   const { currentUser, currentBranchId } = useAppStore()
-  const { formatLocal, formatUSD, toUSD, currency } = useCurrency()
+  const { formatLocal, formatDualUSD, toLocal, currency } = useCurrency()
   const total = getTotal()
   const receiptRef = useRef<HTMLDivElement>(null)
 
@@ -122,11 +123,6 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
   const handleDownloadReceipt = () => {
     if (!saleResult) return
 
-    const ccy = saleResult.company.currencySymbol || 'TSh'
-    const rate = saleResult.company.exchangeRate || 2570
-    const convertToUSD = (amount: number) => `$${(amount / rate).toFixed(2)}`
-    const formatLocalAmt = (amount: number) => `${ccy} ${amount.toLocaleString()}`
-
     const lines: string[] = []
     lines.push('═══════════════════════════════════')
     lines.push(`  ${saleResult.company.name}`)
@@ -148,20 +144,19 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
     for (const item of saleResult.saleItems) {
       const name = item.product.name.length > 18 ? item.product.name.slice(0, 18) : item.product.name
       const sub = item.quantitySold * item.salePricePerUnit
-      lines.push(`${name.padEnd(19)}${String(item.quantitySold).padStart(3)}  ${formatLocalAmt(item.salePricePerUnit).padStart(8)}  ${formatLocalAmt(sub).padStart(8)}`)
-      lines.push(`                    ${' '.repeat(11)}${convertToUSD(sub).padStart(8)}`)
+      lines.push(`${name.padEnd(19)}${String(item.quantitySold).padStart(3)}  ${formatLocal(toLocal(item.salePricePerUnit ?? 0)).padStart(8)}  ${formatLocal(toLocal(sub ?? 0)).padStart(8)}`)
+      lines.push(`                    ${' '.repeat(11)}${formatUSDAmount(sub ?? 0).padStart(8)}`)
     }
 
     lines.push('───────────────────────────────────')
 
     if (saleResult.discount > 0) {
-      lines.push(`Discount: ${formatLocalAmt(saleResult.discount)} (${convertToUSD(saleResult.discount)})`)
+      lines.push(`Discount: ${formatDualUSD(saleResult.discount ?? 0)}`)
     }
 
     const finalTotal = saleResult.totalAmount
     lines.push('')
-    lines.push(`TOTAL: ${formatLocalAmt(finalTotal)}`)
-    lines.push(`       ${convertToUSD(finalTotal)}`)
+    lines.push(`TOTAL: ${formatDualUSD(finalTotal ?? 0)}`)
     lines.push('')
     lines.push('═══════════════════════════════════')
     lines.push('  Thank you for your business!')
@@ -191,9 +186,6 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
   const formatReceiptForWhatsApp = () => {
     if (!saleResult) return ''
 
-    const ccy = saleResult.company.currencySymbol || 'TSh'
-    const formatLocalAmt = (amount: number) => `${ccy} ${amount.toLocaleString()}`
-
     const lines: string[] = []
     lines.push(`🧾 *${saleResult.company.name}*`)
     lines.push(`📍 Branch: ${saleResult.branch.name}`)
@@ -211,16 +203,16 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
 
     for (const item of saleResult.saleItems) {
       const sub = item.quantitySold * item.salePricePerUnit
-      lines.push(`• ${item.product.name} × ${item.quantitySold} = ${formatLocalAmt(sub)}`)
+      lines.push(`• ${item.product.name} × ${item.quantitySold} = ${formatDualUSD(sub ?? 0)}`)
     }
 
     lines.push('───────────────────')
 
     if (saleResult.discount > 0) {
-      lines.push(`🏷️ Discount: -${formatLocalAmt(saleResult.discount)}`)
+      lines.push(`🏷️ Discount: -${formatDualUSD(saleResult.discount ?? 0)}`)
     }
 
-    lines.push(`\n💰 *TOTAL: ${formatLocalAmt(saleResult.totalAmount)}*`)
+    lines.push(`\n💰 *TOTAL: ${formatDualUSD(saleResult.totalAmount ?? 0)}*`)
     lines.push('\n🙏 Thank you for your business!')
 
     return lines.join('\n')
@@ -268,11 +260,6 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
 
   // Receipt Modal
   if (showReceipt && saleResult) {
-    const ccy = saleResult.company.currencySymbol || 'TSh'
-    const rate = saleResult.company.exchangeRate || 2570
-    const convertToUSD = (amount: number) => `$${(amount / rate).toFixed(2)}`
-    const formatLocalAmt = (amount: number) => `${ccy} ${amount.toLocaleString()}`
-
     return (
       <Dialog open={open} onOpenChange={handleCloseReceipt}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto print:shadow-none print:border-0">
@@ -334,11 +321,11 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
                   <div key={item.id} className="py-1.5 border-b border-dashed border-gray-200 last:border-0">
                     <div className="flex justify-between font-medium">
                       <span className="truncate mr-2">{item.product.name}</span>
-                      <span className="shrink-0">{formatLocalAmt(sub)}</span>
+                      <span className="shrink-0">{formatLocal(toLocal(sub ?? 0))}</span>
                     </div>
                     <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{item.quantitySold} × {formatLocalAmt(item.salePricePerUnit)}</span>
-                      <span>{convertToUSD(sub)}</span>
+                      <span>{item.quantitySold} × {formatLocal(toLocal(item.salePricePerUnit ?? 0))}</span>
+                      <span>{formatUSDAmount(sub ?? 0)}</span>
                     </div>
                   </div>
                 )
@@ -352,16 +339,12 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
               {saleResult.discount > 0 && (
                 <div className="flex justify-between text-red-500">
                   <span>Discount</span>
-                  <span>-{formatLocalAmt(saleResult.discount)} ({convertToUSD(saleResult.discount)})</span>
+                  <span>-{formatDualUSD(saleResult.discount ?? 0)}</span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-base">
                 <span>TOTAL</span>
-                <span className="text-emerald-600">{formatLocalAmt(saleResult.totalAmount)}</span>
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span></span>
-                <span>{convertToUSD(saleResult.totalAmount)}</span>
+                <span className="text-emerald-600">{formatDualUSD(saleResult.totalAmount ?? 0)}</span>
               </div>
             </div>
 
@@ -435,7 +418,7 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
             <CheckCircle2 className="h-16 w-16 text-emerald-500 mb-3" />
             <p className="font-semibold text-lg">Sale Complete!</p>
             <p className="text-muted-foreground text-sm">
-              Total: {formatLocal(total)} ({formatUSD(toUSD(total))})
+              Total: {formatDualUSD(total ?? 0)}
             </p>
             {saleResult && (
               <p className="text-xs text-muted-foreground mt-1">
@@ -456,11 +439,11 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
                       {item.name}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {item.quantity} × {formatLocal(item.salePricePerUnit)}
+                      {item.quantity} × {formatDualUSD(item.salePricePerUnit ?? 0)}
                     </span>
                   </div>
                   <span className="font-medium shrink-0 ml-4">
-                    {formatLocal(item.quantity * item.salePricePerUnit)}
+                    {formatDualUSD((item.quantity * item.salePricePerUnit) ?? 0)}
                   </span>
                 </div>
               ))}
@@ -472,14 +455,13 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
               {discount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Discount</span>
-                  <span className="text-red-500">-{formatLocal(discount)}</span>
+                  <span className="text-red-500">-{formatDualUSD(discount ?? 0)}</span>
                 </div>
               )}
               <div className="flex justify-between font-semibold">
                 <span>Total</span>
                 <div className="text-right">
-                  <span className="text-emerald-600 block">{formatLocal(total)}</span>
-                  <span className="text-xs text-muted-foreground">{formatUSD(toUSD(total))}</span>
+                  <span className="text-emerald-600 block">{formatDualUSD(total ?? 0)}</span>
                 </div>
               </div>
             </div>

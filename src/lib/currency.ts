@@ -77,3 +77,14 @@ export function formatDualCurrencyShort(localAmount: number, currency: CurrencyI
     : `$${usdAmount.toFixed(0)}`
   return `${local} ≈ ${usd}`
 }
+
+/**
+ * Format a USD amount as dual currency display
+ * Input is always in USD. Shows both USD and local currency.
+ * Example: "$10.00 / TSh 25,700"
+ */
+export function formatUSDDual(usdAmount: number, currency: CurrencyInfo): string {
+  const usd = formatUSD(usdAmount)
+  const local = formatLocalCurrency(usdToLocal(usdAmount, currency.rate), currency)
+  return `${usd} / ${local}`
+}
