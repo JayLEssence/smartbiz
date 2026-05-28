@@ -92,10 +92,11 @@ export function BarcodeScannerDialog({ open, onOpenChange, onBarcodeDetected }: 
       import('@ericblade/quagga2').then((Quagga) => {
         if (!scanningRef.current) return
         
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        // Convert canvas to data URL since Quagga expects a string src, not ImageData
+        const dataUrl = canvas.toDataURL('image/png')
         
         Quagga.decodeSingle({
-          src: imageData,
+          src: dataUrl,
           numOfWorkers: 0,
           inputStream: {
             size: 800,

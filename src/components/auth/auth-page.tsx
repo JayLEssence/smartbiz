@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useAppStore, type CompanyInfo } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
-import { Store, Building2, User, Mail, Lock, Phone, MapPin, Loader2, ArrowRight, CheckCircle2, Users, Hash, ShieldCheck, ShoppingCart, Package, BarChart3, Eye, EyeOff, Shield, AlertTriangle, ChevronDown, Wifi, Bot, Smartphone, Sparkles } from 'lucide-react'
+import { Store, Building2, User, Mail, Lock, Phone, MapPin, Loader2, ArrowRight, CheckCircle2, Users, Hash, ShieldCheck, Shield, Eye, EyeOff, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -161,7 +161,6 @@ export function AuthPage() {
 
   const [activeTab, setActiveTab] = useState('login')
   const [tosOpen, setTosOpen] = useState(false)
-  const [whyExpanded, setWhyExpanded] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -407,15 +406,14 @@ export function AuthPage() {
       <div className="w-full max-w-md relative z-10">
         {/* Logo & Branding */}
         <div className={`flex flex-col items-center mb-8 transition-opacity duration-600 ${mounted ? 'animate-auth-fade-in' : 'opacity-0'}`}>
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/25 mb-4 relative">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/25 mb-4">
             <Store className="h-7 w-7" />
-            <div className="absolute inset-0 rounded-2xl shadow-[0_0_16px_rgba(5,150,105,0.3)]" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">SmartBiz</h1>
           <p className="text-sm text-muted-foreground mt-1 animate-auth-tagline-glow">{t('auth.tagline')}</p>
         </div>
 
-        <Card className={`border-0 shadow-xl shadow-black/5 transition-all duration-300 hover:shadow-2xl hover:shadow-black/[0.08] hover:-translate-y-0.5 ${mounted ? 'animate-auth-slide-up' : 'opacity-0'}`}>
+        <Card className={`border-0 shadow-xl shadow-black/5 transition-all duration-300 ${mounted ? 'animate-auth-slide-up' : 'opacity-0'}`}>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <CardHeader className="pb-0">
               <TabsList className="w-full relative">
@@ -507,31 +505,6 @@ export function AuthPage() {
                       </>
                     )}
                   </Button>
-
-                  {/* Quick Tips */}
-                  <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-3 mt-4 space-y-2">
-                    <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">{t('auth.quickTips')}</p>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="flex flex-col items-center text-center gap-1 py-1">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
-                          <ShoppingCart className="h-3.5 w-3.5 text-emerald-600" />
-                        </div>
-                        <span className="text-[10px] text-muted-foreground leading-tight">{t('auth.tipPOS')}</span>
-                      </div>
-                      <div className="flex flex-col items-center text-center gap-1 py-1">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
-                          <Package className="h-3.5 w-3.5 text-emerald-600" />
-                        </div>
-                        <span className="text-[10px] text-muted-foreground leading-tight">{t('auth.tipInventory')}</span>
-                      </div>
-                      <div className="flex flex-col items-center text-center gap-1 py-1">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
-                          <BarChart3 className="h-3.5 w-3.5 text-emerald-600" />
-                        </div>
-                        <span className="text-[10px] text-muted-foreground leading-tight">{t('auth.tipAnalytics')}</span>
-                      </div>
-                    </div>
-                  </div>
                 </form>
               </TabsContent>
 
@@ -906,79 +879,8 @@ export function AuthPage() {
           </Tabs>
         </Card>
 
-        {/* Security Badge */}
-        <div className="flex items-center justify-center gap-2 mt-4">
-          <Shield className="h-3.5 w-3.5 text-emerald-600" />
-          <span className="text-[11px] text-muted-foreground">Bank-grade encryption · JWT authentication · Account lockout protection</span>
-        </div>
-
-        {/* Competitive Advantage Badges */}
-        <div className="flex flex-wrap items-center justify-center gap-1.5 mt-3">
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50">
-            <Wifi className="h-2.5 w-2.5" />
-            {t('auth.badgeOffline')}
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50">
-            <Bot className="h-2.5 w-2.5" />
-            {t('auth.badgeAI')}
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50">
-            <Smartphone className="h-2.5 w-2.5" />
-            {t('auth.badgeMobile')}
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50">
-            <Shield className="h-2.5 w-2.5" />
-            {t('auth.badgeSecurity')}
-          </span>
-        </div>
-
-        {/* Trust Indicators */}
-        <div className="text-center mt-4 space-y-1.5">
-          <p className="text-[11px] text-muted-foreground font-medium">{t('auth.trustedBy')}</p>
-          <div className="flex items-center justify-center gap-1.5 text-base" aria-label="East Africa countries">
-            <span title="Tanzania">🇹🇿</span>
-            <span title="Kenya">🇰🇪</span>
-            <span title="Uganda">🇺🇬</span>
-            <span title="Rwanda">🇷🇼</span>
-          </div>
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50">
-            <Sparkles className="h-2.5 w-2.5" />
-            {t('auth.freeForever')}
-          </span>
-        </div>
-
-        {/* Why SmartBiz - Expandable */}
-        <div className="mt-3">
-          <button
-            type="button"
-            onClick={() => setWhyExpanded(!whyExpanded)}
-            className="flex items-center justify-center gap-1 mx-auto text-[11px] font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
-          >
-            {t('auth.whySmartBiz')}
-            <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${whyExpanded ? 'rotate-180' : ''}`} />
-          </button>
-          {whyExpanded && (
-            <div className="mt-2 rounded-lg bg-muted/50 dark:bg-muted/30 p-3 animate-auth-badge-fade">
-              <ul className="space-y-1.5">
-                <li className="flex items-start gap-2 text-[11px] text-muted-foreground">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                  <span>{t('auth.vsSimpler')}</span>
-                </li>
-                <li className="flex items-start gap-2 text-[11px] text-muted-foreground">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                  <span>{t('auth.vsAffordable')}</span>
-                </li>
-                <li className="flex items-start gap-2 text-[11px] text-muted-foreground">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                  <span>{t('auth.vsAfrica')}</span>
-                </li>
-              </ul>
-            </div>
-          )}
-        </div>
-
         {/* Footer */}
-        <div className="text-center mt-3 space-y-2">
+        <div className="text-center mt-4 space-y-2">
           <p className="text-xs text-muted-foreground">
             {t('auth.termsNotice')}
           </p>

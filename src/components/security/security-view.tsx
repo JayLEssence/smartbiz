@@ -1011,35 +1011,6 @@ export function SecurityView() {
         </CardContent>
       </Card>
 
-      {/* Comparison Banner - What Makes SmartBiz Better */}
-      <Card className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border-emerald-200 dark:border-emerald-800">
-        <CardContent className="pt-6">
-          <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-emerald-600" />
-            Why SmartBiz Security Outperforms the Competition
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[
-              { title: 'vs Odoo', points: ['No complex module vulnerabilities', 'Simpler = more secure', 'Purpose-built for African SMEs', 'No plugin security risks'] },
-              { title: 'vs Zoho', points: ['Self-hosted = your data, your rules', 'No third-party data sharing', 'Built-in African payment methods', 'Offline-capable design'] },
-              { title: 'vs TanzaBiz', points: ['Enterprise-grade JWT auth', 'Multi-tenant isolation', 'Real-time audit logging', 'Account lockout protection'] },
-            ].map((comparison) => (
-              <div key={comparison.title} className="rounded-lg bg-white/50 dark:bg-black/20 p-3">
-                <h4 className="text-sm font-semibold mb-2 text-emerald-700 dark:text-emerald-400">{comparison.title}</h4>
-                <ul className="space-y-1">
-                  {comparison.points.map((point, i) => (
-                    <li key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
-                      {point}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
       {/* 2FA Setup Dialog */}
       <Dialog open={show2faDialog} onOpenChange={setShow2faDialog}>
         <DialogContent className="sm:max-w-md">
