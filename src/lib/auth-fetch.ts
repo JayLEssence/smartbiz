@@ -1,10 +1,8 @@
 /**
  * Shared auth-aware fetch utilities for SmartBiz frontend.
  * All API calls should use these helpers to include the JWT Authorization header,
- * handle 401 Unauthorized responses, auto-refresh tokens, and include CSRF protection.
+ * handle 401 Unauthorized responses, and auto-refresh tokens.
  */
-
-import { setCachedCsrfToken } from '@/lib/api-client'
 
 // ============================================
 // SESSION HELPERS
@@ -165,64 +163,12 @@ async function ensureFreshToken(): Promise<boolean> {
 }
 
 // ============================================
-// CSRF TOKEN MANAGEMENT
-// ============================================
-
-let cachedCsrfToken: string | null = null
-let csrfTokenExpiry = 0
-const CSRF_CACHE_DURATION = 50 * 60 * 1000 // 50 minutes (tokens live 60 min)
-
-/**
- * Fetch a CSRF token from the server, with caching.
- */
-async function fetchCsrfToken(): Promise<string | null> {
-  // Return cached token if still valid
-  if (cachedCsrfToken && Date.now() < csrfTokenExpiry) {
-    return cachedCsrfToken
-  }
-
-  const session = getSession()
-  if (!session.token) return null
-
-  try {
-    const response = await fetch('/api/auth/csrf', {
-      headers: { 'Authorization': `Bearer ${session.token}` },
-    })
-
-    if (!response.ok) return null
-
-    const json = await response.json()
-    if (!json.success || !json.csrfToken) return null
-
-    cachedCsrfToken = json.csrfToken
-    csrfTokenExpiry = Date.now() + CSRF_CACHE_DURATION
-
-    // Sync to api-client's shared cache
-    setCachedCsrfToken(cachedCsrfToken, csrfTokenExpiry)
-
-    return cachedCsrfToken
-  } catch {
-    return null
-  }
-}
-
-/**
- * Invalidate the cached CSRF token (e.g., after a 403 CSRF error).
- */
-export function invalidateCsrfCache(): void {
-  cachedCsrfToken = null
-  csrfTokenExpiry = 0
-}
-
-// ============================================
-// LEGACY HELPERS (backward compatible)
+// AUTH HEADER HELPERS
 // ============================================
 
 /**
  * Get the auth headers including the JWT token from localStorage.
- * Also includes the cached CSRF token if available (for backward compatibility
- * with existing components that make mutating requests).
- * Returns an object with Content-Type, Authorization, and optionally X-CSRF-Token headers.
+ * Returns an object with Content-Type and Authorization headers.
  */
 export function getAuthHeaders(): Record<string, string> {
   const session = getSession()
@@ -230,26 +176,17 @@ export function getAuthHeaders(): Record<string, string> {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${session.token || ''}`,
   }
-  // Include cached CSRF token if available (populated after initCsrfToken)
-  if (cachedCsrfToken && Date.now() < csrfTokenExpiry) {
-    headers['X-CSRF-Token'] = cachedCsrfToken
-  }
   return headers
 }
 
 /**
  * Get only the Authorization header (no Content-Type).
- * Also includes the cached CSRF token if available (for DELETE/PATCH requests).
  * Useful for GET or DELETE requests that don't send a JSON body.
  */
 export function getAuthHeaderOnly(): Record<string, string> {
   const session = getSession()
   const headers: Record<string, string> = {
     'Authorization': `Bearer ${session.token || ''}`,
-  }
-  // Include cached CSRF token if available (for DELETE/PATCH requests)
-  if (cachedCsrfToken && Date.now() < csrfTokenExpiry) {
-    headers['X-CSRF-Token'] = cachedCsrfToken
   }
   return headers
 }
@@ -259,8 +196,6 @@ export function getAuthHeaderOnly(): Record<string, string> {
  */
 export function handleUnauthorized(): void {
   localStorage.removeItem('smartbiz_session')
-  cachedCsrfToken = null
-  csrfTokenExpiry = 0
   window.location.href = '/'
 }
 
@@ -277,15 +212,14 @@ export function checkUnauthorized(response: Response): boolean {
 }
 
 // ============================================
-// fetchWithAuth - SMART FETCH WITH AUTO-REFRESH & CSRF
+// fetchWithAuth - SMART FETCH WITH AUTO-REFRESH
 // ============================================
 
 /**
  * Auth-aware fetch wrapper that:
  * 1. Auto-refreshes the JWT if it's about to expire (within 5 minutes)
- * 2. Includes CSRF token for mutating requests (POST/PUT/DELETE/PATCH)
+ * 2. Includes Authorization header for all requests
  * 3. Handles 401 responses by logging out
- * 4. Retries with a fresh CSRF token on 403 CSRF errors
  */
 export async function fetchWithAuth(
   url: string,
@@ -305,11 +239,7 @@ export async function fetchWithAuth(
   const session = getSession()
   const token = session.token || ''
 
-  // Step 2: Determine if CSRF token is needed
-  const method = (options.method || 'GET').toUpperCase()
-  const requiresCsrf = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)
-
-  // Step 3: Build headers
+  // Step 2: Build headers
   const headers = new Headers(options.headers)
 
   // Set Authorization
@@ -318,6 +248,7 @@ export async function fetchWithAuth(
   }
 
   // Set Content-Type for JSON requests if not already set
+  const method = (options.method || 'GET').toUpperCase()
   if (!headers.has('Content-Type') && method !== 'GET' && method !== 'HEAD') {
     // Only set if there's a body that looks like JSON
     if (options.body && typeof options.body === 'string') {
@@ -325,49 +256,16 @@ export async function fetchWithAuth(
     }
   }
 
-  // Add CSRF token for mutating requests
-  if (requiresCsrf) {
-    const csrfToken = await fetchCsrfToken()
-    if (csrfToken) {
-      headers.set('X-CSRF-Token', csrfToken)
-    }
-  }
-
-  // Step 4: Make the request
+  // Step 3: Make the request
   const response = await fetch(url, {
     ...options,
     headers,
   })
 
-  // Step 5: Handle response
+  // Step 4: Handle response
   if (response.status === 401) {
     handleUnauthorized()
     return response
-  }
-
-  // Step 6: Handle CSRF errors - retry with fresh CSRF token
-  if (response.status === 403 && requiresCsrf) {
-    try {
-      const cloned = response.clone()
-      const json = await cloned.json()
-      if (json.error?.includes('CSRF')) {
-        // Invalidate cached CSRF token and retry once
-        invalidateCsrfCache()
-        const freshCsrfToken = await fetchCsrfToken()
-
-        if (freshCsrfToken) {
-          const retryHeaders = new Headers(headers)
-          retryHeaders.set('X-CSRF-Token', freshCsrfToken)
-
-          return fetch(url, {
-            ...options,
-            headers: retryHeaders,
-          })
-        }
-      }
-    } catch {
-      // If we can't parse the response, just return the original
-    }
   }
 
   return response
@@ -378,14 +276,12 @@ export async function fetchWithAuth(
 // ============================================
 
 /**
- * Initialize CSRF token on app startup.
+ * Initialize session after login.
  * Call this once when the app loads and the user is authenticated.
  */
 export async function initCsrfToken(): Promise<void> {
-  const session = getSession()
-  if (session.token) {
-    await fetchCsrfToken()
-  }
+  // No-op: CSRF tokens are no longer needed since we use JWT Bearer auth
+  // Kept for backward compatibility with existing code that calls this
 }
 
 /**

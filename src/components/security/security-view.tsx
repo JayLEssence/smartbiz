@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
+import { getAuthHeaders } from '@/lib/auth-fetch'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -208,7 +209,7 @@ export function SecurityView() {
   const fetchSecurityData = async () => {
     try {
       const res = await fetch('/api/auth/security', {
-        headers: { 'Authorization': `Bearer ${authToken}` },
+        headers: getAuthHeaders(),
       })
       const json = await res.json()
       if (json.success) {
@@ -223,7 +224,7 @@ export function SecurityView() {
     setActivityLoading(true)
     try {
       const res = await fetch('/api/auth/activity?limit=30', {
-        headers: { 'Authorization': `Bearer ${authToken}` },
+        headers: getAuthHeaders(),
       })
       const json = await res.json()
       if (json.success) {
@@ -240,7 +241,7 @@ export function SecurityView() {
     setSessionsLoading(true)
     try {
       const res = await fetch('/api/auth/sessions', {
-        headers: { 'Authorization': `Bearer ${authToken}` },
+        headers: getAuthHeaders(),
       })
       const json = await res.json()
       if (json.success) {
@@ -280,10 +281,7 @@ export function SecurityView() {
     try {
       const res = await fetch('/api/auth/change-password', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ currentPassword, newPassword }),
       })
       const json = await res.json()
@@ -317,10 +315,7 @@ export function SecurityView() {
     try {
       const res = await fetch('/api/auth/2fa', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ enabled: true, pin: twoFaPin }),
       })
       const json = await res.json()
@@ -345,10 +340,7 @@ export function SecurityView() {
     try {
       const res = await fetch('/api/auth/2fa', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ enabled: false }),
       })
       const json = await res.json()
@@ -370,7 +362,7 @@ export function SecurityView() {
     try {
       const res = await fetch('/api/auth/sessions', {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${authToken}` },
+        headers: getAuthHeaders(),
       })
       const json = await res.json()
       if (json.success) {
@@ -760,7 +752,7 @@ export function SecurityView() {
                   { label: 'Audit Logging', active: true },
                   { label: 'Tenant Isolation', active: true },
                   { label: 'PIN-based 2FA', active: twoFactorEnabled },
-                  { label: 'CSRF Protection', active: true },
+                  { label: 'JWT Auth (Bearer)', active: true },
                 ].map((feature) => (
                   <div key={feature.label} className="flex items-center gap-1.5 text-xs">
                     <CheckCircle2 className={`h-3 w-3 ${feature.active ? 'text-emerald-600' : 'text-gray-300 dark:text-gray-600'}`} />

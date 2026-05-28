@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { getAuthHeaders } from '@/lib/auth-fetch'
 
 interface OfflineAction {
   id: string
@@ -149,7 +150,7 @@ export function useOfflineMode() {
       try {
         const response = await fetch(action.url, {
           method: action.method,
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: action.body || undefined,
         })
         if (response.ok) {

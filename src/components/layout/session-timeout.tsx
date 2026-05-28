@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAppStore } from '@/stores/app-store'
-import { getTokenExpiry, invalidateCsrfCache } from '@/lib/auth-fetch'
+import { getTokenExpiry } from '@/lib/auth-fetch'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -47,7 +47,6 @@ export function SessionTimeout() {
       // Token has expired
       setShowWarning(false)
       setExpired(true)
-      invalidateCsrfCache()
       logout()
       return
     }
@@ -126,7 +125,6 @@ export function SessionTimeout() {
   // Handle "Log Out Now"
   const handleLogout = () => {
     setShowWarning(false)
-    invalidateCsrfCache()
     logout()
   }
 

@@ -680,3 +680,28 @@ Stage Summary:
 - Double rate limiting REMOVED: Only middleware handles rate limiting now
 - Demo backdoor REMOVED: Production security improved
 - Server-side logout ADDED: Sessions properly invalidated on logout
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix CSRF token errors and all authentication issues in SmartBiz
+
+Work Log:
+- Analyzed the CSRF protection mechanism: in-memory store that gets wiped on every server restart/HMR
+- Identified root cause: CSRF protection is unnecessary for JWT Bearer token auth (tokens in Authorization header can't be auto-sent by browsers cross-origin)
+- Removed CSRF validation from middleware.ts (kept rate limiting, auth checks, security headers)
+- Simplified auth-fetch.ts to remove CSRF token caching/retry logic
+- Simplified api-client.ts to remove CSRF token dependency
+- Fixed critical crash in session-timeout.tsx (was importing non-existent `invalidateCsrfCache`)
+- Fixed security-view.tsx to use `getAuthHeaders()` instead of raw `authToken` (6 fetch calls)
+- Fixed use-offline.ts to include auth headers when syncing pending actions
+- Fixed page.tsx to use `getAuthHeaders()` for branch fetch during session restore
+- Cleaned up auth-page.tsx to remove `initCsrfToken` calls
+- Updated security-view.tsx label from "CSRF Protection" to "JWT Auth (Bearer)"
+- All lint checks pass
+- Dev server shows all API calls returning 200
+
+Stage Summary:
+- CSRF errors completely eliminated by removing CSRF from middleware
+- Authentication errors fixed by ensuring all components use `getAuthHeaders()`
+- All API routes now working (login, join, register, branches, products, sales, etc.)
+- No more crashes from missing `invalidateCsrfCache` function

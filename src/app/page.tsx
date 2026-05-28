@@ -21,7 +21,7 @@ import { AdminPanel } from '@/components/admin/admin-panel'
 import { SecurityView } from '@/components/security/security-view'
 import { OfflineBanner } from '@/components/layout/offline-banner'
 import { SessionTimeout } from '@/components/layout/session-timeout'
-import { initCsrfToken } from '@/lib/auth-fetch'
+import { getAuthHeaders } from '@/lib/auth-fetch'
 import { CommandPalette } from '@/components/layout/command-palette'
 import { LanguageProvider, useLanguage } from '@/lib/i18n/language-context'
 
@@ -117,12 +117,9 @@ function HomeContent() {
             setAuthenticated(true)
             setAuthToken(data.token)
 
-            // Initialize CSRF token
-            initCsrfToken().catch(() => {})
-
             // Fetch branches with auth token
             fetch(`/api/branches?companyId=${user.companyId}`, {
-              headers: { 'Authorization': `Bearer ${data.token}` },
+              headers: getAuthHeaders(),
             })
               .then((res) => res.json())
               .then((json) => {
