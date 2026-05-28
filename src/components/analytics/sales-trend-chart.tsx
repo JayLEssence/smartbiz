@@ -11,7 +11,7 @@ import {
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { getAuthHeaders } from '@/lib/auth-fetch'
+import { apiGet } from '@/lib/auth-fetch'
 import { useCurrency } from '@/hooks/use-currency'
 
 interface TrendData {
@@ -36,7 +36,7 @@ export function SalesTrendChart({ branchId, companyId }: SalesTrendChartProps) {
       const params = new URLSearchParams({ days: '30' })
       if (companyId) params.set('companyId', companyId)
       if (branchId) params.set('branchId', branchId)
-      const res = await fetch(`/api/analytics/trends?${params.toString()}`, { headers: getAuthHeaders() })
+      const res = await apiGet(`/api/analytics/trends?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         setData(json.data)

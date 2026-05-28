@@ -18,7 +18,7 @@ import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
 import { Loader2, CheckCircle2, Printer, Download, Receipt, MessageCircle, Smartphone } from 'lucide-react'
 import { toast } from 'sonner'
-import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
+import { apiPost } from '@/lib/auth-fetch'
 
 interface CheckoutDialogProps {
   open: boolean
@@ -75,19 +75,15 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
         salePricePerUnit: item.salePricePerUnit,
       }))
 
-      const res = await fetch('/api/sales', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          userId: currentUser.id,
-          items: saleItems,
-          discount: discount,
-          branchId: currentBranchId ?? currentUser.branchId,
-          companyId: currentUser.companyId,
-          paymentMethod,
-          customerName: customerName.trim() || undefined,
-          phoneNumber: phoneNumber.trim() || undefined,
-        }),
+      const res = await apiPost('/api/sales', {
+        userId: currentUser.id,
+        items: saleItems,
+        discount: discount,
+        branchId: currentBranchId ?? currentUser.branchId,
+        companyId: currentUser.companyId,
+        paymentMethod,
+        customerName: customerName.trim() || undefined,
+        phoneNumber: phoneNumber.trim() || undefined,
       })
 
       const json = await res.json()
@@ -96,7 +92,7 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
         setSaleResult(json.data)
         setSuccess(true)
         toast.success('Sale completed successfully!', {
-          description: `Receipt: ${json.data.receiptNumber}`,
+          description: `Receipt: ${json.data?.receiptNumber ?? 'N/A'}`,
         })
         // Show receipt after a short delay
         setTimeout(() => {

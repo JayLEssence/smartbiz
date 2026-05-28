@@ -168,7 +168,8 @@ async function ensureFreshToken(): Promise<boolean> {
 
 /**
  * Get the auth headers including the JWT token from localStorage.
- * Returns an object with Content-Type and Authorization headers.
+ * NOTE: For automatic token refresh, use fetchWithAuth() or the api helpers instead.
+ * This is kept for backward compatibility and simple use cases.
  */
 export function getAuthHeaders(): Record<string, string> {
   const session = getSession()
@@ -219,7 +220,8 @@ export function checkUnauthorized(response: Response): boolean {
  * Auth-aware fetch wrapper that:
  * 1. Auto-refreshes the JWT if it's about to expire (within 5 minutes)
  * 2. Includes Authorization header for all requests
- * 3. Handles 401 responses by logging out
+ * 3. On 401: tries to refresh the token once, then retries the request
+ * 4. Only clears session if refresh also fails
  */
 export async function fetchWithAuth(
   url: string,
@@ -257,32 +259,87 @@ export async function fetchWithAuth(
   }
 
   // Step 3: Make the request
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     ...options,
     headers,
   })
 
-  // Step 4: Handle response
+  // Step 4: On 401, try to refresh token and retry ONCE
   if (response.status === 401) {
-    handleUnauthorized()
-    return response
+    const refreshed = await refreshAccessToken()
+    if (refreshed) {
+      // Retry with new token
+      const newSession = getSession()
+      const newHeaders = new Headers(options.headers)
+      if (!newHeaders.has('Authorization')) {
+        newHeaders.set('Authorization', `Bearer ${newSession.token || ''}`)
+      }
+      if (!newHeaders.has('Content-Type') && method !== 'GET' && method !== 'HEAD') {
+        if (options.body && typeof options.body === 'string') {
+          newHeaders.set('Content-Type', 'application/json')
+        }
+      }
+      response = await fetch(url, {
+        ...options,
+        headers: newHeaders,
+      })
+
+      // If still 401 after refresh, then truly unauthorized
+      if (response.status === 401) {
+        handleUnauthorized()
+      }
+    } else {
+      // Refresh failed, clear session
+      handleUnauthorized()
+    }
   }
 
   return response
 }
 
 // ============================================
-// INITIALIZATION HELPER
+// CONVENIENCE API METHODS
 // ============================================
 
 /**
- * Initialize session after login.
- * Call this once when the app loads and the user is authenticated.
+ * Auth-aware GET request with auto-refresh.
  */
-export async function initCsrfToken(): Promise<void> {
-  // No-op: CSRF tokens are no longer needed since we use JWT Bearer auth
-  // Kept for backward compatibility with existing code that calls this
+export async function apiGet(url: string): Promise<Response> {
+  return fetchWithAuth(url, { method: 'GET' })
 }
+
+/**
+ * Auth-aware POST request with auto-refresh.
+ */
+export async function apiPost(url: string, body: unknown): Promise<Response> {
+  return fetchWithAuth(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+/**
+ * Auth-aware PUT request with auto-refresh.
+ */
+export async function apiPut(url: string, body: unknown): Promise<Response> {
+  return fetchWithAuth(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+/**
+ * Auth-aware DELETE request with auto-refresh.
+ */
+export async function apiDelete(url: string): Promise<Response> {
+  return fetchWithAuth(url, { method: 'DELETE' })
+}
+
+// ============================================
+// INITIALIZATION HELPER
+// ============================================
 
 /**
  * Get the JWT token's expiry time as a Date object.

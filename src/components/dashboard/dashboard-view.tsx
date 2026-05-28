@@ -32,7 +32,7 @@ import { Button } from '@/components/ui/button'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore, type ViewType } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
-import { getAuthHeaders } from '@/lib/auth-fetch'
+import { apiGet } from '@/lib/auth-fetch'
 import { useCurrency } from '@/hooks/use-currency'
 
 interface DashboardData {
@@ -93,7 +93,7 @@ export function DashboardView() {
       const params = new URLSearchParams()
       if (companyId) params.set('companyId', companyId)
       if (currentBranchId) params.set('branchId', currentBranchId)
-      const res = await fetch(`/api/analytics/dashboard?${params.toString()}`, { headers: getAuthHeaders() })
+      const res = await apiGet(`/api/analytics/dashboard?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         setData(json.data)
@@ -117,7 +117,7 @@ export function DashboardView() {
         const params = new URLSearchParams()
         if (companyId) params.set('companyId', companyId)
         if (currentBranchId) params.set('branchId', currentBranchId)
-        const res = await fetch(`/api/business/health-score?${params.toString()}`, { headers: getAuthHeaders() })
+        const res = await apiGet(`/api/business/health-score?${params.toString()}`)
         const json = await res.json()
         if (json.success) setHealthScore(json.data)
       } catch { /* ignore */ }
@@ -137,7 +137,7 @@ export function DashboardView() {
         params.set('dateFrom', todayStr)
         params.set('dateTo', todayStr)
         params.set('limit', '1')
-        const res = await fetch(`/api/expenses?${params.toString()}`, { headers: getAuthHeaders() })
+        const res = await apiGet(`/api/expenses?${params.toString()}`)
         const json = await res.json()
         if (json.success && json.pagination) {
           setTodaysExpenseCount(json.pagination.total)
@@ -317,7 +317,7 @@ export function DashboardView() {
               </div>
               <div className="sm:max-w-[200px]">
                 <p className="text-xs font-medium text-muted-foreground mb-1">Top Recommendation</p>
-                <p className="text-xs">{healthScore.recommendations[0]}</p>
+                <p className="text-xs">{healthScore.recommendations?.[0] ?? 'No recommendations yet'}</p>
               </div>
             </div>
           </CardContent>

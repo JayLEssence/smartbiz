@@ -90,13 +90,13 @@ export async function GET(request: Request) {
       if (!productMap[item.productId]) {
         productMap[item.productId] = {
           productId: item.productId,
-          productName: item.product.name,
-          productSku: item.product.sku,
+          productName: item.product?.name ?? 'Unknown Product',
+          productSku: item.product?.sku ?? 'N/A',
           totalQuantity: 0,
           totalRevenue: 0,
           totalProfit: 0,
-          salePrice: item.product.defaultSalePrice,
-          currentStock: item.product.currentStockLevel,
+          salePrice: item.product?.defaultSalePrice ?? 0,
+          currentStock: item.product?.currentStockLevel ?? 0,
         }
       }
       productMap[item.productId].totalQuantity += item.quantitySold

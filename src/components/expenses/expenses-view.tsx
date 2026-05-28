@@ -49,7 +49,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore } from '@/stores/app-store'
 import { useCurrency } from '@/hooks/use-currency'
 import { useLanguage } from '@/lib/i18n/language-context'
-import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
+import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/auth-fetch'
 
 const EXPENSE_CATEGORIES = ['Rent', 'Utilities', 'Salaries', 'Transport', 'Supplies', 'Maintenance', 'Other'] as const
 type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
@@ -168,8 +168,7 @@ export function ExpensesView() {
       params.set('limit', String(pagination.limit))
       params.set('offset', String(page * pagination.limit))
 
-      const res = await fetch(`/api/expenses?${params.toString()}`, { headers: getAuthHeaders() })
-      if (checkUnauthorized(res)) return
+      const res = await apiGet(`/api/expenses?${params.toString()}`)
       const json: ExpenseListResponse = await res.json()
       if (json.success) {
         setExpenses(json.data)
@@ -229,17 +228,13 @@ export function ExpensesView() {
     try {
       if (editingExpense) {
         // Update
-        const res = await fetch(`/api/expenses/${editingExpense.id}`, {
-          method: 'PUT',
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
+        const res = await apiPut(`/api/expenses/${editingExpense.id}`, {
             category: formData.category,
             description: formData.description,
             amount: Number(formData.amount),
             date: formData.date,
             branchId: formData.branchId,
-          }),
-        })
+          })
         const json = await res.json()
         if (json.success) {
           toast.success('Expense updated successfully')
@@ -250,18 +245,14 @@ export function ExpensesView() {
         }
       } else {
         // Create
-        const res = await fetch('/api/expenses', {
-          method: 'POST',
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
+        const res = await apiPost('/api/expenses', {
             category: formData.category,
             description: formData.description,
             amount: Number(formData.amount),
             date: formData.date,
             branchId: formData.branchId,
             companyId: companyId,
-          }),
-        })
+          })
         const json = await res.json()
         if (json.success) {
           toast.success('Expense recorded successfully')
@@ -287,8 +278,7 @@ export function ExpensesView() {
     if (!deleteTarget) return
     setDeleting(true)
     try {
-      const res = await fetch(`/api/expenses/${deleteTarget.id}`, { method: 'DELETE', headers: getAuthHeaders() })
-      if (checkUnauthorized(res)) return
+      const res = await apiDelete(`/api/expenses/${deleteTarget.id}`)
       const json = await res.json()
       if (json.success) {
         toast.success('Expense deleted successfully')
@@ -320,7 +310,7 @@ export function ExpensesView() {
         (e) =>
           e.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
           e.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          e.branch.name.toLowerCase().includes(searchQuery.toLowerCase())
+          (e.branch?.name ?? '').toLowerCase().includes(searchQuery.toLowerCase())
       )
     : expenses
 

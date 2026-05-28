@@ -15,7 +15,7 @@ import { Plus, ScanBarcode, ScanLine, Camera } from 'lucide-react'
 import { useLanguage } from '@/lib/i18n/language-context'
 import { toast } from 'sonner'
 import { BarcodeScannerDialog } from './barcode-scanner-dialog'
-import { getAuthHeaders } from '@/lib/auth-fetch'
+import { apiGet } from '@/lib/auth-fetch'
 
 interface QuickProduct {
   id: string
@@ -45,7 +45,7 @@ export function PosView() {
         const params = new URLSearchParams({ period: 'daily', sortBy: 'quantity' })
         if (companyId) params.set('companyId', companyId)
         if (currentBranchId) params.set('branchId', currentBranchId)
-        const res = await fetch(`/api/analytics/best-sellers?${params.toString()}`, { headers: getAuthHeaders() })
+        const res = await apiGet(`/api/analytics/best-sellers?${params.toString()}`)
         const json = await res.json()
         if (json.success && json.data?.length > 0) {
           setQuickProducts(
@@ -64,7 +64,7 @@ export function PosView() {
           const params = new URLSearchParams()
           if (companyId) params.set('companyId', companyId)
           if (currentBranchId) params.set('branchId', currentBranchId)
-          const res = await fetch(`/api/products?${params.toString()}`, { headers: getAuthHeaders() })
+          const res = await apiGet(`/api/products?${params.toString()}`)
           const json = await res.json()
           if (json.success) {
             setQuickProducts(
@@ -102,7 +102,7 @@ export function PosView() {
       const params = new URLSearchParams({ search: barcode.trim() })
       if (companyId) params.set('companyId', companyId)
       if (currentBranchId) params.set('branchId', currentBranchId)
-      const res = await fetch(`/api/products?${params.toString()}`, { headers: getAuthHeaders() })
+      const res = await apiGet(`/api/products?${params.toString()}`)
       const json = await res.json()
       if (json.success && json.data.length > 0) {
         // Try to find exact barcode match first

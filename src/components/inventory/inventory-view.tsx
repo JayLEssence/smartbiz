@@ -10,7 +10,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
 import { useCurrency } from '@/hooks/use-currency'
-import { getAuthHeaders } from '@/lib/auth-fetch'
+import { apiGet } from '@/lib/auth-fetch'
 
 interface InventoryBatch {
   id: string
@@ -48,7 +48,7 @@ export function InventoryView() {
       const params = new URLSearchParams()
       if (companyId) params.set('companyId', companyId)
       if (currentBranchId) params.set('branchId', currentBranchId)
-      const res = await fetch(`/api/inventory?${params.toString()}`, { headers: getAuthHeaders() })
+      const res = await apiGet(`/api/inventory?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         setBatches(json.data)

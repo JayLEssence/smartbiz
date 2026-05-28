@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useLanguage } from '@/lib/i18n/language-context'
-import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
+import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/auth-fetch'
 import { useAppStore } from '@/stores/app-store'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { toast } from 'sonner'
@@ -104,8 +104,7 @@ export function SuppliersView() {
       const params = new URLSearchParams({ includeInactive: String(showInactive) })
       if (companyId) params.set('companyId', companyId)
       if (searchQuery) params.set('search', searchQuery)
-      const res = await fetch(`/api/suppliers?${params.toString()}`, { headers: getAuthHeaders() })
-      if (checkUnauthorized(res)) return
+      const res = await apiGet(`/api/suppliers?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         setSuppliers(json.data)
@@ -146,17 +145,13 @@ export function SuppliersView() {
 
     setSubmitting(true)
     try {
-      const res = await fetch('/api/suppliers', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      const res = await apiPost('/api/suppliers', {
           name: addForm.name.trim(),
           email: addForm.email.trim() || undefined,
           phone: addForm.phone.trim() || undefined,
           address: addForm.address.trim() || undefined,
           companyId: companyId,
-        }),
-      })
+        })
       const json = await res.json()
 
       if (json.success) {
@@ -182,16 +177,12 @@ export function SuppliersView() {
 
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/suppliers/${selectedSupplier.id}`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      const res = await apiPut(`/api/suppliers/${selectedSupplier.id}`, {
           name: editForm.name.trim(),
           email: editForm.email.trim() || null,
           phone: editForm.phone.trim() || null,
           address: editForm.address.trim() || null,
-        }),
-      })
+        })
       const json = await res.json()
 
       if (json.success) {
@@ -215,11 +206,7 @@ export function SuppliersView() {
 
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/suppliers/${selectedSupplier.id}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      })
-      if (checkUnauthorized(res)) return
+      const res = await apiDelete(`/api/suppliers/${selectedSupplier.id}`)
       const json = await res.json()
 
       if (json.success) {

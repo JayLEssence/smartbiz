@@ -52,7 +52,7 @@ import {
 import { toast } from 'sonner'
 import { useAppStore } from '@/stores/app-store'
 import { useCurrency } from '@/hooks/use-currency'
-import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
+import { apiGet, apiDelete } from '@/lib/auth-fetch'
 
 type TrendingType = 'up' | 'down' | 'stable' | 'new' | 'no-sales'
 
@@ -225,8 +225,7 @@ export function ProductList({ branchId, companyId, onRefresh }: ProductListProps
       if (companyId) params.set('companyId', companyId)
       if (branchId) params.set('branchId', branchId)
 
-      const res = await fetch(`/api/products?${params.toString()}`, { headers: getAuthHeaders() })
-      if (checkUnauthorized(res)) return
+      const res = await apiGet(`/api/products?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         setProducts(json.data)
@@ -252,8 +251,7 @@ export function ProductList({ branchId, companyId, onRefresh }: ProductListProps
       const params = new URLSearchParams()
       params.set('productId', product.id)
       if (branchId) params.set('branchId', branchId)
-      const res = await fetch(`/api/inventory?${params.toString()}`, { headers: getAuthHeaders() })
-      if (checkUnauthorized(res)) return
+      const res = await apiGet(`/api/inventory?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         setBatches(json.data)
@@ -270,11 +268,7 @@ export function ProductList({ branchId, companyId, onRefresh }: ProductListProps
 
     setDeleting(true)
     try {
-      const res = await fetch(`/api/products/${deleteProduct.id}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      })
-      if (checkUnauthorized(res)) return
+      const res = await apiDelete(`/api/products/${deleteProduct.id}`)
       const json = await res.json()
       if (json.success) {
         toast.success('Product deactivated', {

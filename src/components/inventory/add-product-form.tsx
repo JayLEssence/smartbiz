@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2, PlusCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/stores/app-store'
-import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
+import { apiGet, apiPost } from '@/lib/auth-fetch'
 
 interface Branch {
   id: string
@@ -58,7 +58,7 @@ export function AddProductForm({ onProductAdded }: AddProductFormProps) {
     if (branches.length > 0) {
       setBranchList(branches)
     } else {
-      fetch('/api/branches', { headers: getAuthHeaders() })
+      apiGet('/api/branches')
         .then((res) => res.json())
         .then((json) => {
           if (json.success) {
@@ -103,20 +103,16 @@ export function AddProductForm({ onProductAdded }: AddProductFormProps) {
 
     setSubmitting(true)
     try {
-      const res = await fetch('/api/products', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          name,
-          sku,
-          barcode: barcode || undefined,
-          category,
-          currentStockLevel: parseInt(initialStock),
-          reorderThreshold: parseInt(reorderThreshold),
-          defaultSalePrice: parseFloat(salePrice),
-          branchId,
-          companyId: currentUser?.companyId,
-        }),
+      const res = await apiPost('/api/products', {
+        name,
+        sku,
+        barcode: barcode || undefined,
+        category,
+        currentStockLevel: parseInt(initialStock),
+        reorderThreshold: parseInt(reorderThreshold),
+        defaultSalePrice: parseFloat(salePrice),
+        branchId,
+        companyId: currentUser?.companyId,
       })
 
       const json = await res.json()

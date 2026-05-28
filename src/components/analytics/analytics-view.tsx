@@ -18,7 +18,7 @@ import {
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
-import { getAuthHeaders } from '@/lib/auth-fetch'
+import { apiGet } from '@/lib/auth-fetch'
 import { useCurrency } from '@/hooks/use-currency'
 
 interface LossData {
@@ -43,7 +43,7 @@ export function AnalyticsView() {
       const params = new URLSearchParams()
       if (companyId) params.set('companyId', companyId)
       if (currentBranchId) params.set('branchId', currentBranchId)
-      const res = await fetch(`/api/analytics/loss-report?${params.toString()}`, { headers: getAuthHeaders() })
+      const res = await apiGet(`/api/analytics/loss-report?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         setLossData(json.data)

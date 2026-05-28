@@ -1,74 +1,21 @@
 // ============================================
 // API CLIENT WITH AUTH TOKEN INJECTION
+// Delegates to fetchWithAuth for auto-refresh and 401 handling
 // ============================================
 
-// Get the stored session token
-function getToken(): string | null {
-  if (typeof window === 'undefined') return null
-  try {
-    const stored = localStorage.getItem('smartbiz_session')
-    if (stored) {
-      const data = JSON.parse(stored)
-      return data?.token || null
-    }
-  } catch {
-    // ignore
-  }
-  return null
-}
-
-// Build headers with auth token
-function getAuthHeaders(method: string = 'GET'): Record<string, string> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  }
-
-  const token = getToken()
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
-
-  return headers
-}
-
-// Access the cached CSRF token from auth-fetch module (kept for compatibility)
-let _cachedCsrfToken: string | null = null
-let _csrfTokenExpiry = 0
-
-export function setCachedCsrfToken(token: string, expiry: number): void {
-  _cachedCsrfToken = token
-  _csrfTokenExpiry = expiry
-}
-
-export function getCachedCsrfToken(): string | null {
-  if (_cachedCsrfToken && Date.now() < _csrfTokenExpiry) {
-    return _cachedCsrfToken
-  }
-  return null
-}
+import { fetchWithAuth } from '@/lib/auth-fetch'
 
 // Authenticated fetch wrapper
 export async function apiFetch<T = unknown>(
   url: string,
   options: RequestInit = {}
 ): Promise<{ success: boolean; data?: T; error?: string; status: number }> {
-  const method = (options.method || 'GET').toUpperCase()
-  const headers = {
-    ...getAuthHeaders(method),
-    ...(options.headers as Record<string, string> || {}),
-  }
-
   try {
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    })
-
+    const response = await fetchWithAuth(url, options)
     const json = await response.json()
 
-    // If token is expired or invalid, redirect to login
+    // If token is expired or invalid, the fetchWithAuth already handles redirect
     if (response.status === 401) {
-      // Clear session and redirect
       if (typeof window !== 'undefined') {
         localStorage.removeItem('smartbiz_session')
         window.dispatchEvent(new CustomEvent('auth:expired'))
@@ -97,12 +44,14 @@ export const api = {
   post: <T = unknown>(url: string, body: unknown) =>
     apiFetch<T>(url, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
 
   put: <T = unknown>(url: string, body: unknown) =>
     apiFetch<T>(url, {
       method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
 

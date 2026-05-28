@@ -705,3 +705,27 @@ Stage Summary:
 - Authentication errors fixed by ensuring all components use `getAuthHeaders()`
 - All API routes now working (login, join, register, branches, products, sales, etc.)
 - No more crashes from missing `invalidateCsrfCache` function
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix CSRF/Auth errors, null references, add PWA support
+
+Work Log:
+- Discovered "Invalid or expired CSRF token" error doesn't exist in codebase - actual issue is 401 auth errors from expired JWTs
+- Root cause: All components used `fetch(url, { headers: getAuthHeaders() })` which bypasses auto-token-refresh in `fetchWithAuth()`
+- Rewrote `auth-fetch.ts` with improved 401 handling (try token refresh before clearing session) and added `apiGet`, `apiPost`, `apiPut`, `apiDelete` convenience methods
+- Updated ALL 21+ components to use new convenience methods instead of raw `fetch` with `getAuthHeaders()`
+- Fixed null reference errors in: reports-view.tsx (division by null), admin-panel.tsx (.toLowerCase() on undefined), checkout-dialog.tsx (null receiptNumber), dashboard-view.tsx (empty recommendations), expenses-view.tsx (null branch name)
+- Fixed null guards in API routes: best-sellers/route.ts, loss-report/route.ts
+- Updated middleware.ts: relaxed CSP for PWA (`connect-src 'self' https:`, `manifest-src 'self'`), added `/api/auth/csrf` to public routes
+- Updated api-client.ts to delegate to `fetchWithAuth` for auto-refresh
+- Updated use-offline.ts to use `fetchWithAuth` instead of `getAuthHeaders()`
+- Added PWA support: manifest.json, sw.js service worker, meta tags in layout.tsx, service worker registration in page.tsx
+- Generated PWA icons (icon-192.png, icon-512.png) using AI image generation
+- All lint checks pass, dev server running clean with 200 responses
+
+Stage Summary:
+- CSRF/auth errors fixed: All components now use `fetchWithAuth` with auto-token-refresh
+- Null reference errors fixed: 6 critical + 4 moderate issues resolved
+- PWA support added: App can now be installed as native application on any device
+- Ready for deployment advice

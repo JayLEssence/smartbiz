@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAppStore } from '@/stores/app-store'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useLanguage } from '@/lib/i18n/language-context'
-import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
+import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/auth-fetch'
 import { useCurrency } from '@/hooks/use-currency'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -359,8 +359,7 @@ export function AdminPanel() {
     if (!companyId) return
     setCompanyLoading(true)
     try {
-      const res = await fetch(`/api/companies/${companyId}`, { headers: getAuthHeaders() })
-      if (checkUnauthorized(res)) return
+      const res = await apiGet(`/api/companies/${companyId}`)
       const json = await res.json()
       if (json.success) {
         setCompany(json.data)
@@ -383,8 +382,7 @@ export function AdminPanel() {
     if (!companyId) return
     setBranchesLoading(true)
     try {
-      const res = await fetch(`/api/branches?companyId=${companyId}&includeInactive=true`, { headers: getAuthHeaders() })
-      if (checkUnauthorized(res)) return
+      const res = await apiGet(`/api/branches?companyId=${companyId}&includeInactive=true`)
       const json = await res.json()
       if (json.success) {
         setBranches(json.data)
@@ -400,8 +398,7 @@ export function AdminPanel() {
     if (!companyId) return
     setUsersLoading(true)
     try {
-      const res = await fetch(`/api/users?companyId=${companyId}&includeInactive=true`, { headers: getAuthHeaders() })
-      if (checkUnauthorized(res)) return
+      const res = await apiGet(`/api/users?companyId=${companyId}&includeInactive=true`)
       const json = await res.json()
       if (json.success) {
         setUsers(json.data)
@@ -421,8 +418,7 @@ export function AdminPanel() {
       if (productBranchFilter && productBranchFilter !== 'all') {
         params.set('branchId', productBranchFilter)
       }
-      const res = await fetch(`/api/products?${params}`, { headers: getAuthHeaders() })
-      if (checkUnauthorized(res)) return
+      const res = await apiGet(`/api/products?${params}`)
       const json = await res.json()
       if (json.success) {
         setProducts(json.data)
@@ -465,18 +461,14 @@ export function AdminPanel() {
     if (!companyId) return
     setCompanySaving(true)
     try {
-      const res = await fetch('/api/companies', {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      const res = await apiPut('/api/companies', {
           id: companyId,
           name: companyForm.name,
           industry: companyForm.industry || null,
           email: companyForm.email || null,
           phone: companyForm.phone || null,
           address: companyForm.address || null,
-        }),
-      })
+        })
       const json = await res.json()
       if (json.success) {
         toast.success(t('admin.companySaved'))
@@ -500,18 +492,14 @@ export function AdminPanel() {
     }
     setBranchSubmitting(true)
     try {
-      const res = await fetch('/api/branches', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      const res = await apiPost('/api/branches', {
           name: branchForm.name.trim(),
           code: branchForm.code.trim(),
           address: branchForm.address.trim() || undefined,
           phone: branchForm.phone.trim() || undefined,
           isHeadOffice: branchForm.isHeadOffice,
           companyId,
-        }),
-      })
+        })
       const json = await res.json()
       if (json.success) {
         toast.success(t('admin.branchCreated'))
@@ -535,15 +523,11 @@ export function AdminPanel() {
     }
     setBranchSubmitting(true)
     try {
-      const res = await fetch(`/api/branches/${selectedBranch.id}`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      const res = await apiPut(`/api/branches/${selectedBranch.id}`, {
           name: branchForm.name.trim(),
           address: branchForm.address.trim() || null,
           phone: branchForm.phone.trim() || null,
-        }),
-      })
+        })
       const json = await res.json()
       if (json.success) {
         toast.success(t('admin.branchUpdated'))
@@ -564,8 +548,7 @@ export function AdminPanel() {
     if (!selectedBranch) return
     setBranchSubmitting(true)
     try {
-      const res = await fetch(`/api/branches/${selectedBranch.id}`, { method: 'DELETE', headers: getAuthHeaders() })
-      if (checkUnauthorized(res)) return
+      const res = await apiDelete(`/api/branches/${selectedBranch.id}`)
       const json = await res.json()
       if (json.success) {
         toast.success(t('admin.branchDeactivated'))
@@ -591,18 +574,14 @@ export function AdminPanel() {
     }
     setUserSubmitting(true)
     try {
-      const res = await fetch('/api/users', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      const res = await apiPost('/api/users', {
           name: userForm.name.trim(),
           email: userForm.email.trim(),
           password: userForm.password || 'demo-password',
           role: userForm.role,
           branchId: userForm.branchId,
           companyId,
-        }),
-      })
+        })
       const json = await res.json()
       if (json.success) {
         toast.success(t('admin.userCreated'))
@@ -624,15 +603,11 @@ export function AdminPanel() {
     if (!selectedUser) return
     setUserSubmitting(true)
     try {
-      const res = await fetch(`/api/users/${selectedUser.id}`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      const res = await apiPut(`/api/users/${selectedUser.id}`, {
           name: userForm.name.trim() || undefined,
           role: userForm.role,
           branchId: userForm.branchId,
-        }),
-      })
+        })
       const json = await res.json()
       if (json.success) {
         toast.success(t('admin.userUpdated'))
@@ -654,8 +629,7 @@ export function AdminPanel() {
     if (!selectedUser) return
     setUserSubmitting(true)
     try {
-      const res = await fetch(`/api/users/${selectedUser.id}`, { method: 'DELETE', headers: getAuthHeaders() })
-      if (checkUnauthorized(res)) return
+      const res = await apiDelete(`/api/users/${selectedUser.id}`)
       const json = await res.json()
       if (json.success) {
         toast.success(t('admin.userDeactivated'))
@@ -676,11 +650,7 @@ export function AdminPanel() {
   const handlePromoteUser = async (user: UserData, newRole: string) => {
     setUserSubmitting(true)
     try {
-      const res = await fetch(`/api/users/${user.id}`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ role: newRole }),
-      })
+      const res = await apiPut(`/api/users/${user.id}`, { role: newRole })
       const json = await res.json()
       if (json.success) {
         toast.success(newRole === 'Manager' ? t('admin.promotedToManager') : t('admin.demotedToEmployee'))
@@ -704,10 +674,7 @@ export function AdminPanel() {
     }
     setProductSubmitting(true)
     try {
-      const res = await fetch('/api/products', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      const res = await apiPost('/api/products', {
           name: productForm.name.trim(),
           sku: productForm.sku.trim(),
           barcode: productForm.barcode.trim() || undefined,
@@ -717,8 +684,7 @@ export function AdminPanel() {
           defaultSalePrice: Number(productForm.defaultSalePrice),
           branchId: productForm.branchId,
           companyId,
-        }),
-      })
+        })
       const json = await res.json()
       if (json.success) {
         toast.success(t('admin.productRegistered'))
@@ -743,8 +709,7 @@ export function AdminPanel() {
     if (!selectedProduct) return
     setProductSubmitting(true)
     try {
-      const res = await fetch(`/api/products/${selectedProduct.id}`, { method: 'DELETE', headers: getAuthHeaders() })
-      if (checkUnauthorized(res)) return
+      const res = await apiDelete(`/api/products/${selectedProduct.id}`)
       const json = await res.json()
       if (json.success) {
         toast.success(t('admin.productDeactivated'))
@@ -776,7 +741,7 @@ export function AdminPanel() {
       u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
       u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
       u.role.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u.branch?.name.toLowerCase().includes(userSearch.toLowerCase())
+      (u.branch?.name ?? '').toLowerCase().includes(userSearch.toLowerCase())
   )
 
   const filteredProducts = products.filter(
@@ -1548,12 +1513,9 @@ export function AdminPanel() {
                           variant="outline"
                           className="h-7 text-xs"
                           onClick={() => {
-                            const token = JSON.parse(localStorage.getItem('smartbiz_session') || '{}')?.token
                             window.open(`/api/data/export?type=${item.type}&format=json&XTransformPort=`, '_blank')
-                            // For JSON, use fetch
-                            fetch(`/api/data/export?type=${item.type}&format=json`, {
-                              headers: { 'Authorization': `Bearer ${token}` }
-                            })
+                            // For JSON, use apiGet
+                            apiGet(`/api/data/export?type=${item.type}&format=json`)
                             .then(r => r.json())
                             .then(json => {
                               if (json.success) {
@@ -1579,10 +1541,7 @@ export function AdminPanel() {
                           variant="outline"
                           className="h-7 text-xs"
                           onClick={() => {
-                            const token = JSON.parse(localStorage.getItem('smartbiz_session') || '{}')?.token
-                            fetch(`/api/data/export?type=${item.type}&format=csv`, {
-                              headers: { 'Authorization': `Bearer ${token}` }
-                            })
+                            apiGet(`/api/data/export?type=${item.type}&format=csv`)
                             .then(r => r.text())
                             .then(csv => {
                               const blob = new Blob([csv], { type: 'text/csv' })

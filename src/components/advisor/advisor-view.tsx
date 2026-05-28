@@ -9,7 +9,7 @@ import { RefreshCw, Lightbulb, AlertCircle, ArrowRight } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
-import { getAuthHeaders } from '@/lib/auth-fetch'
+import { apiGet } from '@/lib/auth-fetch'
 
 interface Recommendation {
   type: string
@@ -35,7 +35,7 @@ export function AdvisorView() {
       const params = new URLSearchParams()
       if (companyId) params.set('companyId', companyId)
       if (currentBranchId) params.set('branchId', currentBranchId)
-      const res = await fetch(`/api/advisor/recommendations?${params.toString()}`, { headers: getAuthHeaders() })
+      const res = await apiGet(`/api/advisor/recommendations?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         setRecommendations(json.data)

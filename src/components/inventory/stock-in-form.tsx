@@ -14,7 +14,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2, PackagePlus } from 'lucide-react'
 import { toast } from 'sonner'
-import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
+import { apiGet, apiPost } from '@/lib/auth-fetch'
 
 interface Product {
   id: string
@@ -42,8 +42,7 @@ export function StockInForm({ onStockIn, branchId, companyId }: StockInFormProps
       const params = new URLSearchParams()
       if (companyId) params.set('companyId', companyId)
       if (branchId) params.set('branchId', branchId)
-      const res = await fetch(`/api/products?${params.toString()}`, { headers: getAuthHeaders() })
-      if (checkUnauthorized(res)) return
+      const res = await apiGet(`/api/products?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         setProducts(json.data)
@@ -74,17 +73,13 @@ export function StockInForm({ onStockIn, branchId, companyId }: StockInFormProps
 
     setSubmitting(true)
     try {
-      const res = await fetch('/api/inventory', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          productId: selectedProductId,
-          quantityAdded: parseInt(quantity),
-          purchasePricePerUnit: parseFloat(purchasePrice),
-          supplier: supplier || undefined,
-          branchId: branchId || undefined,
-          companyId: companyId || undefined,
-        }),
+      const res = await apiPost('/api/inventory', {
+        productId: selectedProductId,
+        quantityAdded: parseInt(quantity),
+        purchasePricePerUnit: parseFloat(purchasePrice),
+        supplier: supplier || undefined,
+        branchId: branchId || undefined,
+        companyId: companyId || undefined,
       })
 
       const json = await res.json()

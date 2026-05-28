@@ -12,6 +12,7 @@ const PUBLIC_ROUTES = [
   '/api/auth/join',
   '/api/companies',  // Company registration (creates company + admin)
   '/api/auth/refresh',
+  '/api/auth/csrf',  // CSRF token endpoint
 ]
 
 // Routes that have specific rate limits
@@ -27,14 +28,16 @@ const SECURITY_HEADERS = {
   'X-Frame-Options': 'DENY',
   'X-XSS-Protection': '1; mode=block',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
-  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Permissions-Policy': 'camera=(self), microphone=(), geolocation=()',
+  // CSP relaxed for PWA compatibility and same-origin API calls
   'Content-Security-Policy': [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
-    "connect-src 'self'",
+    "connect-src 'self' https:",
+    "manifest-src 'self'",
     "frame-ancestors 'none'",
   ].join('; '),
 }

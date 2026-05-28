@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useLanguage } from '@/lib/i18n/language-context'
 import { useAppStore } from '@/stores/app-store'
-import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
+import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/auth-fetch'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
@@ -107,8 +107,7 @@ export function BranchesView() {
     try {
       const params = new URLSearchParams({ includeInactive: String(showInactive) })
       if (companyId) params.set('companyId', companyId)
-      const res = await fetch(`/api/branches?${params.toString()}`, { headers: getAuthHeaders() })
-      if (checkUnauthorized(res)) return
+      const res = await apiGet(`/api/branches?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         setBranches(json.data)
@@ -149,17 +148,13 @@ export function BranchesView() {
 
     setSubmitting(true)
     try {
-      const res = await fetch('/api/branches', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          name: addForm.name.trim(),
-          code: addForm.code.trim(),
-          address: addForm.address.trim() || undefined,
-          phone: addForm.phone.trim() || undefined,
-          isHeadOffice: addForm.isHeadOffice,
-          companyId: companyId,
-        }),
+      const res = await apiPost('/api/branches', {
+        name: addForm.name.trim(),
+        code: addForm.code.trim(),
+        address: addForm.address.trim() || undefined,
+        phone: addForm.phone.trim() || undefined,
+        isHeadOffice: addForm.isHeadOffice,
+        companyId: companyId,
       })
       const json = await res.json()
 
@@ -186,14 +181,10 @@ export function BranchesView() {
 
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/branches/${selectedBranch.id}`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          name: editForm.name.trim(),
-          address: editForm.address.trim() || null,
-          phone: editForm.phone.trim() || null,
-        }),
+      const res = await apiPut(`/api/branches/${selectedBranch.id}`, {
+        name: editForm.name.trim(),
+        address: editForm.address.trim() || null,
+        phone: editForm.phone.trim() || null,
       })
       const json = await res.json()
 
@@ -218,11 +209,7 @@ export function BranchesView() {
 
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/branches/${selectedBranch.id}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      })
-      if (checkUnauthorized(res)) return
+      const res = await apiDelete(`/api/branches/${selectedBranch.id}`)
       const json = await res.json()
 
       if (json.success) {

@@ -26,7 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
+import { apiGet, apiPut } from '@/lib/auth-fetch'
 
 interface Notification {
   id: string
@@ -75,9 +75,8 @@ export function AppHeader() {
       try {
         const params = new URLSearchParams({ companyId: currentCompany.id, unreadOnly: 'true' })
         if (currentBranchId) params.set('branchId', currentBranchId)
-        const res = await fetch(`/api/notifications?${params.toString()}`, { headers: getAuthHeaders() })
+        const res = await apiGet(`/api/notifications?${params.toString()}`)
         const json = await res.json()
-        if (res.status === 401) { checkUnauthorized(res); return }
         if (json.success) {
           setNotifications(json.data || [])
           setUnreadCount(json.unreadCount || 0)
@@ -95,14 +94,10 @@ export function AppHeader() {
   const markAllRead = async () => {
     if (!currentCompany?.id) return
     try {
-      await fetch('/api/notifications', {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          action: 'markAllRead',
-          companyId: currentCompany.id,
-          branchId: currentBranchId,
-        }),
+      await apiPut('/api/notifications', {
+        action: 'markAllRead',
+        companyId: currentCompany.id,
+        branchId: currentBranchId,
       })
       setUnreadCount(0)
       setNotifications([])

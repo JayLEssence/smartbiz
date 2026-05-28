@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
-import { getAuthHeaders } from '@/lib/auth-fetch'
+import { apiGet, apiPost, apiDelete } from '@/lib/auth-fetch'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -208,9 +208,7 @@ export function SecurityView() {
 
   const fetchSecurityData = async () => {
     try {
-      const res = await fetch('/api/auth/security', {
-        headers: getAuthHeaders(),
-      })
+      const res = await apiGet('/api/auth/security')
       const json = await res.json()
       if (json.success) {
         setSecurityData(json.data)
@@ -223,9 +221,7 @@ export function SecurityView() {
   const fetchActivityLog = async () => {
     setActivityLoading(true)
     try {
-      const res = await fetch('/api/auth/activity?limit=30', {
-        headers: getAuthHeaders(),
-      })
+      const res = await apiGet('/api/auth/activity?limit=30')
       const json = await res.json()
       if (json.success) {
         setActivityLog(json.data)
@@ -240,9 +236,7 @@ export function SecurityView() {
   const fetchSessions = async () => {
     setSessionsLoading(true)
     try {
-      const res = await fetch('/api/auth/sessions', {
-        headers: getAuthHeaders(),
-      })
+      const res = await apiGet('/api/auth/sessions')
       const json = await res.json()
       if (json.success) {
         setSessions(json.data)
@@ -279,11 +273,7 @@ export function SecurityView() {
 
     setChangingPassword(true)
     try {
-      const res = await fetch('/api/auth/change-password', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ currentPassword, newPassword }),
-      })
+      const res = await apiPost('/api/auth/change-password', { currentPassword, newPassword })
       const json = await res.json()
       if (json.success) {
         toast.success('Password changed successfully')
@@ -313,11 +303,7 @@ export function SecurityView() {
 
     setToggling2fa(true)
     try {
-      const res = await fetch('/api/auth/2fa', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ enabled: true, pin: twoFaPin }),
-      })
+      const res = await apiPost('/api/auth/2fa', { enabled: true, pin: twoFaPin })
       const json = await res.json()
       if (json.success) {
         toast.success('Two-factor authentication enabled successfully!')
@@ -338,11 +324,7 @@ export function SecurityView() {
   const handleDisable2fa = async () => {
     setToggling2fa(true)
     try {
-      const res = await fetch('/api/auth/2fa', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ enabled: false }),
-      })
+      const res = await apiPost('/api/auth/2fa', { enabled: false })
       const json = await res.json()
       if (json.success) {
         toast.success('Two-factor authentication disabled')
@@ -360,10 +342,7 @@ export function SecurityView() {
   const handleRevokeAllSessions = async () => {
     setRevokingSessions(true)
     try {
-      const res = await fetch('/api/auth/sessions', {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      })
+      const res = await apiDelete('/api/auth/sessions')
       const json = await res.json()
       if (json.success) {
         toast.success(`Revoked ${json.data?.revokedCount || 0} session(s)`)

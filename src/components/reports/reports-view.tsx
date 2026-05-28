@@ -32,7 +32,7 @@ import {
   Archive,
 } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { getAuthHeaders } from '@/lib/auth-fetch'
+import { apiGet } from '@/lib/auth-fetch'
 
 // ============ Types ============
 
@@ -124,7 +124,7 @@ export function ReportsView() {
         params.set('branchId', selectedBranch)
       }
 
-      const res = await fetch(`/api/reports?${params.toString()}`, { headers: getAuthHeaders() })
+      const res = await apiGet(`/api/reports?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         setReportData(json.data)
@@ -489,7 +489,7 @@ function SalesReportDisplay({
                   <div className="w-full bg-muted rounded-full h-2.5">
                     <div
                       className="bg-emerald-500 h-2.5 rounded-full transition-all"
-                      style={{ width: `${Math.max((pm.revenue / maxPaymentRevenue) * 100, 2)}%` }}
+                      style={{ width: `${Math.max(((pm.revenue ?? 0) / maxPaymentRevenue) * 100, 2)}%` }}
                     />
                   </div>
                 </div>
@@ -573,7 +573,7 @@ function ExpensesReportDisplay({
                   <div className="w-full bg-muted rounded-full h-2.5">
                     <div
                       className={`${categoryColors[cat.category] || 'bg-stone-500'} h-2.5 rounded-full transition-all`}
-                      style={{ width: `${Math.max((cat.amount / maxCategoryAmount) * 100, 2)}%` }}
+                      style={{ width: `${Math.max(((cat.amount ?? 0) / maxCategoryAmount) * 100, 2)}%` }}
                     />
                   </div>
                 </div>

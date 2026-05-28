@@ -94,7 +94,7 @@ export async function GET(request: Request) {
       // Aggregate by product
       if (!lossByProductMap[shrinkage.productId]) {
         lossByProductMap[shrinkage.productId] = {
-          productName: shrinkage.product.name,
+          productName: shrinkage.product?.name ?? 'Unknown Product',
           totalLoss: 0,
           count: 0,
         }

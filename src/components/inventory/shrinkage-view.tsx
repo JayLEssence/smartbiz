@@ -19,7 +19,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { useAppStore } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
 import { useCurrency } from '@/hooks/use-currency'
-import { getAuthHeaders, checkUnauthorized } from '@/lib/auth-fetch'
+import { apiGet, apiPost } from '@/lib/auth-fetch'
 
 interface Product {
   id: string
@@ -59,8 +59,7 @@ export function ShrinkageView() {
       const params = new URLSearchParams()
       if (companyId) params.set('companyId', companyId)
       if (currentBranchId) params.set('branchId', currentBranchId)
-      const res = await fetch(`/api/products?${params.toString()}`, { headers: getAuthHeaders() })
-      if (checkUnauthorized(res)) return
+      const res = await apiGet(`/api/products?${params.toString()}`)
       const json = await res.json()
       if (json.success) setProducts(json.data)
     } catch {
@@ -77,8 +76,7 @@ export function ShrinkageView() {
       if (dateFrom) params.set('from', new Date(dateFrom).toISOString())
       if (dateTo) params.set('to', new Date(dateTo).toISOString())
 
-      const res = await fetch(`/api/shrinkage?${params.toString()}`, { headers: getAuthHeaders() })
-      if (checkUnauthorized(res)) return
+      const res = await apiGet(`/api/shrinkage?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         setRecords(json.data)
@@ -109,16 +107,12 @@ export function ShrinkageView() {
 
     setSubmitting(true)
     try {
-      const res = await fetch('/api/shrinkage', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          productId: selectedProductId,
-          quantityLost: parseInt(quantityLost),
-          reason,
-          branchId: currentBranchId ?? undefined,
-          companyId: companyId ?? undefined,
-        }),
+      const res = await apiPost('/api/shrinkage', {
+        productId: selectedProductId,
+        quantityLost: parseInt(quantityLost),
+        reason,
+        branchId: currentBranchId ?? undefined,
+        companyId: companyId ?? undefined,
       })
 
       const json = await res.json()

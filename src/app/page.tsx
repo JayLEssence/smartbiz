@@ -21,7 +21,7 @@ import { AdminPanel } from '@/components/admin/admin-panel'
 import { SecurityView } from '@/components/security/security-view'
 import { OfflineBanner } from '@/components/layout/offline-banner'
 import { SessionTimeout } from '@/components/layout/session-timeout'
-import { getAuthHeaders } from '@/lib/auth-fetch'
+import { apiGet } from '@/lib/auth-fetch'
 import { CommandPalette } from '@/components/layout/command-palette'
 import { LanguageProvider, useLanguage } from '@/lib/i18n/language-context'
 
@@ -50,6 +50,15 @@ function HomeContent() {
     logout,
   } = useAppStore()
   const [initializing, setInitializing] = useState(true)
+
+  // Register service worker for PWA
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {
+        // SW registration failed - app still works without it
+      })
+    }
+  }, [])
 
   // Listen for auth expiry events and token refresh events
   useEffect(() => {
@@ -118,9 +127,7 @@ function HomeContent() {
             setAuthToken(data.token)
 
             // Fetch branches with auth token
-            fetch(`/api/branches?companyId=${user.companyId}`, {
-              headers: getAuthHeaders(),
-            })
+            apiGet(`/api/branches?companyId=${user.companyId}`)
               .then((res) => res.json())
               .then((json) => {
                 if (json.success && json.data) {
