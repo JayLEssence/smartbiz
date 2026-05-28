@@ -9,24 +9,14 @@ import {
   handleFailedLogin,
   isAccountLocked,
   resetLoginAttempts,
-  checkPasswordStrength,
 } from '@/lib/auth'
 import { safeValidate, loginSchema, sanitizeString } from '@/lib/validation'
 import { logAudit, getRequestInfo } from '@/lib/audit-log'
-import { checkRateLimit, getClientIdentifier, RATE_LIMITS, getRateLimitHeaders } from '@/lib/rate-limit'
+
+// Note: Rate limiting is handled by middleware.ts - no duplicate check here
 
 export async function POST(request: Request) {
   try {
-    // ---- Rate Limiting ----
-    const clientId = getClientIdentifier(request)
-    const rateResult = checkRateLimit(clientId, RATE_LIMITS.login)
-    if (!rateResult.allowed) {
-      return NextResponse.json(
-        { success: false, error: 'Too many login attempts. Please try again later.', retryAfter: Math.ceil((rateResult.retryAfterMs || 60000) / 1000) },
-        { status: 429, headers: getRateLimitHeaders(rateResult, RATE_LIMITS.login) }
-      )
-    }
-
     // ---- Input Validation ----
     const body = await request.json()
     const validation = safeValidate(loginSchema, body)
@@ -108,19 +98,6 @@ export async function POST(request: Request) {
       if (password === user.passwordHash) {
         passwordValid = true
         // Migrate to bcrypt hash immediately
-        const hashedPassword = await hashPassword(password)
-        await db.user.update({
-          where: { id: user.id },
-          data: { passwordHash: hashedPassword, passwordChangedAt: new Date() },
-        })
-      }
-    }
-
-    // Also handle seeded demo users (password starting with $2a$10$dummy)
-    if (!passwordValid && user.passwordHash.startsWith('$2a$10$dummy')) {
-      if (password === 'demo') {
-        passwordValid = true
-        // Migrate demo user to proper bcrypt hash
         const hashedPassword = await hashPassword(password)
         await db.user.update({
           where: { id: user.id },

@@ -296,10 +296,10 @@ export function ProductList({ branchId, companyId, onRefresh }: ProductListProps
   }
 
   const getStockBadge = (product: Product) => {
-    if (product.currentStockLevel === 0) {
+    if ((product.currentStockLevel ?? 0) === 0) {
       return <Badge variant="destructive">Out of Stock</Badge>
     }
-    if (product.currentStockLevel <= product.reorderThreshold) {
+    if ((product.currentStockLevel ?? 0) <= (product.reorderThreshold ?? 0)) {
       return (
         <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">
           Low Stock
@@ -385,9 +385,9 @@ export function ProductList({ branchId, companyId, onRefresh }: ProductListProps
                     {product.category}
                   </TableCell>
                   <TableCell className="text-right">
-                    {product.currentStockLevel}
+                    {product.currentStockLevel ?? 0}
                     <span className="text-xs text-muted-foreground">
-                      /{product.reorderThreshold}
+                      /{product.reorderThreshold ?? 0}
                     </span>
                   </TableCell>
                   <TableCell className="text-right hidden sm:table-cell">
@@ -433,7 +433,7 @@ export function ProductList({ branchId, companyId, onRefresh }: ProductListProps
                 <div>
                   <span className="text-muted-foreground">Current Stock: </span>
                   <span className="font-semibold">
-                    {selectedProduct.currentStockLevel}
+                    {selectedProduct.currentStockLevel ?? 0}
                   </span>
                 </div>
                 <div>
@@ -523,7 +523,7 @@ export function ProductList({ branchId, companyId, onRefresh }: ProductListProps
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Current Stock</span>
-                        <span className="font-medium">{deleteProduct.currentStockLevel} units</span>
+                        <span className="font-medium">{deleteProduct.currentStockLevel ?? 0} units</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-muted-foreground">Trending</span>

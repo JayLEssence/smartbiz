@@ -4,21 +4,12 @@ import { Prisma } from '@prisma/client'
 import { hashPassword, authenticateRequest, isCompanyAdmin } from '@/lib/auth'
 import { safeValidate, registerSchema, companyUpdateSchema, sanitizeString } from '@/lib/validation'
 import { logAudit, getRequestInfo } from '@/lib/audit-log'
-import { checkRateLimit, getClientIdentifier, RATE_LIMITS, getRateLimitHeaders } from '@/lib/rate-limit'
+
+// Note: Rate limiting is handled by middleware.ts - no duplicate check here
 
 // POST: Register a new company (creates company + head office branch + admin user)
 export async function POST(request: Request) {
   try {
-    // ---- Rate Limiting ----
-    const clientId = getClientIdentifier(request)
-    const rateResult = checkRateLimit(clientId, RATE_LIMITS.register)
-    if (!rateResult.allowed) {
-      return NextResponse.json(
-        { success: false, error: 'Too many registration attempts. Please try again later.' },
-        { status: 429, headers: getRateLimitHeaders(rateResult, RATE_LIMITS.register) }
-      )
-    }
-
     // ---- Input Validation ----
     const body = await request.json()
     const validation = safeValidate(registerSchema, body)

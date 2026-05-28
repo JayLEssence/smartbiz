@@ -128,7 +128,7 @@ const emptyForm: FormData = {
 export function ExpensesView() {
   const isMobile = useIsMobile()
   const { currentBranchId, currentUser, branches } = useAppStore()
-  const { formatDual, formatLocal } = useCurrency()
+  const { formatDual, formatDualUSD, formatLocal } = useCurrency()
   const { t } = useLanguage()
   const companyId = currentUser?.companyId
   const isAdmin = currentUser?.role === 'CompanyAdmin'
@@ -361,10 +361,7 @@ export function ExpensesView() {
               <div>
                 <p className="text-xs text-muted-foreground">Total This Month</p>
                 <p className="text-lg font-bold text-red-600">
-                  {formatLocal(summary.totalThisMonth ?? 0)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatDual(summary.totalThisMonth ?? 0)}
+                  {formatDualUSD(summary.totalThisMonth ?? 0)}
                 </p>
               </div>
             </div>
@@ -387,10 +384,7 @@ export function ExpensesView() {
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground truncate">{category}</p>
                     <p className="text-lg font-bold truncate">
-                      {formatLocal(amount ?? 0)}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {formatDual(amount ?? 0)}
+                      {formatDualUSD(amount ?? 0)}
                     </p>
                   </div>
                 </div>
@@ -424,7 +418,7 @@ export function ExpensesView() {
                       <span className="text-sm font-medium truncate">{category}</span>
                     </div>
                     <span className="text-sm font-semibold shrink-0 ml-2">
-                      {formatLocal(amount ?? 0)}
+                      {formatDualUSD(amount ?? 0)}
                     </span>
                   </div>
                 ))}
@@ -550,10 +544,7 @@ export function ExpensesView() {
                           </td>
                           <td className="py-3 text-right">
                             <p className="text-sm font-semibold">
-                              {formatLocal(expense.amount ?? 0)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {formatDual(expense.amount ?? 0)}
+                              {formatDualUSD(expense.amount ?? 0)}
                             </p>
                           </td>
                           <td className="py-3 text-right">
@@ -607,10 +598,7 @@ export function ExpensesView() {
                       </div>
                       <div className="flex flex-col items-end shrink-0 ml-3">
                         <p className="text-sm font-bold">
-                          {formatLocal(expense.amount ?? 0)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDual(expense.amount ?? 0)}
+                          {formatDualUSD(expense.amount ?? 0)}
                         </p>
                         <div className="flex items-center gap-1 mt-2">
                           <Button
@@ -736,7 +724,7 @@ export function ExpensesView() {
                 />
                 {formData.amount && Number(formData.amount) > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    ≈ {formatDual(Number(formData.amount))}
+                    ≈ {formatDualUSD(Number(formData.amount))}
                   </p>
                 )}
               </div>
@@ -822,7 +810,7 @@ export function ExpensesView() {
               Are you sure you want to delete this expense? This action cannot be undone.
               {deleteTarget && (
                 <span className="block mt-2 font-medium text-foreground">
-                  {deleteTarget.description} — {formatLocal(deleteTarget.amount ?? 0)}
+                  {deleteTarget.description} — {formatDualUSD(deleteTarget.amount ?? 0)}
                 </span>
               )}
             </AlertDialogDescription>

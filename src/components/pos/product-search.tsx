@@ -140,10 +140,10 @@ export function ProductSearch({ branchId, companyId }: ProductSearchProps) {
               key={product.id}
               className={cn(
                 'flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-accent transition-colors',
-                product.currentStockLevel === 0 && 'opacity-50'
+                (product.currentStockLevel ?? 0) === 0 && 'opacity-50'
               )}
               onClick={() => handleSelect(product)}
-              disabled={product.currentStockLevel === 0}
+              disabled={(product.currentStockLevel ?? 0) === 0}
             >
               <div className="flex flex-col items-start">
                 <span className="font-medium">{product.name}</span>
@@ -159,12 +159,12 @@ export function ProductSearch({ branchId, companyId }: ProductSearchProps) {
                 <span
                   className={cn(
                     'text-xs',
-                    product.currentStockLevel > 0
+                    (product.currentStockLevel ?? 0) > 0
                       ? 'text-muted-foreground'
                       : 'text-red-500'
                   )}
                 >
-                  Stock: {product.currentStockLevel}
+                  Stock: {product.currentStockLevel ?? 0}
                 </span>
               </div>
             </button>

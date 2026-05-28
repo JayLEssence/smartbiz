@@ -192,7 +192,7 @@ export function PosView() {
                 size="sm"
                 className="justify-start h-auto py-2 px-3 text-left"
                 onClick={() => handleQuickAdd(product)}
-                disabled={product.currentStockLevel === 0}
+                disabled={(product.currentStockLevel ?? 0) === 0}
               >
                 <Plus className="h-3 w-3 mr-1 shrink-0" />
                 <span className="truncate text-xs">{product.name}</span>
@@ -227,7 +227,7 @@ export function PosView() {
                   variant="outline"
                   className="h-auto py-3 px-3 justify-start"
                   onClick={() => handleQuickAdd(product)}
-                  disabled={product.currentStockLevel === 0}
+                  disabled={(product.currentStockLevel ?? 0) === 0}
                 >
                   <Plus className="h-4 w-4 mr-2 shrink-0 text-emerald-600" />
                   <div className="flex flex-col items-start min-w-0">

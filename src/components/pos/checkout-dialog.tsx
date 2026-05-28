@@ -143,14 +143,14 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
 
     for (const item of saleResult.saleItems) {
       const name = item.product.name.length > 18 ? item.product.name.slice(0, 18) : item.product.name
-      const sub = item.quantitySold * item.salePricePerUnit
-      lines.push(`${name.padEnd(19)}${String(item.quantitySold).padStart(3)}  ${formatLocal(toLocal(item.salePricePerUnit ?? 0)).padStart(8)}  ${formatLocal(toLocal(sub ?? 0)).padStart(8)}`)
-      lines.push(`                    ${' '.repeat(11)}${formatUSDAmount(sub ?? 0).padStart(8)}`)
+      const sub = (item.quantitySold ?? 0) * (item.salePricePerUnit ?? 0)
+      lines.push(`${name.padEnd(19)}${String(item.quantitySold).padStart(3)}  ${formatLocal(toLocal(item.salePricePerUnit ?? 0)).padStart(8)}  ${formatLocal(toLocal(sub)).padStart(8)}`)
+      lines.push(`                    ${' '.repeat(11)}${formatUSDAmount(sub).padStart(8)}`)
     }
 
     lines.push('───────────────────────────────────')
 
-    if (saleResult.discount > 0) {
+    if ((saleResult.discount ?? 0) > 0) {
       lines.push(`Discount: ${formatDualUSD(saleResult.discount ?? 0)}`)
     }
 
@@ -202,13 +202,13 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
     lines.push('*Items:*')
 
     for (const item of saleResult.saleItems) {
-      const sub = item.quantitySold * item.salePricePerUnit
-      lines.push(`• ${item.product.name} × ${item.quantitySold} = ${formatDualUSD(sub ?? 0)}`)
+      const sub = (item.quantitySold ?? 0) * (item.salePricePerUnit ?? 0)
+      lines.push(`• ${item.product.name} × ${item.quantitySold} = ${formatDualUSD(sub)}`)
     }
 
     lines.push('───────────────────')
 
-    if (saleResult.discount > 0) {
+    if ((saleResult.discount ?? 0) > 0) {
       lines.push(`🏷️ Discount: -${formatDualUSD(saleResult.discount ?? 0)}`)
     }
 
@@ -316,16 +316,15 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
             {/* Items */}
             <div className="text-left text-sm">
               {saleResult.saleItems.map((item) => {
-                const sub = item.quantitySold * item.salePricePerUnit
+                const sub = (item.quantitySold ?? 0) * (item.salePricePerUnit ?? 0)
                 return (
                   <div key={item.id} className="py-1.5 border-b border-dashed border-gray-200 last:border-0">
                     <div className="flex justify-between font-medium">
                       <span className="truncate mr-2">{item.product.name}</span>
-                      <span className="shrink-0">{formatLocal(toLocal(sub ?? 0))}</span>
+                      <span className="shrink-0">{formatDualUSD(sub)}</span>
                     </div>
                     <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{item.quantitySold} × {formatLocal(toLocal(item.salePricePerUnit ?? 0))}</span>
-                      <span>{formatUSDAmount(sub ?? 0)}</span>
+                      <span>{item.quantitySold} × {formatDualUSD(item.salePricePerUnit ?? 0)}</span>
                     </div>
                   </div>
                 )
@@ -336,7 +335,7 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
 
             {/* Totals */}
             <div className="text-left text-sm space-y-1">
-              {saleResult.discount > 0 && (
+              {(saleResult.discount ?? 0) > 0 && (
                 <div className="flex justify-between text-red-500">
                   <span>Discount</span>
                   <span>-{formatDualUSD(saleResult.discount ?? 0)}</span>
@@ -443,7 +442,7 @@ export function CheckoutDialog({ open, onOpenChange }: CheckoutDialogProps) {
                     </span>
                   </div>
                   <span className="font-medium shrink-0 ml-4">
-                    {formatDualUSD((item.quantity * item.salePricePerUnit) ?? 0)}
+                    {formatDualUSD((item.quantity * (item.salePricePerUnit ?? 0)) ?? 0)}
                   </span>
                 </div>
               ))}

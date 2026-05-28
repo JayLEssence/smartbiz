@@ -338,7 +338,7 @@ export function CustomersView() {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">{t('customers.totalCustomers')}</p>
-                <p className="text-2xl font-bold">{summary.totalCustomers}</p>
+                <p className="text-2xl font-bold">{summary.totalCustomers ?? 0}</p>
               </div>
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
                 <Users className="h-5 w-5" />
@@ -354,7 +354,7 @@ export function CustomersView() {
                 <p className="text-2xl font-bold">{formatDual(summary.totalCreditOutstanding ?? 0)}</p>
               </div>
               <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-                summary.totalCreditOutstanding > 0
+                (summary.totalCreditOutstanding ?? 0) > 0
                   ? 'bg-red-50 text-red-600'
                   : 'bg-emerald-50 text-emerald-600'
               }`}>

@@ -11,7 +11,7 @@ import { validateCsrfToken } from '@/lib/csrf'
 const PUBLIC_ROUTES = [
   '/api/auth/login',
   '/api/auth/join',
-  '/api/auth/register',
+  '/api/companies',  // Company registration (creates company + admin)
   '/api/auth/refresh',
 ]
 
@@ -19,16 +19,17 @@ const PUBLIC_ROUTES = [
 const CSRF_EXEMPT_ROUTES = [
   '/api/auth/login',
   '/api/auth/join',
-  '/api/auth/register',
+  '/api/companies',  // Company registration (not authenticated yet)
   '/api/auth/csrf',
   '/api/auth/refresh',
+  '/api/auth/logout',  // Logout should work even if CSRF token is stale
 ]
 
 // Routes that have specific rate limits
 const RATE_LIMITED_ROUTES: Record<string, typeof RATE_LIMITS.login> = {
   '/api/auth/login': RATE_LIMITS.login,
   '/api/auth/join': RATE_LIMITS.join,
-  '/api/auth/register': RATE_LIMITS.register,
+  '/api/companies': RATE_LIMITS.register,
 }
 
 // Security headers to add to all responses

@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useAppStore, type CompanyInfo } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
+import { initCsrfToken } from '@/lib/auth-fetch'
 import { Store, Building2, User, Mail, Lock, Phone, MapPin, Loader2, ArrowRight, CheckCircle2, Users, Hash, ShieldCheck, Shield, Eye, EyeOff, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -273,6 +274,8 @@ export function AuthPage() {
 
       saveSessionAndLogin(json.data)
       await fetchBranches(json.data.user.companyId)
+      // Initialize CSRF token immediately after login
+      initCsrfToken().catch(() => {})
       toast.success(`${t('auth.welcomeBack')}, ${json.data.user.name}!`)
     } catch {
       toast.error(t('auth.networkError'))
@@ -321,6 +324,8 @@ export function AuthPage() {
 
       saveSessionAndLogin(json.data)
       await fetchBranches(json.data.user.companyId)
+      // Initialize CSRF token immediately after join
+      initCsrfToken().catch(() => {})
       toast.success(t('auth.joinSuccess'))
     } catch {
       toast.error(t('auth.networkError'))
@@ -382,6 +387,8 @@ export function AuthPage() {
       if (loginJson.success) {
         saveSessionAndLogin(loginJson.data)
         await fetchBranches(loginJson.data.user.companyId)
+        // Initialize CSRF token immediately after registration auto-login
+        initCsrfToken().catch(() => {})
         toast.success(t('auth.registrationSuccess'))
       } else {
         toast.success(t('auth.registrationLogin'))

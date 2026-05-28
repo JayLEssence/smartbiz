@@ -147,54 +147,54 @@ export function ReportsView() {
         const data = reportData as SalesReportData
         csvContent = 'Date,Revenue,Transactions\n'
         data.dailyBreakdown.forEach(row => {
-          csvContent += `${row.date},${row.revenue},${row.count}\n`
+          csvContent += `${row.date},${row.revenue ?? 0},${row.count ?? 0}\n`
         })
         csvContent += `\nPayment Method,Count,Revenue\n`
         data.paymentMethods.forEach(row => {
-          csvContent += `${row.method},${row.count},${row.revenue}\n`
+          csvContent += `${row.method},${row.count ?? 0},${row.revenue ?? 0}\n`
         })
-        csvContent += `\nSummary\nTotal Revenue,${data.totalRevenue}\nAverage Sale,${data.averageSale}\nTotal Transactions,${data.totalTransactions}\n`
+        csvContent += `\nSummary\nTotal Revenue,${data.totalRevenue ?? 0}\nAverage Sale,${data.averageSale ?? 0}\nTotal Transactions,${data.totalTransactions ?? 0}\n`
         break
       }
       case 'expenses': {
         const data = reportData as ExpensesReportData
         csvContent = 'Category,Amount,Count\n'
         data.categoryBreakdown.forEach(row => {
-          csvContent += `${row.category},${row.amount},${row.count}\n`
+          csvContent += `${row.category},${row.amount ?? 0},${row.count ?? 0}\n`
         })
         csvContent += `\nDaily Breakdown\nDate,Amount,Count\n`
         data.dailyBreakdown.forEach(row => {
-          csvContent += `${row.date},${row.amount},${row.count}\n`
+          csvContent += `${row.date},${row.amount ?? 0},${row.count ?? 0}\n`
         })
-        csvContent += `\nSummary\nTotal Expenses,${data.totalExpenses}\nTop Category,${data.topCategory}\n`
+        csvContent += `\nSummary\nTotal Expenses,${data.totalExpenses ?? 0}\nTop Category,${data.topCategory ?? 'N/A'}\n`
         break
       }
       case 'profit-loss': {
         const data = reportData as ProfitLossData
         csvContent = 'Item,Amount\n'
-        csvContent += `Revenue,${data.revenue}\n`
-        csvContent += `Cost of Goods,${data.cogs}\n`
-        csvContent += `Gross Profit,${data.grossProfit}\n`
-        csvContent += `Expenses,${data.totalExpenses}\n`
-        csvContent += `Net Profit,${data.netProfit}\n`
+        csvContent += `Revenue,${data.revenue ?? 0}\n`
+        csvContent += `Cost of Goods,${data.cogs ?? 0}\n`
+        csvContent += `Gross Profit,${data.grossProfit ?? 0}\n`
+        csvContent += `Expenses,${data.totalExpenses ?? 0}\n`
+        csvContent += `Net Profit,${data.netProfit ?? 0}\n`
         break
       }
       case 'inventory': {
         const data = reportData as InventoryReportData
         csvContent = 'Product,SKU,Category,Stock,Value\n'
         data.stockList.forEach(row => {
-          csvContent += `"${row.name}",${row.sku},${row.category},${row.currentStockLevel},${row.value}\n`
+          csvContent += `"${row.name}",${row.sku},${row.category},${row.currentStockLevel ?? 0},${row.value ?? 0}\n`
         })
-        csvContent += `\nSummary\nTotal Products,${data.totalProducts}\nTotal Stock Value,${data.totalStockValue}\nLow Stock Items,${data.lowStockCount}\n`
+        csvContent += `\nSummary\nTotal Products,${data.totalProducts ?? 0}\nTotal Stock Value,${data.totalStockValue ?? 0}\nLow Stock Items,${data.lowStockCount ?? 0}\n`
         break
       }
       case 'tax': {
         const data = reportData as TaxReportData
         csvContent = 'Payment Method,Taxable Amount,Tax Amount\n'
         data.paymentBreakdown.forEach(row => {
-          csvContent += `${row.method},${row.taxableAmount},${row.taxAmount}\n`
+          csvContent += `${row.method},${row.taxableAmount ?? 0},${row.taxAmount ?? 0}\n`
         })
-        csvContent += `\nSummary\nTaxable Amount,${data.taxableAmount}\nTax Rate,${data.taxRate}%\nTax Amount,${data.taxAmount}\nTotal Transactions,${data.totalTransactions}\n`
+        csvContent += `\nSummary\nTaxable Amount,${data.taxableAmount ?? 0}\nTax Rate,${data.taxRate ?? 0}%\nTax Amount,${data.taxAmount ?? 0}\nTotal Transactions,${data.totalTransactions ?? 0}\n`
         break
       }
     }
@@ -445,13 +445,13 @@ function SalesReportDisplay({
                   {data.dailyBreakdown.map((row) => (
                     <tr key={row.date} className="border-b last:border-0">
                       <td className="py-2 text-muted-foreground">{row.date}</td>
-                      <td className="py-2 text-right">{row.count}</td>
+                      <td className="py-2 text-right">{row.count ?? 0}</td>
                       <td className="py-2 text-right font-medium">{formatDual(row.revenue ?? 0)}</td>
                       <td className="py-2 pl-2">
                         <div className="w-full bg-muted rounded-full h-2">
                           <div
                             className="bg-emerald-500 h-2 rounded-full transition-all"
-                            style={{ width: `${Math.max((row.revenue / maxRevenue) * 100, 2)}%` }}
+                            style={{ width: `${Math.max(((row.revenue ?? 0) / maxRevenue) * 100, 2)}%` }}
                           />
                         </div>
                       </td>
@@ -597,7 +597,7 @@ function ProfitLossDisplay({
   formatDual: (amount: number) => string
   t: (key: string) => string
 }) {
-  const isProfit = data.netProfit >= 0
+  const isProfit = (data.netProfit ?? 0) >= 0
 
   return (
     <div className="space-y-4">
@@ -732,14 +732,14 @@ function InventoryReportDisplay({
             <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">{formatDual(data.totalStockValue ?? 0)}</p>
           </CardContent>
         </Card>
-        <Card className={data.lowStockCount > 0 ? 'border-amber-200 dark:border-amber-800' : ''}>
+        <Card className={(data.lowStockCount ?? 0) > 0 ? 'border-amber-200 dark:border-amber-800' : ''}>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-1">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
               <span className="text-xs font-medium text-muted-foreground">{t('reports.lowStockItems')}</span>
             </div>
-            <p className={`text-lg font-bold ${data.lowStockCount > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-              {data.lowStockCount}
+            <p className={`text-lg font-bold ${(data.lowStockCount ?? 0) > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+              {data.lowStockCount ?? 0}
             </p>
           </CardContent>
         </Card>

@@ -37,7 +37,7 @@ export function Cart({ onCheckout }: CartProps) {
     getSubtotal, getTotal, paymentMethod, setPaymentMethod,
     customerName, setCustomerName, phoneNumber, setPhoneNumber,
   } = usePosStore()
-  const { formatDual, formatLocal, formatUSD, toUSD } = useCurrency()
+  const { formatDual, formatDualUSD, formatLocal, formatUSD, toUSD, toLocal } = useCurrency()
 
   const subtotal = getSubtotal()
   const total = getTotal()
@@ -71,7 +71,7 @@ export function Cart({ onCheckout }: CartProps) {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{item.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {formatDual(item.salePricePerUnit)} each
+                      {formatDual(item.salePricePerUnit ?? 0)} each
                     </p>
                   </div>
                   <Button
@@ -107,11 +107,7 @@ export function Cart({ onCheckout }: CartProps) {
                     </Button>
                   </div>
                   <span className="font-semibold text-sm text-right">
-                    {formatLocal(item.quantity * item.salePricePerUnit)}
-                    <br />
-                    <span className="text-xs font-normal text-muted-foreground">
-                      {formatUSD(toUSD(item.quantity * item.salePricePerUnit))}
-                    </span>
+                    {formatDualUSD(item.quantity * (item.salePricePerUnit ?? 0))}
                   </span>
                 </div>
               </div>
@@ -176,11 +172,7 @@ export function Cart({ onCheckout }: CartProps) {
 
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Subtotal</span>
-            <span className="text-right">
-              {formatLocal(subtotal)}
-              <br />
-              <span className="text-xs text-muted-foreground">{formatUSD(toUSD(subtotal))}</span>
-            </span>
+            <span className="font-medium">{formatDualUSD(subtotal)}</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -205,14 +197,7 @@ export function Cart({ onCheckout }: CartProps) {
 
           <div className="flex items-center justify-between">
             <span className="font-semibold">Total</span>
-            <div className="text-right">
-              <span className="text-xl font-bold text-emerald-600 block">
-                {formatLocal(total)}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {formatUSD(toUSD(total))}
-              </span>
-            </div>
+            <span className="text-xl font-bold text-emerald-600">{formatDualUSD(total)}</span>
           </div>
 
           <Button

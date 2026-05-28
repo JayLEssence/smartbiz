@@ -8,20 +8,11 @@ import {
 } from '@/lib/auth'
 import { safeValidate, joinSchema, sanitizeString } from '@/lib/validation'
 import { logAudit, getRequestInfo } from '@/lib/audit-log'
-import { checkRateLimit, getClientIdentifier, RATE_LIMITS, getRateLimitHeaders } from '@/lib/rate-limit'
+
+// Note: Rate limiting is handled by middleware.ts - no duplicate check here
 
 export async function POST(request: Request) {
   try {
-    // ---- Rate Limiting ----
-    const clientId = getClientIdentifier(request)
-    const rateResult = checkRateLimit(clientId, RATE_LIMITS.join)
-    if (!rateResult.allowed) {
-      return NextResponse.json(
-        { success: false, error: 'Too many registration attempts. Please try again later.', retryAfter: Math.ceil((rateResult.retryAfterMs || 60000) / 1000) },
-        { status: 429, headers: getRateLimitHeaders(rateResult, RATE_LIMITS.join) }
-      )
-    }
-
     // ---- Input Validation ----
     const body = await request.json()
     const validation = safeValidate(joinSchema, body)

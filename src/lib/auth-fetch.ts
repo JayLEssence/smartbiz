@@ -4,6 +4,8 @@
  * handle 401 Unauthorized responses, auto-refresh tokens, and include CSRF protection.
  */
 
+import { setCachedCsrfToken } from '@/lib/api-client'
+
 // ============================================
 // SESSION HELPERS
 // ============================================
@@ -194,6 +196,9 @@ async function fetchCsrfToken(): Promise<string | null> {
 
     cachedCsrfToken = json.csrfToken
     csrfTokenExpiry = Date.now() + CSRF_CACHE_DURATION
+
+    // Sync to api-client's shared cache
+    setCachedCsrfToken(cachedCsrfToken, csrfTokenExpiry)
 
     return cachedCsrfToken
   } catch {

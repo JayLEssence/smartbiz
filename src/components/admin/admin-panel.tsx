@@ -1430,7 +1430,7 @@ export function AdminPanel() {
                           <span>{t(categoryKeyMap[product.category] || product.category)}</span>
                         </div>
                         <div className="flex items-center gap-3 mt-2 text-sm">
-                          <span>{t('admin.currentStock')}: <strong>{product.currentStockLevel}</strong></span>
+                          <span>{t('admin.currentStock')}: <strong>{product.currentStockLevel ?? 0}</strong></span>
                           <span>{t('admin.salePrice')}: <strong>{formatDualUSD(product.defaultSalePrice ?? 0)}</strong></span>
                         </div>
                       </div>
@@ -1477,8 +1477,8 @@ export function AdminPanel() {
                           <TableCell className="font-mono text-xs">{product.sku}</TableCell>
                           <TableCell className="text-sm">{t(categoryKeyMap[product.category] || product.category)}</TableCell>
                           <TableCell>
-                            <span className={`font-semibold ${product.currentStockLevel <= product.reorderThreshold ? 'text-red-600' : ''}`}>
-                              {product.currentStockLevel}
+                            <span className={`font-semibold ${(product.currentStockLevel ?? 0) <= (product.reorderThreshold ?? 0) ? 'text-red-600' : ''}`}>
+                              {product.currentStockLevel ?? 0}
                             </span>
                           </TableCell>
                           <TableCell>{formatDualUSD(product.defaultSalePrice ?? 0)}</TableCell>
@@ -2092,7 +2092,7 @@ export function AdminPanel() {
             <div className="rounded-lg border bg-muted/50 p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">{t('admin.currentStock')}:</span>
-                <span className="text-sm font-semibold">{selectedProduct.currentStockLevel}</span>
+                <span className="text-sm font-semibold">{selectedProduct.currentStockLevel ?? 0}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">{t('admin.salePrice')}:</span>

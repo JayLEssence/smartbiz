@@ -34,7 +34,6 @@ import { useAppStore, type ViewType } from '@/stores/app-store'
 import { useLanguage } from '@/lib/i18n/language-context'
 import { getAuthHeaders } from '@/lib/auth-fetch'
 import { useCurrency } from '@/hooks/use-currency'
-import { formatUSD } from '@/lib/currency'
 
 interface DashboardData {
   todayRevenue: number
@@ -74,7 +73,7 @@ export function DashboardView() {
   const isMobile = useIsMobile()
   const { currentBranchId, currentUser, setView } = useAppStore()
   const { t } = useLanguage()
-  const { currency, formatDualUSD, formatLocal, toLocal } = useCurrency()
+  const { formatDualUSD } = useCurrency()
   const companyId = currentUser?.companyId
   const isEmployee = currentUser?.role === 'Employee'
   const userRole = currentUser?.role || 'Employee'
@@ -218,10 +217,8 @@ export function DashboardView() {
                 <DollarSign className="h-4 w-4" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-bold">{formatLocal(toLocal(data?.todayRevenue ?? 0))}</p>
-                <p className="text-[11px] text-muted-foreground truncate">
-                  {currency.rate !== 1 ? formatUSD(data?.todayRevenue ?? 0) : t('dashboard.todaysRevenue')}
-                </p>
+                <p className="text-sm font-bold">{formatDualUSD(data?.todayRevenue ?? 0)}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{t('dashboard.todaysRevenue')}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-lg bg-white/60 dark:bg-black/10 p-3">
@@ -262,7 +259,7 @@ export function DashboardView() {
         />
         <SummaryCard
           title={t('dashboard.salesToday')}
-          value={String(data.todaySalesCount)}
+          value={String(data.todaySalesCount ?? 0)}
           icon={Receipt}
           className="bg-teal-50 text-teal-600"
         />
@@ -352,7 +349,7 @@ export function DashboardView() {
                       {formatDualUSD(branch.todayRevenue ?? 0)}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {branch.todaySalesCount} {t('dashboard.sales')}
+                      {branch.todaySalesCount ?? 0} {t('dashboard.sales')}
                     </span>
                   </div>
                 </div>
@@ -428,7 +425,7 @@ export function DashboardView() {
                     <span className="text-sm truncate">{product.name}</span>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
                       <span className="text-xs text-muted-foreground">
-                        {product.currentStockLevel}/{product.reorderThreshold}
+                        {product.currentStockLevel ?? 0}/{product.reorderThreshold ?? 0}
                       </span>
                       <Badge
                         variant={

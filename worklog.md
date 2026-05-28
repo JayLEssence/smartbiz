@@ -480,6 +480,46 @@ Stage Summary:
 - All monetary values are null-safe with `?? 0` fallback
 
 ---
+Task ID: 3-a
+Agent: Null Safety Fix Agent
+Task: Fix null safety errors in POS components
+
+Work Log:
+- Read worklog.md and all 4 target files (checkout-dialog.tsx, cart.tsx, product-search.tsx, pos-view.tsx)
+- Updated `/src/components/pos/checkout-dialog.tsx`:
+  - Line 146: `const sub = item.quantitySold * item.salePricePerUnit` → `const sub = (item.quantitySold ?? 0) * (item.salePricePerUnit ?? 0)` (download receipt section)
+  - Line 148: Removed redundant `?? 0` on `sub` in formatUSDAmount call (sub is now guaranteed number from null-safe multiplication)
+  - Line 147: Removed redundant `?? 0` on `sub` in formatLocal(toLocal()) call
+  - Line 153: `saleResult.discount > 0` → `(saleResult.discount ?? 0) > 0` (download receipt section)
+  - Line 205: `const sub = item.quantitySold * item.salePricePerUnit` → same null-safe pattern (WhatsApp receipt section)
+  - Line 206: Removed redundant `?? 0` on `sub` in formatDualUSD call
+  - Line 211: `saleResult.discount > 0` → `(saleResult.discount ?? 0) > 0` (WhatsApp receipt section)
+  - Line 319: `const sub = item.quantitySold * item.salePricePerUnit` → same null-safe pattern (receipt modal section)
+  - Line 324: Removed redundant `?? 0` on `sub` in formatLocal(toLocal()) call
+  - Line 328: Removed redundant `?? 0` on `sub` in formatUSDAmount call
+  - Line 339: `saleResult.discount > 0` → `(saleResult.discount ?? 0) > 0` (receipt modal section)
+  - Line 446: `{formatDualUSD((item.quantity * item.salePricePerUnit) ?? 0)}` → `{formatDualUSD((item.quantity * (item.salePricePerUnit ?? 0)) ?? 0)}` (checkout confirm dialog)
+- Updated `/src/components/pos/cart.tsx`:
+  - Line 74: `{formatDual(item.salePricePerUnit)}` → `{formatDual(item.salePricePerUnit ?? 0)}`
+  - Line 110: `{formatLocal(item.quantity * item.salePricePerUnit)}` → `{formatLocal(item.quantity * (item.salePricePerUnit ?? 0))}`
+  - Line 113: `{formatUSD(toUSD(item.quantity * item.salePricePerUnit))}` → `{formatUSD(toUSD(item.quantity * (item.salePricePerUnit ?? 0)))}`
+- Updated `/src/components/pos/product-search.tsx`:
+  - Line 143: `product.currentStockLevel === 0` → `(product.currentStockLevel ?? 0) === 0` (className opacity-50 condition)
+  - Line 146: `disabled={product.currentStockLevel === 0}` → `disabled={(product.currentStockLevel ?? 0) === 0}`
+  - Line 162: `product.currentStockLevel > 0` → `(product.currentStockLevel ?? 0) > 0` (stock color condition)
+  - Line 167: `{product.currentStockLevel}` → `{product.currentStockLevel ?? 0}` (stock display)
+- Updated `/src/components/pos/pos-view.tsx`:
+  - Line 195: `disabled={product.currentStockLevel === 0}` → `disabled={(product.currentStockLevel ?? 0) === 0}` (mobile quick add)
+  - Line 230: Same pattern → `disabled={(product.currentStockLevel ?? 0) === 0}` (desktop quick add)
+
+Stage Summary:
+- Fixed 4 POS component files with null safety guards
+- Key fix categories: nullable `salePricePerUnit` in arithmetic (prevents NaN from null * number), nullable `discount` in comparisons (prevents incorrect truthiness), nullable `currentStockLevel` in comparisons and display (prevents disabled-button and display bugs on null stock)
+- All multiplication results are now computed from null-safe operands first, eliminating NaN propagation
+- All comparison operators on potentially nullable values now use `?? 0` guard
+- Pre-existing TS2869 warning on checkout-dialog.tsx line 446 is noted (outer `?? 0` unreachable per types, but kept as defensive runtime guard per task spec)
+
+---
 Task ID: 3
 Agent: Runtime Error Audit Agent
 Task: Audit remaining component files for runtime errors (null-safety, toFixed on nullable, missing null checks)
@@ -550,3 +590,93 @@ Stage Summary:
 - Key fix categories: `.toLocaleString()` on nullable numbers, `formatDual/formatLocal` on nullable amounts, `_count` property access on nullable objects, division-by-zero in P&L waterfall and inventory value calculation, session restore crash on null company/branch
 - All monetary value displays now use `?? 0` fallback pattern consistently
 - Backend API route division-by-zero fixed for totalInventoryValue and advisor recommendations
+
+---
+Task ID: 3-c
+Agent: Null Safety Fix Agent
+Task: Fix null safety errors in multiple SmartBiz components (dashboard, customers, inventory, admin)
+
+Work Log:
+- Read worklog.md and all 4 target files (dashboard-view.tsx, customers-view.tsx, product-list.tsx, admin-panel.tsx)
+- Updated `/src/components/dashboard/dashboard-view.tsx`:
+  - `String(data.todaySalesCount)` → `String(data.todaySalesCount ?? 0)` (SummaryCard value)
+  - `{branch.todaySalesCount}` → `{branch.todaySalesCount ?? 0}` (branch performance card)
+  - `{product.currentStockLevel}/{product.reorderThreshold}` → `{product.currentStockLevel ?? 0}/{product.reorderThreshold ?? 0}` (low stock alerts)
+- Updated `/src/components/customers/customers-view.tsx`:
+  - `{summary.totalCustomers}` → `{summary.totalCustomers ?? 0}` (summary card display)
+  - `summary.totalCreditOutstanding > 0` → `(summary.totalCreditOutstanding ?? 0) > 0` (credit icon styling condition)
+- Updated `/src/components/inventory/product-list.tsx`:
+  - `product.currentStockLevel === 0` → `(product.currentStockLevel ?? 0) === 0` (stock badge logic)
+  - `product.currentStockLevel <= product.reorderThreshold` → `(product.currentStockLevel ?? 0) <= (product.reorderThreshold ?? 0)` (low stock badge logic)
+  - `{product.currentStockLevel}` → `{product.currentStockLevel ?? 0}` (table cell)
+  - `{product.reorderThreshold}` → `{product.reorderThreshold ?? 0}` (table cell threshold)
+  - `{selectedProduct.currentStockLevel}` → `{selectedProduct.currentStockLevel ?? 0}` (detail dialog)
+  - `{deleteProduct.currentStockLevel}` → `{deleteProduct.currentStockLevel ?? 0}` (delete confirmation dialog)
+- Updated `/src/components/admin/admin-panel.tsx`:
+  - `{product.currentStockLevel}` → `{product.currentStockLevel ?? 0}` (mobile product card)
+  - `product.currentStockLevel <= product.reorderThreshold` → `(product.currentStockLevel ?? 0) <= (product.reorderThreshold ?? 0)` (desktop table stock color condition)
+  - `{product.currentStockLevel}` → `{product.currentStockLevel ?? 0}` (desktop table cell)
+  - `{selectedProduct.currentStockLevel}` → `{selectedProduct.currentStockLevel ?? 0}` (delete product dialog)
+
+Stage Summary:
+- Fixed 14 null-safety issues across 4 component files
+- All `currentStockLevel`, `reorderThreshold`, `todaySalesCount`, `totalCustomers`, and `totalCreditOutstanding` references now use `?? 0` fallback
+- Prevents runtime crashes when API returns null/undefined for numeric fields
+- Pre-existing TypeScript errors in other files are unrelated to these changes
+
+---
+Task ID: 3-b
+Agent: Null Safety Fix Agent
+Task: Fix null safety errors in SmartBiz reports view
+
+Work Log:
+- Read worklog.md and target file `/src/components/reports/reports-view.tsx`
+- Applied all 5 categories of null-safety fixes:
+  1. Line 600: `data.netProfit >= 0` → `(data.netProfit ?? 0) >= 0` (ProfitLossDisplay isProfit check)
+  2. Line 454: `(row.revenue / maxRevenue)` → `((row.revenue ?? 0) / maxRevenue)` (daily breakdown bar width)
+  3. All CSV export interpolations made null-safe with `?? 0` (and `?? 'N/A'` for strings):
+     - Sales: `row.revenue`, `row.count`, `data.totalRevenue`, `data.averageSale`, `data.totalTransactions`
+     - Expenses: `row.amount`, `row.count`, `data.totalExpenses`, `data.topCategory ?? 'N/A'`
+     - Profit-Loss: `data.revenue`, `data.cogs`, `data.grossProfit`, `data.totalExpenses`, `data.netProfit`
+     - Inventory: `row.currentStockLevel`, `row.value`, `data.totalProducts`, `data.totalStockValue`, `data.lowStockCount`
+     - Tax: `row.taxableAmount`, `row.taxAmount`, `data.taxableAmount`, `data.taxRate`, `data.taxAmount`, `data.totalTransactions`
+  4. Lines 735/741/742: `data.lowStockCount` → `data.lowStockCount ?? 0` in InventoryReportDisplay (className condition, text color condition, display value)
+  5. Line 448: `{row.count}` → `{row.count ?? 0}` in SalesReportDisplay daily breakdown table
+- TypeScript type check passes with zero errors for reports-view.tsx
+
+Stage Summary:
+- Fixed 20+ null-safety issues in reports-view.tsx across CSV export, display rendering, and conditional logic
+- All nullable numeric values now use `?? 0` fallback; string values use `?? 'N/A'`
+- Prevents runtime crashes when API returns null/undefined for report data fields
+
+---
+Task ID: 10
+Agent: Main Agent
+Task: Fix CSRF token error on registration, authentication error on login, null safety errors, dual currency display
+
+Work Log:
+- Identified ROOT CAUSE of CSRF error: middleware.ts had `/api/auth/register` in PUBLIC_ROUTES and CSRF_EXEMPT_ROUTES, but the actual registration endpoint is `/api/companies` — unauthenticated users couldn't access it
+- Fixed middleware.ts: Changed `/api/auth/register` → `/api/companies` in PUBLIC_ROUTES, CSRF_EXEMPT_ROUTES, and RATE_LIMITED_ROUTES
+- Added `/api/auth/logout` to CSRF_EXEMPT_ROUTES (logout should work even with stale CSRF)
+- Fixed double rate limiting: Removed duplicate rate limit checks from login, join, and companies route handlers (middleware already handles it)
+- Fixed api-client.ts: Complete rewrite with CSRF token support for mutating requests, automatic CSRF retry on 403, shared CSRF cache with auth-fetch.ts
+- Updated auth-fetch.ts: Added import from api-client.ts for shared CSRF cache, syncs cached tokens between modules
+- Fixed CSRF initialization: Added `initCsrfToken()` calls in auth-page.tsx after login, join, and register flows
+- Added server-side logout endpoint at `/api/auth/logout/route.ts`: Invalidates session in DB, cleans up CSRF tokens, clears cookies
+- Updated app-store.ts logout: Now calls server-side logout API before clearing client state
+- Removed demo backdoor from login route (users with $2a$10$dummy password hashes can no longer log in with "demo")
+- Removed unused `checkPasswordStrength` import from login route
+- Fixed null safety errors across all components: checkout-dialog.tsx, cart.tsx, product-search.tsx, pos-view.tsx, reports-view.tsx, dashboard-view.tsx, customers-view.tsx, product-list.tsx, admin-panel.tsx
+- Updated currency format: `formatUSDDual` now produces compact format "$10/TSh 25,700" instead of "$10.00 / TSh 25,700"
+- Updated `formatUSD` to use compact format (no decimals for whole numbers)
+- Updated cart.tsx, dashboard-view.tsx, expenses-view.tsx, checkout-dialog.tsx to consistently use dual currency format
+- All lint checks pass, dev server compiles cleanly
+
+Stage Summary:
+- Registration CSRF error FIXED: /api/companies is now in PUBLIC_ROUTES and CSRF_EXEMPT_ROUTES
+- Authentication error FIXED: Login works correctly for all roles, CSRF initialized after each auth flow
+- All null safety errors FIXED: Every numeric value from API data now has ?? 0 fallback
+- Dual currency display UPDATED: Format is now "$10/TSh 25,700" (compact, both currencies visible)
+- Double rate limiting REMOVED: Only middleware handles rate limiting now
+- Demo backdoor REMOVED: Production security improved
+- Server-side logout ADDED: Sessions properly invalidated on logout

@@ -91,6 +91,18 @@ export const useAppStore = create<AppState>((set) => ({
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   logout: () => {
     if (typeof window !== 'undefined') {
+      // Try to call server-side logout to invalidate the session
+      try {
+        const session = JSON.parse(localStorage.getItem('smartbiz_session') || '{}')
+        if (session?.token) {
+          fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${session.token}` },
+          }).catch(() => {})
+        }
+      } catch {
+        // ignore
+      }
       localStorage.removeItem('smartbiz_session')
       // Clear auth cookies by setting them to expired
       document.cookie = 'smartbiz_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;'
