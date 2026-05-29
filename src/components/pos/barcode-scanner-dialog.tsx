@@ -7,10 +7,12 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogClose,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, Camera, CameraOff, AlertCircle, ScanBarcode } from 'lucide-react'
+import { CheckCircle2, Camera, CameraOff, AlertCircle, ScanBarcode, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { useLanguage } from '@/lib/i18n/language-context'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 interface BarcodeScannerDialogProps {
   open: boolean
@@ -36,6 +38,7 @@ async function getQuagga() {
 
 export function BarcodeScannerDialog({ open, onOpenChange, onBarcodeDetected }: BarcodeScannerDialogProps) {
   const { t } = useLanguage()
+  const isMobile = useIsMobile()
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -52,6 +55,7 @@ export function BarcodeScannerDialog({ open, onOpenChange, onBarcodeDetected }: 
   const [manualInput, setManualInput] = useState('')
   const [scanCount, setScanCount] = useState(0)
   const [status, setStatus] = useState<'idle' | 'starting' | 'scanning' | 'detected'>('idle')
+  const [showManualInput, setShowManualInput] = useState(false)
 
   // Schedule next scan with a delay
   const scheduleNextScan = useCallback(() => {
@@ -123,7 +127,7 @@ export function BarcodeScannerDialog({ open, onOpenChange, onBarcodeDetected }: 
         tempCtx.putImageData(imageData, 0, 0)
         const dataUrl = tempCanvas.toDataURL('image/png')
 
-        ;(Quagga as unknown as { decodeSingle: Function }).decodeSingle({
+        ;(Quagga as unknown as { decodeSingle: (config: unknown, callback: (result: unknown) => void) => void }).decodeSingle({
           src: dataUrl,
           numOfWorkers: 0,
           inputStream: {
@@ -278,26 +282,41 @@ export function BarcodeScannerDialog({ open, onOpenChange, onBarcodeDetected }: 
         setManualInput('')
         setStatus('idle')
         setScanCount(0)
+        setShowManualInput(false)
       }
       onOpenChange(val)
     }}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ScanBarcode className="h-5 w-5 text-emerald-600" />
-            {t('barcode.title')}
-          </DialogTitle>
-          <DialogDescription>
-            {t('barcode.description')}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent
+        className={isMobile
+          ? "w-screen h-screen max-w-none p-0 m-0 rounded-none border-0"
+          : "sm:max-w-lg"
+        }
+        showCloseButton={!isMobile}
+      >
+        {isMobile && (
+          <DialogClose className="absolute top-4 right-4 z-50 rounded-full bg-black/60 p-2 text-white hover:bg-black/80 transition-colors">
+            <X className="h-5 w-5" />
+          </DialogClose>
+        )}
 
-        <div className="space-y-4">
-          {/* Camera View */}
-          <div className="relative rounded-lg overflow-hidden bg-black aspect-[4/3]">
+        {!isMobile && (
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ScanBarcode className="h-5 w-5 text-emerald-600" />
+              {t('barcode.title')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('barcode.description')}
+            </DialogDescription>
+          </DialogHeader>
+        )}
+
+        <div className={isMobile ? "h-full flex flex-col" : "space-y-4"}>
+          {/* Camera View - fills available space on mobile */}
+          <div className={isMobile ? "relative flex-1 bg-black" : "relative rounded-lg overflow-hidden bg-black aspect-[4/3]"}>
             <video
               ref={videoRef}
-              className="w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-cover"
               playsInline
               muted
               autoPlay
@@ -330,7 +349,7 @@ export function BarcodeScannerDialog({ open, onOpenChange, onBarcodeDetected }: 
                 />
 
                 {/* Status indicator */}
-                <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 rounded-full px-2.5 py-1">
+                <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-black/60 rounded-full px-2.5 py-1">
                   <div className={`h-2 w-2 rounded-full ${
                     status === 'detected' ? 'bg-emerald-400' : status === 'scanning' ? 'bg-yellow-400 animate-pulse' : 'bg-gray-400'
                   }`} />
@@ -341,13 +360,13 @@ export function BarcodeScannerDialog({ open, onOpenChange, onBarcodeDetected }: 
 
                 {/* Scan count */}
                 {scanCount > 0 && (
-                  <div className="absolute top-3 left-3 bg-black/60 rounded-full px-2.5 py-1">
+                  <div className="absolute top-4 left-4 bg-black/60 rounded-full px-2.5 py-1">
                     <span className="text-[10px] text-white font-medium">{scanCount} detected</span>
                   </div>
                 )}
 
                 {/* Tip text */}
-                <div className="absolute bottom-3 left-0 right-0 text-center">
+                <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-auto">
                   <span className="text-[10px] text-white/70 bg-black/50 rounded px-2 py-0.5">
                     Point camera at barcode • Center the code
                   </span>
@@ -379,84 +398,176 @@ export function BarcodeScannerDialog({ open, onOpenChange, onBarcodeDetected }: 
                 <p className="text-sm opacity-70">{t('barcode.startingCamera')}</p>
               </div>
             )}
-          </div>
 
-          {/* Detected barcode - prominent display */}
-          {lastBarcode && (
-            <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200 dark:border-emerald-800">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-muted-foreground">Barcode detected</p>
-                <p className="font-mono font-bold text-emerald-700 dark:text-emerald-400 truncate">{lastBarcode}</p>
-              </div>
-              <Button
-                size="sm"
-                onClick={() => handleConfirmBarcode(lastBarcode)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
-              >
-                {t('barcode.addProduct')}
-              </Button>
-            </div>
-          )}
-
-          {/* Camera toggle */}
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={cameraActive ? stopCamera : startCamera}
-              className="gap-2"
-            >
-              {cameraActive ? (
-                <>
-                  <CameraOff className="h-4 w-4" />
-                  {t('barcode.stopCamera')}
-                </>
-              ) : (
-                <>
-                  <Camera className="h-4 w-4" />
-                  {t('barcode.startCamera')}
-                </>
-              )}
-            </Button>
-
-            {!lastBarcode && cameraActive && (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Scanning...
+            {/* Mobile: Detected barcode pill overlaid on camera */}
+            {isMobile && lastBarcode && (
+              <div className="absolute top-20 left-4 right-4 flex items-center gap-3 p-3 bg-emerald-50/95 dark:bg-emerald-950/90 rounded-lg border border-emerald-200 dark:border-emerald-800 z-10 shadow-lg">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground">Barcode detected</p>
+                  <p className="font-mono font-bold text-emerald-700 dark:text-emerald-400 truncate">{lastBarcode}</p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => handleConfirmBarcode(lastBarcode)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                >
+                  {t('barcode.addProduct')}
+                </Button>
               </div>
             )}
           </div>
 
-          {/* Manual input fallback */}
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">{t('barcode.manualFallback')}</p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={manualInput}
-                onChange={(e) => setManualInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleManualSubmit()
-                }}
-                placeholder={t('barcode.enterManually')}
-                className="flex-1 h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              />
-              <Button
-                size="sm"
-                onClick={handleManualSubmit}
-                disabled={!manualInput.trim()}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
-                {t('barcode.search')}
-              </Button>
-            </div>
-          </div>
+          {/* Desktop: Controls below camera */}
+          {!isMobile && (
+            <>
+              {/* Detected barcode - prominent display */}
+              {lastBarcode && (
+                <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground">Barcode detected</p>
+                    <p className="font-mono font-bold text-emerald-700 dark:text-emerald-400 truncate">{lastBarcode}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => handleConfirmBarcode(lastBarcode)}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                  >
+                    {t('barcode.addProduct')}
+                  </Button>
+                </div>
+              )}
 
-          {/* Supported formats */}
-          <p className="text-[10px] text-muted-foreground">
-            {t('barcode.supportedFormats')}: EAN-13, EAN-8, UPC-A, UPC-E, Code-128, Code-39
-          </p>
+              {/* Camera toggle */}
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={cameraActive ? stopCamera : startCamera}
+                  className="gap-2"
+                >
+                  {cameraActive ? (
+                    <>
+                      <CameraOff className="h-4 w-4" />
+                      {t('barcode.stopCamera')}
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="h-4 w-4" />
+                      {t('barcode.startCamera')}
+                    </>
+                  )}
+                </Button>
+
+                {!lastBarcode && cameraActive && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Scanning...
+                  </div>
+                )}
+              </div>
+
+              {/* Manual input fallback */}
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">{t('barcode.manualFallback')}</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={manualInput}
+                    onChange={(e) => setManualInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleManualSubmit()
+                    }}
+                    placeholder={t('barcode.enterManually')}
+                    className="flex-1 h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleManualSubmit}
+                    disabled={!manualInput.trim()}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    {t('barcode.search')}
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Mobile: Bottom controls bar */}
+          {isMobile && (
+            <div className="shrink-0 bg-background border-t px-4 py-3 space-y-3">
+              {/* Detected barcode inline (non-overlay fallback) */}
+              {!lastBarcode && !cameraActive && (
+                <Button
+                  onClick={startCamera}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+                >
+                  <Camera className="h-4 w-4" />
+                  {t('barcode.startCamera')}
+                </Button>
+              )}
+
+              {cameraActive && (
+                <Button
+                  variant="outline"
+                  onClick={stopCamera}
+                  className="w-full gap-2"
+                >
+                  <CameraOff className="h-4 w-4" />
+                  {t('barcode.stopCamera')}
+                </Button>
+              )}
+
+              {/* Collapsible manual input */}
+              <div>
+                <button
+                  onClick={() => setShowManualInput(!showManualInput)}
+                  className="flex items-center gap-2 text-xs text-muted-foreground py-2 w-full"
+                >
+                  {showManualInput ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  {t('barcode.manualFallback')}
+                </button>
+
+                {showManualInput && (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={manualInput}
+                      onChange={(e) => setManualInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleManualSubmit()
+                      }}
+                      placeholder={t('barcode.enterManually')}
+                      className="flex-1 h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      autoFocus={showManualInput}
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleManualSubmit}
+                      disabled={!manualInput.trim()}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                    >
+                      {t('barcode.search')}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Supported formats */}
+              <p className="text-[10px] text-muted-foreground text-center">
+                {t('barcode.supportedFormats')}: EAN-13, EAN-8, UPC-A, UPC-E, Code-128, Code-39
+              </p>
+            </div>
+          )}
+
+          {/* Desktop: Supported formats */}
+          {!isMobile && (
+            <p className="text-[10px] text-muted-foreground">
+              {t('barcode.supportedFormats')}: EAN-13, EAN-8, UPC-A, UPC-E, Code-128, Code-39
+            </p>
+          )}
         </div>
       </DialogContent>
     </Dialog>

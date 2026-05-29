@@ -215,6 +215,17 @@ export const notificationUpdateSchema = z.object({
   isRead: z.boolean(),
 })
 
+// Forgot password schemas
+export const forgotPasswordSchema = z.object({
+  email: emailSchema,
+})
+
+export const resetPasswordSchema = z.object({
+  email: emailSchema,
+  token: z.string().min(1, 'Token is required'),
+  password: passwordSchema,
+})
+
 // Password change schema
 export const passwordChangeSchema = z.object({
   currentPassword: z.string().min(1),

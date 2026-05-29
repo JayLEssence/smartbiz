@@ -13,6 +13,8 @@ const PUBLIC_ROUTES = [
   '/api/companies',  // Company registration (creates company + admin)
   '/api/auth/refresh',
   '/api/auth/csrf',  // CSRF token endpoint
+  '/api/auth/reset-password',
+  '/api/auth/reset-password/confirm',
 ]
 
 // Routes that have specific rate limits

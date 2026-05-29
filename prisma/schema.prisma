@@ -78,6 +78,8 @@ model User {
   mustChangePassword Boolean @default(false) // Force password change on next login
   failedLoginAttempts Int @default(0)        // Track failed login attempts
   lockedUntil DateTime?                      // Account lockout timestamp
+  passwordResetToken String?                 // Token for password reset
+  resetTokenExpiresAt DateTime?              // When the reset token expires
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

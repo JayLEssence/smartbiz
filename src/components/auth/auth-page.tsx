@@ -26,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { ForgotPasswordDialog } from '@/components/auth/forgot-password-dialog'
 
 // Password strength checker (matching backend logic)
 function checkPasswordStrength(password: string): { score: number; label: string; color: string; feedback: string[] } {
@@ -159,6 +160,7 @@ export function AuthPage() {
 
   const [activeTab, setActiveTab] = useState('login')
   const [tosOpen, setTosOpen] = useState(false)
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -482,7 +484,7 @@ export function AuthPage() {
                   <div className="flex justify-end">
                     <button
                       type="button"
-                      onClick={() => toast.info(t('auth.forgotPasswordToast'))}
+                      onClick={() => setForgotPasswordOpen(true)}
                       className="text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
                     >
                       {t('auth.forgotPassword')}
@@ -894,6 +896,9 @@ export function AuthPage() {
           </button>
         </div>
       </div>
+
+      {/* Forgot Password Dialog */}
+      <ForgotPasswordDialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen} />
 
       {/* Terms of Service Dialog */}
       <Dialog open={tosOpen} onOpenChange={setTosOpen}>

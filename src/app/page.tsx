@@ -52,15 +52,6 @@ function HomeContent() {
   } = useAppStore()
   const [initializing, setInitializing] = useState(true)
 
-  // Register service worker for PWA
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {
-        // SW registration failed - app still works without it
-      })
-    }
-  }, [])
-
   // Listen for auth expiry events and token refresh events
   useEffect(() => {
     const handleAuthExpired = () => {
