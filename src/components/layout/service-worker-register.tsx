@@ -1,13 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
-
+// SerwistProvider handles SW registration — this is a safety net
+// for pages that might render outside the layout's SerwistProvider
 export function ServiceWorkerRegister() {
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {})
-    }
-  }, [])
-
   return null
 }

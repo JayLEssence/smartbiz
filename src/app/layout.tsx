@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 import { ServiceWorkerRegister } from "@/components/layout/service-worker-register";
+import { SerwistProvider } from "./serwist";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -73,9 +74,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Toaster richColors position="bottom-right" />
-          <ServiceWorkerRegister />
+          <SerwistProvider swUrl="/sw.js">
+            {children}
+            <Toaster richColors position="bottom-right" />
+            <ServiceWorkerRegister />
+          </SerwistProvider>
         </ThemeProvider>
       </body>
     </html>
